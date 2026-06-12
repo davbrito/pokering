@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e63e3e"/>
+      <stop offset="50%" stop-color="#e63e3e"/>
+      <stop offset="50%" stop-color="#12121a"/>
+      <stop offset="100%" stop-color="#12121a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Outer circle base -->
+  <circle cx="32" cy="32" r="30" fill="#0a0a0f" stroke="#e63e3e" stroke-width="1.5"/>
+
+  <!-- Pokéball halves -->
+  <clipPath id="topHalf">
+    <rect x="0" y="0" width="64" height="32"/>
+  </clipPath>
+  <clipPath id="botHalf">
+    <rect x="0" y="32" width="64" height="32"/>
+  </clipPath>
+
+  <!-- Top half (red) -->
+  <circle cx="32" cy="32" r="28" fill="#e63e3e" clip-path="url(#topHalf)"/>
+
+  <!-- Bottom half (dark surface) -->
+  <circle cx="32" cy="32" r="28" fill="#12121a" clip-path="url(#botHalf)"/>
+
+  <!-- Center dividing line -->
+  <rect x="4" y="31" width="56" height="2" rx="1" fill="#f0f0f8"/>
+
+  <!-- Center circle (like Pokéball button) -->
+  <circle cx="32" cy="32" r="7" fill="#0a0a0f" stroke="#f0f0f8" stroke-width="1.5"/>
+
+  <!-- Inner center dot -->
+  <circle cx="32" cy="32" r="3" fill="#e63e3e"/>
+
+  <!-- Ring ropes inspiration - subtle arcs -->
+  <path d="M12 20 Q32 12 52 20" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+  <path d="M12 44 Q32 52 52 44" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+</svg>
