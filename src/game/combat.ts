@@ -16,13 +16,16 @@ async function fetchSingleMove(queryClient: QueryClient, idOrName: string): Prom
       staleTime: Infinity,
     });
     if (!data) return null;
-    // Solo movimientos que causan daño
+    // V1: ignoramos movimientos sin power (Status como Growl, Thunder Wave)
+    // Solo interesan movimientos que infligen daño directo.
     if (data.power == null || data.power === 0) return null;
     const dc = data.damage_class?.name;
+    // Filtramos movimientos de estado (status). Solo physical y special pasan.
+    // Physical usa atk/def; Special usa spa/spd. Ver selectBestMove().
     if (dc !== "physical" && dc !== "special") return null;
     return {
       name: data.names.find((n) => n.language.name === "es")?.name || data.name,
-      type: data.type?.name || "normal",
+      type: data.type.name,
       category: dc,
       power: data.power,
     };
@@ -37,7 +40,9 @@ export async function fetchPokemonMoves(queryClient: QueryClient, pokemon: Pokem
   const uniqueIds = [...new Set(pokemon.moves.map((m) => moveIdFromUrl(m.move.url)))];
   const results = await Promise.all(uniqueIds.map((id) => fetchSingleMove(queryClient, id)));
   const valid = results.filter((r): r is RealMoveInfo => r !== null);
-  // Ordenados por poder descendente, top 20
+  // Ordenados por poder descendente, top 20.
+  // Esto garantiza que selectBestMove tenga los movimientos más fuertes
+  // para elegir entre ellos según efectividad y stats.
   return valid.sort((a, b) => b.power - a.power).slice(0, 20);
 }
 
@@ -52,6 +57,9 @@ export function getEffectiveness(attackerType: string, defenderTypes: string[]):
   return eff;
 }
 
+// Extrae las 6 estadísticas base (HP, Atk, Def, SpA, SpD, Spe) de la API.
+// atk/def → movimientos physical; spa/spd → movimientos special.
+// spe determina el orden de ataque en cada turno (ver determineFirstAttacker).
 export function getStatsObject(p: PokemonDetail): PokemonStats {
   const gs = (name: string) => p.stats.find((s) => s.stat.name === name)?.base_stat || 0;
   return {
@@ -75,10 +83,15 @@ export function selectBestMove(
   let maxDamagePotential = -1;
 
   for (const move of moves) {
+    // Según la damage_class del movimiento se eligen las stats correctas:
+    // - Physical: Atk del atacante vs Def del defensor
+    // - Special:  SpA del atacante vs SpD del defensor
+    // (Los movimientos Status ya fueron filtrados en fetchSingleMove)
     const offensiveStat = move.category === "physical" ? attackerStats.atk : attackerStats.spa;
     const defensiveStat = move.category === "physical" ? defenderStats.def : defenderStats.spd;
 
     const typeEff = getEffectiveness(move.type, defenderTypes);
+    // Estimación simple: (stat ofensivo / stat defensivo) * poder * efectividad
     const expectedDmg = (offensiveStat / defensiveStat) * move.power * typeEff;
 
     if (expectedDmg > maxDamagePotential) {
@@ -203,10 +216,12 @@ export function generateBattleSteps(
       if (hp1 <= 0 || hp2 <= 0) break;
 
       const activeBestMove = selectBestMove(act.atkStats, act.defTypes, act.defStats, act.moves);
+      // Misma lógica de damage_class: physical → atk/def, special → spa/spd
       const isPhys = activeBestMove.category === "physical";
       const offVal = isPhys ? act.atkStats.atk : act.atkStats.spa;
       const defVal = isPhys ? act.defStats.def : act.defStats.spd;
 
+      // Fórmula de daño estándar de Pokémon (simplificada, nivel fijo 50)
       const baseDamage = (((2 * 50) / 5 + 2) * activeBestMove.power * (offVal / defVal)) / 50 + 2;
       const eff = activeBestMove.eff;
 

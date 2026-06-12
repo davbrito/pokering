@@ -1,3 +1,6 @@
+// Las 6 stats base de un Pokémon.
+// atk/def se usan con movimientos physical; spa/spd con movimientos special.
+// spe determina quién ataca primero en el turno.
 export interface PokemonStats {
   hp: number;
   atk: number;
@@ -15,6 +18,8 @@ export interface MoveResult {
   eff: number;
 }
 
+// Movimiento listo para combate. Solo existen physical y special;
+// los movimientos Status (sin power) se filtran en fetchSingleMove.
 export interface RealMoveInfo {
   name: string;
   type: string;
