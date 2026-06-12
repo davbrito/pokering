@@ -1507,6 +1507,37 @@ footer {
     width: 100%;
     justify-content: center;
   }
+
+  /* RESULT MOBILE */
+  .result-top {
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    padding: 1rem 1.2rem;
+  }
+  .win-art {
+    width: 60px;
+    height: 60px;
+  }
+  .win-name {
+    font-size: 28px;
+  }
+  .bst-box {
+    margin-left: 0;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .bst-num {
+    font-size: 24px;
+  }
+  .bst-vs {
+    font-size: 10px;
+  }
+  .result-body {
+    padding: 1rem 1.2rem;
+  }
 }
 
 /* TYPE BADGE COLORS */
@@ -1541,6 +1572,9 @@ footer {
   color: var(--muted);
   text-decoration: none;
   transition: color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 .settings-back:hover {
   color: var(--text);

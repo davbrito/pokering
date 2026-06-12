@@ -47,7 +47,7 @@
   "result_analysis_no_advantage": "The battle arena witnessed a high-level fight between {p1} and {p2}. The rhythm was dictated by subtle tactical differences in individual combat stats. In the end, decisiveness crowned {winner} as the supreme gladiator of the contest after the cinematic simulation.",
 
   "settings_title": "Settings",
-  "settings_back": "\u2190 Back",
+  "settings_back": "Back",
   "settings_pokemon_language": "Pok\u00e9mon Language",
   "settings_pokemon_language_desc": "Choose the language in which Pok\u00e9mon names will be displayed in the selector and preview.",
   "settings_language_label": "Language",

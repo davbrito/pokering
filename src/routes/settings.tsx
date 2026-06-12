@@ -3,7 +3,7 @@ import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
 import { languageListOptions } from "../api/pokeapi/@tanstack/react-query.gen";
@@ -31,6 +31,7 @@ function SettingsPage() {
       <div className="wrap">
         <header className="settings-header">
           <Link to="/" className="settings-back">
+            <ArrowLeft size={16} />
             {m.settings_back()}
           </Link>
           <h1>{m.settings_title()}</h1>

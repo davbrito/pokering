@@ -47,7 +47,7 @@
   "result_analysis_no_advantage": "La arena de batalla presenci\u00f3 un combate de alto nivel entre {p1} y {p2}. El ritmo del combate estuvo dictaminado por sutiles diferencias t\u00e1cticas en las estad\u00edsticas de combate individuales. Finalmente, la contundencia coron\u00f3 a {winner} como el gladiador supremo de la contienda tras el simulacro cinematogr\u00e1fico.",
 
   "settings_title": "Ajustes",
-  "settings_back": "\u2190 Volver",
+  "settings_back": "Volver",
   "settings_pokemon_language": "Idioma de los Pok\u00e9mon",
   "settings_pokemon_language_desc": "Elige el idioma en el que se mostrar\u00e1n los nombres de los Pok\u00e9mon en el selector y la previsualizaci\u00f3n.",
   "settings_language_label": "Idioma",
