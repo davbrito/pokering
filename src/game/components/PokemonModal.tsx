@@ -1,94 +1,111 @@
 import { Dialog } from "@base-ui/react/dialog";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import {
   pokemonListOptions,
   pokemonRetrieveOptions,
+  pokemonSpeciesRetrieveOptions,
   typeRetrieveOptions,
 } from "../../api/pokeapi/@tanstack/react-query.gen";
-import { getArtworkUrl, getSpriteUrl } from "../api";
+import { getArtworkUrl, getLocalizedName, getSpriteUrl, localizedNameCache } from "../api";
 import { STAT_ABBR, TYPE_TAB_COLORS, TYPES } from "../data";
 import { useGameStore } from "../store";
 
 export const pickerDialogHandle = Dialog.createHandle<{ slot: number }>();
 
 function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | null; onSelect: (id: number) => void }) {
+  const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
   const { data: previewData, isLoading: loading } = useQuery({
     ...pokemonRetrieveOptions({ path: { id: String(pokemonId) } }),
     enabled: pokemonId !== null,
-    staleTime: Infinity,
   });
 
-  if (!loading && previewData) {
-    const d = previewData;
-    const art = getArtworkUrl(d);
-    const types = d.types.map((t) => t.type.name);
-    const total = d.stats.reduce((a, s) => a + s.base_stat, 0);
+  const speciesName = previewData?.species.name;
+
+  const species = useQuery({
+    ...pokemonSpeciesRetrieveOptions({ path: { id: speciesName || "" } }),
+    enabled: !!speciesName,
+  });
+
+  // Cache localized name when species data loads
+  const langCode = pokemonLanguage;
+  if (species.data && previewData) {
+    const localized = getLocalizedName(species.data.names, langCode, previewData.name);
+    let byLang = localizedNameCache.get(previewData.id);
+    if (!byLang) {
+      byLang = new Map();
+      localizedNameCache.set(previewData.id, byLang);
+    }
+    byLang.set(langCode, localized);
+  }
+
+  const localizedName = species.data ? getLocalizedName(species.data.names, langCode, previewData?.name ?? "") : null;
+
+  if (loading || !previewData) {
     return (
       <div className="preview-panel" id="preview-panel">
-        <img className="prev-art" src={art} alt={d.name} />
-        <div className="prev-name">{d.name}</div>
-        <div className="prev-meta">
-          #{String(d.id).padStart(3, "0")} · BST {total}
-        </div>
-        <div className="prev-types">
-          {types.map((t) => (
-            <span key={t} className={`tbadge t-${t}`}>
-              {t}
-            </span>
-          ))}
-        </div>
-        <div className="prev-stats">
-          {d.stats.map((s) => {
-            const abbr = STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
-            const pct = Math.round(Math.min((s.base_stat / 180) * 100, 100));
-            const col =
-              s.base_stat >= 100
-                ? "#4ade80"
-                : s.base_stat >= 70
-                  ? "#60d8a0"
-                  : s.base_stat >= 45
-                    ? "#f5c842"
-                    : "#e63e3e";
-            return (
-              <div key={s.stat.name} className="prev-srow">
-                <span className="prev-sname">{abbr}</span>
-                <div className="strack">
-                  <div className="sfill" style={{ width: `${pct}%`, background: col }} />
-                </div>
-                <span
-                  style={{
-                    fontSize: "9px",
-                    fontFamily: "var(--font-m)",
-                    color: "var(--text)",
-                  }}
-                >
-                  {s.base_stat}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        <button type="button" className="prev-select-btn" onClick={() => onSelect(d.id)}>
-          Elegir este ▶
-        </button>
+        {loading ? (
+          <div className="loading-bar">
+            <div className="spinner" />
+          </div>
+        ) : (
+          <div className="preview-empty">
+            <div className="pe-icon">👆</div>
+            <div>Pasa el cursor sobre un Pokémon para verlo</div>
+          </div>
+        )}
       </div>
     );
   }
 
+  const d = previewData;
+  const art = getArtworkUrl(d);
+  const types = d.types.map((t) => t.type.name);
+  const total = d.stats.reduce((a, s) => a + s.base_stat, 0);
   return (
     <div className="preview-panel" id="preview-panel">
-      {loading ? (
-        <div className="loading-bar">
-          <div className="spinner" />
-        </div>
-      ) : (
-        <div className="preview-empty">
-          <div className="pe-icon">👆</div>
-          <div>Pasa el cursor sobre un Pokémon para verlo</div>
-        </div>
-      )}
+      <img className="prev-art" src={art} alt={d.name} />
+      <div className="prev-name">{localizedName || d.name}</div>
+      <div className="prev-subname">{d.name}</div>
+      <div className="prev-meta">
+        #{String(d.id).padStart(3, "0")} · BST {total}
+      </div>
+      <div className="prev-types">
+        {types.map((t) => (
+          <span key={t} className={`tbadge t-${t}`}>
+            {t}
+          </span>
+        ))}
+      </div>
+      <div className="prev-stats">
+        {d.stats.map((s) => {
+          const abbr = STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
+          const pct = Math.round(Math.min((s.base_stat / 180) * 100, 100));
+          const col =
+            s.base_stat >= 100 ? "#4ade80" : s.base_stat >= 70 ? "#60d8a0" : s.base_stat >= 45 ? "#f5c842" : "#e63e3e";
+          return (
+            <div key={s.stat.name} className="prev-srow">
+              <span className="prev-sname">{abbr}</span>
+              <div className="strack">
+                <div className="sfill" style={{ width: `${pct}%`, background: col }} />
+              </div>
+              <span
+                style={{
+                  fontSize: "9px",
+                  fontFamily: "var(--font-m)",
+                  color: "var(--text)",
+                }}
+              >
+                {s.base_stat}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <button type="button" className="prev-select-btn" onClick={() => onSelect(d.id)}>
+        Elegir este ▶
+      </button>
     </div>
   );
 }
@@ -142,8 +159,10 @@ function getIdFromUrl(url: string): number {
 function DialogContent({ slot = 0 }: { slot: number | undefined }) {
   const searchQuery = useGameStore((s) => s.searchQuery);
   const activeTab = useGameStore((s) => s.activeTab);
+  const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
+  const queryClient = useQueryClient();
   const listQuery = useQuery({
     ...pokemonListOptions({ query: { limit: 1010 } }),
     staleTime: 5 * 60 * 1000,
@@ -174,7 +193,12 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
     if (!list) return [];
     if (!list.length && activeTab === "all") return [];
     if (q) {
-      list = allPokemon?.filter((p) => p.name.includes(q) || String(p.id).padStart(3, "0").includes(q));
+      list = allPokemon?.filter((p) => {
+        const cached = localizedNameCache.get(p.id);
+        const localized = cached?.get(pokemonLanguage);
+        const name = localized || p.name;
+        return name.includes(q) || String(p.id).padStart(3, "0").includes(q);
+      });
     }
     return list ?? [];
   })();
@@ -192,7 +216,6 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
         />
         <Dialog.Close className="modal-close">✕</Dialog.Close>
       </div>
-
       <div className="tabs-bar" id="tabs-bar">
         {TYPES.map((t) => {
           const c = TYPE_TAB_COLORS[t] || TYPE_TAB_COLORS.normal;
@@ -213,7 +236,6 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
           );
         })}
       </div>
-
       <div className="modal-body">
         <div className="poke-grid-wrap">
           {filteredList.length > 0 ? (
@@ -224,10 +246,20 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
                   type="button"
                   className="poke-thumb"
                   onClick={() => handleSelect(p.id)}
-                  onMouseEnter={() => setHoveredId(p.id)}
+                  onMouseEnter={() => {
+                    queryClient
+                      .ensureQueryData(pokemonRetrieveOptions({ path: { id: String(p.id) } }))
+                      .then((data) => {
+                        queryClient.prefetchQuery(pokemonSpeciesRetrieveOptions({ path: { id: data.species.name } }));
+                      })
+                      .catch(() => {
+                        /* ignore prefetch errors */
+                      });
+                    setHoveredId(p.id);
+                  }}
                 >
                   <img src={getSpriteUrl(p.id)} alt={p.name} loading="lazy" className="select-none" />
-                  <div className="pt-name">{p.name}</div>
+                  <div className="pt-name">{localizedNameCache.get(p.id)?.get(pokemonLanguage) || p.name}</div>
                   <div className="pt-num">#{String(p.id).padStart(3, "0")}</div>
                 </button>
               ))}

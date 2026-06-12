@@ -1,6 +1,36 @@
 @import "tailwindcss";
 @import "./style/game.css";
 
+:root {
+  --bg: oklab(14.734% 0.00278 -0.01038);
+  --surface: #12121a;
+  --surface2: #1c1c28;
+  --border: oklab(100% 0 -0.00011 / 0.08);
+  --border2: oklab(100% 0 -0.00011 / 0.15);
+  --text: #f0f0f8;
+  --muted: #7a7a95;
+  --accent: #e63e3e;
+  --gold: #f5c842;
+  --blue: #4a9eff;
+  --green: #4ade80;
+  --font-d: "Bebas Neue", sans-serif;
+  --font-b: "Inter", sans-serif;
+  --font-m: "Space Mono", monospace;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface2);
+  --color-border: var(--border);
+  --color-border2: var(--border2);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-gold: var(--gold);
+  --color-blue: var(--blue);
+  --color-green: var(--green);
+}
 * {
   box-sizing: border-box;
 }

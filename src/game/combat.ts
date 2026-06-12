@@ -15,10 +15,7 @@ function moveIdFromUrl(url: string): string {
 
 async function fetchSingleMove(queryClient: QueryClient, idOrName: string): Promise<RealMoveInfo | null> {
   try {
-    const data = await queryClient.ensureQueryData({
-      ...moveRetrieveOptions({ path: { id: idOrName } }),
-      staleTime: Infinity,
-    });
+    const data = await queryClient.ensureQueryData(moveRetrieveOptions({ path: { id: idOrName } }));
     if (!data) return null;
     // V1: ignoramos movimientos sin power (Status como Growl, Thunder Wave)
     // Solo interesan movimientos que infligen daño directo.

@@ -7,7 +7,7 @@ export function getQueryContext() {
     defaultOptions: {
       queries: {
         staleTime: Infinity,
-        gcTime: 24 * 1000 * 60 * 60, // 24 horas
+        gcTime: Infinity,
       },
     },
   });

@@ -11,6 +11,8 @@ import type { BattleStep } from "./types";
 interface GameState {
   searchQuery: string;
   activeTab: string;
+  /** Idioma para nombres de Pokémon (código ISO, ej. "es", "ja", "fr") */
+  pokemonLanguage: string;
   /** Raw IDs; resolved via useChosenPokemon() + React Query */
   chosenIds: [number | null, number | null];
   battlePhase: "selection" | "battle" | "result";
@@ -26,6 +28,7 @@ interface GameState {
 interface GameActions {
   setSearchQuery: (q: string) => void;
   setActiveTab: (tab: string) => void;
+  setPokemonLanguage: (lang: string) => void;
   selectPokemon: (slot: number, id: number) => void;
   setBattlePhase: (phase: "selection" | "battle" | "result") => void;
   setBattleSteps: (steps: BattleStep[]) => void;
@@ -42,6 +45,7 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
   // ── State ──
   searchQuery: "",
   activeTab: "all",
+  pokemonLanguage: "es",
   chosenIds: [null, null],
   battlePhase: "selection",
   battleSteps: [],
@@ -56,6 +60,8 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
   setSearchQuery: (q) => set({ searchQuery: q }),
 
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  setPokemonLanguage: (lang) => set({ pokemonLanguage: lang }),
 
   selectPokemon: (slot, id) =>
     set((state) => {
