@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback } from "react";
-import { calcHpStat, generateBattleSteps, getStatsObject } from "../game/combat";
+import { calcHpStat, fetchPokemonMoves, generateBattleSteps, getStatsObject } from "../game/combat";
 import { BattleResult } from "../game/components/BattleResult";
 import { BattleStage } from "../game/components/BattleStage";
 import { GameLoading } from "../game/components/GameLoading";
@@ -19,10 +19,18 @@ function Home() {
   const actions = useGameActions();
   const bothReady = useBothReady();
 
-  const startBattle = useCallback(() => {
+  const { queryClient } = Route.useRouteContext();
+
+  const startBattle = useCallback(async () => {
     const poke1 = state.chosen[0];
     const poke2 = state.chosen[1];
     if (!poke1 || !poke2) return;
+
+    // Obtener movimientos reales desde la API (cacheados por TanStack Query)
+    const [p1Moves, p2Moves] = await Promise.all([
+      fetchPokemonMoves(queryClient, poke1),
+      fetchPokemonMoves(queryClient, poke2),
+    ]);
 
     const s1 = getStatsObject(poke1);
     const s2 = getStatsObject(poke2);
@@ -32,7 +40,7 @@ function Home() {
     actions.setMaxHealths([mh1, mh2]);
     actions.setCurrentHps([mh1, mh2]);
 
-    const steps = generateBattleSteps(poke1, poke2, s1, s2, mh1, mh2);
+    const steps = generateBattleSteps(poke1, poke2, s1, s2, mh1, mh2, p1Moves, p2Moves);
     actions.setBattleSteps(steps);
     actions.setCurrentStepIdx(0);
     actions.setIsPaused(false);

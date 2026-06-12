@@ -24,6 +24,7 @@ export const Route = createRootRouteWithContext<RootRouteContext>()({
         rel: "stylesheet",
       },
       { rel: "stylesheet", href: styleCss },
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
     ],
   }),
   component: RootComponent,

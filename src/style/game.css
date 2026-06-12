@@ -840,11 +840,6 @@ h1 em {
   background: rgba(0, 0, 0, 0.8);
   z-index: 100;
   backdrop-filter: blur(6px);
-  transition: opacity 0.25s;
-}
-.modal-overlay[data-starting-style],
-.modal-overlay[data-ending-style] {
-  opacity: 0;
 }
 .modal {
   position: fixed;
@@ -862,14 +857,6 @@ h1 em {
   overflow: hidden;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
   z-index: 101;
-  transition:
-    transform 0.25s ease,
-    opacity 0.25s ease;
-}
-.modal[data-starting-style],
-.modal[data-ending-style] {
-  transform: scale(0.95) translateY(10px);
-  opacity: 0;
 }
 .modal-head {
   padding: 1.2rem 1.5rem;

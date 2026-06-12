@@ -269,37 +269,3 @@ export interface MoveOptions {
   special: string;
   power: number;
 }
-
-// MOVIMIENTOS TEMÁTICOS SEGÚN EL TIPO DEL POKÉMON
-export const TYPE_MOVES: Record<string, MoveOptions> = {
-  normal: { physical: "Golpe Cuerpo", special: "Triataque", power: 85 },
-  fire: { physical: "Envite Ígneo", special: "Lanzallamas", power: 90 },
-  water: { physical: "Cascada", special: "Hidrobomba", power: 90 },
-  grass: { physical: "Latigazo", special: "Giga Drenado", power: 80 },
-  electric: { physical: "Puño Trueno", special: "Rayo", power: 80 },
-  ice: { physical: "Chuzos", special: "Rayo Hielo", power: 85 },
-  fighting: {
-    physical: "A Bocajarro",
-    special: "Onda Certera",
-    power: 100,
-  },
-  poison: { physical: "Puya Nociva", special: "Bomba Lodo", power: 80 },
-  ground: { physical: "Terremoto", special: "Tierra Viva", power: 95 },
-  flying: { physical: "Pájaro Osado", special: "Tornado", power: 80 },
-  psychic: { physical: "Cabezazo Zen", special: "Psíquico", power: 85 },
-  bug: { physical: "Tijera X", special: "Zumbido", power: 80 },
-  rock: { physical: "Afilagarras", special: "Poder Pasado", power: 75 },
-  ghost: { physical: "Garra Umbría", special: "Bola Sombra", power: 80 },
-  dragon: {
-    physical: "Garra Dragón",
-    special: "Pulso Dragón",
-    power: 85,
-  },
-  dark: { physical: "Tajo Umbrío", special: "Pulso Umbrío", power: 80 },
-  steel: {
-    physical: "Cabeza de Hierro",
-    special: "Foco Resplandor",
-    power: 80,
-  },
-  fairy: { physical: "Carantoña", special: "Fuerza Lunar", power: 90 },
-};

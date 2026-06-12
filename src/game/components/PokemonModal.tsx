@@ -1,5 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import {
   pokemonListOptions,
@@ -93,15 +94,41 @@ function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | null; onS
 }
 
 export function PokemonModal() {
+  const open = pickerDialogHandle.store.useState("open");
+
   return (
     <Dialog.Root handle={pickerDialogHandle}>
       {({ payload }) => (
-        <Dialog.Portal>
-          <Dialog.Backdrop className="modal-overlay" />
-          <Dialog.Popup className="modal">
-            <DialogContent slot={payload?.slot} />
-          </Dialog.Popup>
-        </Dialog.Portal>
+        <AnimatePresence>
+          {open && (
+            <Dialog.Portal key="modal-portal" keepMounted>
+              <Dialog.Backdrop
+                className="modal-overlay"
+                render={
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  />
+                }
+              />
+              <Dialog.Popup
+                className="modal"
+                render={
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    transition={{ duration: 0.2 }}
+                  />
+                }
+              >
+                <DialogContent slot={payload?.slot} />
+              </Dialog.Popup>
+            </Dialog.Portal>
+          )}
+        </AnimatePresence>
       )}
     </Dialog.Root>
   );
