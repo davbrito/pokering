@@ -9,6 +9,7 @@ import { renderStepContent } from "./renderStepContent";
 function getStepDuration(step: BattleStep, speed: number): number {
   let base = 1800;
   if (step.type === "start") base = 2200;
+  if (step.type === "miss") base = 1500;
   if (step.type === "faint") base = 2000;
   if (step.type === "end") base = 2500;
   if (step.type === "action") base = step.category === "special" ? 2000 : 1800;
@@ -212,6 +213,9 @@ export function BattleStage() {
         } else {
           triggerProjectile(atkIdx, defIdx, step.moveType || "normal", () => applyImpact(defIdx, step));
         }
+      }
+      if (step.type === "miss") {
+        // El movimiento falló: sin animación de daño, solo mostrar el texto
       }
       if (step.type === "faint" && step.faintedIdx !== undefined) {
         if (step.faintedIdx === 0) setAnimClass0("faint-slide");

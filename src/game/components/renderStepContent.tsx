@@ -18,6 +18,15 @@ export function renderStepContent(step: BattleStep | null, p1Name: string, p2Nam
         </>
       );
     }
+    case "miss": {
+      const attackerName = step.attackerIdx === 0 ? p1Name : p2Name;
+      return (
+        <>
+          ¡<strong>{attackerName.toUpperCase()}</strong> usó <strong>{step.moveName?.toUpperCase()}</strong>, pero
+          falló! 😬
+        </>
+      );
+    }
     case "faint": {
       const faintedName = step.faintedIdx === 0 ? p1Name : p2Name;
       return (

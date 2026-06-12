@@ -32,6 +32,8 @@ async function fetchSingleMove(queryClient: QueryClient, idOrName: string): Prom
       type: data.type.name,
       category: dc,
       power: data.power,
+      // accuracy null = nunca falla (ej. Swift, Aerial Ace)
+      accuracy: data.accuracy ?? null,
     };
   } catch {
     return null;
@@ -52,13 +54,12 @@ export async function fetchPokemonMoves(queryClient: QueryClient, pokemon: Pokem
 
 // Retorna multiplicador de efectividad acumulado
 export function getEffectiveness(attackerType: string, defenderTypes: string[]): number {
-  let eff = 1;
-  for (const defType of defenderTypes) {
-    if (TYPE_CHART[attackerType] && TYPE_CHART[attackerType][defType] !== undefined) {
-      eff *= TYPE_CHART[attackerType][defType];
-    }
-  }
-  return eff;
+  const attackerChart = TYPE_CHART[attackerType];
+  if (!attackerChart) return 1; // Si el tipo atacante no está en la tabla, se asume efectividad normal
+  return defenderTypes
+    .values()
+    .filter((defType) => attackerChart[defType] !== undefined)
+    .reduce((eff, defType) => eff * attackerChart[defType], 1);
 }
 
 // STAB (Same Type Attack Bonus): si el tipo del movimiento coincide
@@ -117,6 +118,7 @@ export function selectBestMove(
         type: move.type,
         category: move.category,
         power: move.power,
+        accuracy: move.accuracy,
         eff: typeEff,
       };
     }
@@ -128,6 +130,7 @@ export function selectBestMove(
       type: "normal",
       category: "physical",
       power: 50,
+      accuracy: null,
       eff: 1,
     }
   );
@@ -266,6 +269,20 @@ export function generateBattleSteps(
       // Los tipos del atacante se pasan para calcular STAB
       const attackerTypes = act.isAtkP1 ? pt1 : pt2;
       const activeBestMove = selectBestMove(act.atkStats, attackerTypes, act.defTypes, act.defStats, act.moves);
+
+      // Chequeo de precisión (accuracy): si el movimiento tiene accuracy
+      // definido y el random(1,100) > accuracy, el ataque falla.
+      // accuracy null = nunca falla (ej. Swift).
+      const acc = activeBestMove.accuracy;
+      if (acc !== null && acc < 100 && random(1, 100) > acc) {
+        steps.push({
+          type: "miss",
+          attackerIdx: act.isAtkP1 ? 0 : 1,
+          moveName: activeBestMove.name,
+        });
+        continue;
+      }
+
       // Misma lógica de damage_class: physical → atk/def, special → spa/spd
       const isPhys = activeBestMove.category === "physical";
       const offVal = isPhys ? act.atkStats.atk : act.atkStats.spa;

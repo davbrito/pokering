@@ -15,20 +15,23 @@ export interface MoveResult {
   type: string;
   category: "physical" | "special";
   power: number;
+  accuracy: number | null;
   eff: number;
 }
 
 // Movimiento listo para combate. Solo existen physical y special;
 // los movimientos Status (sin power) se filtran en fetchSingleMove.
+// accuracy: null = nunca falla (ej. Swift, Aerial Ace).
 export interface RealMoveInfo {
   name: string;
   type: string;
   category: "physical" | "special";
   power: number;
+  accuracy: number | null;
 }
 
 export interface BattleStep {
-  type: "start" | "action" | "faint" | "end";
+  type: "start" | "action" | "miss" | "faint" | "end";
   attackerIdx?: number;
   moveName?: string;
   moveType?: string;
