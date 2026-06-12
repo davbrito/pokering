@@ -632,7 +632,6 @@ h1 em {
   border-radius: 50%;
   z-index: 5;
   pointer-events: none;
-  transform: translate(-50%, -50%);
 }
 
 /* CONTROLES DEL ESTADIO */

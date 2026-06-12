@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
@@ -13,17 +14,39 @@ function getStepDuration(step: BattleStep, speed: number): number {
   return base / speed;
 }
 
-interface DamagePopup {
+interface DamagePopupData {
   id: number;
   idx: number;
-  content: string;
+  damage?: number;
+  subtitle?: string;
+  subtitleColor?: string;
   isCrit: boolean;
+  isImmune: boolean;
+}
+
+function DamagePopup({ pop }: { pop: DamagePopupData }) {
+  return (
+    <div className={`damage-popup${pop.isCrit ? " crit" : ""}`}>
+      {pop.isImmune ? (
+        <span style={{ fontSize: 24 }}>INMUNE</span>
+      ) : (
+        <>
+          <span className="popup-dmg">-{pop.damage}</span>
+          {pop.subtitle && (
+            <span className="popup-sub" style={{ color: pop.subtitleColor }}>
+              {pop.subtitle}
+            </span>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
 interface Projectile {
   id: number;
-  x: number;
-  y: number;
+  sx: number;
+  sy: number;
   tx: number;
   ty: number;
   bg: string;
@@ -39,7 +62,7 @@ export function BattleStage() {
   const [animClass0, setAnimClass0] = useState("");
   const [animClass1, setAnimClass1] = useState("");
   const [shakeScreen, setShakeScreen] = useState(false);
-  const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
+  const [damagePopups, setDamagePopups] = useState<DamagePopupData[]>([]);
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
 
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -80,23 +103,33 @@ export function BattleStage() {
       }
 
       const popId = ++popupCounter.current;
-      let content = `-${step.damage ?? 0}`;
+      const popDamage = step.eff === 0 ? undefined : (step.damage ?? 0);
+      let popSubtitle: string | undefined;
+      let popSubColor: string | undefined;
+      const isImmune = step.eff === 0;
+
       if (step.isCrit) {
-        content +=
-          '<span className="popup-sub" style="color:var(--gold)">¡CRÍTICO!</span>';
+        popSubtitle = "¡CRÍTICO!";
+        popSubColor = "var(--gold)";
       } else if (step.eff != null && step.eff > 1.5) {
-        content +=
-          '<span className="popup-sub" style="color:var(--green)">¡SÚPER EFICAZ!</span>';
+        popSubtitle = "¡SÚPER EFICAZ!";
+        popSubColor = "var(--green)";
       } else if (step.eff != null && step.eff < 0.6 && step.eff > 0) {
-        content +=
-          '<span className="popup-sub" style="color:var(--muted)">POCO EFICAZ</span>';
-      } else if (step.eff === 0) {
-        content = '<span style="font-size: 24px">INMUNE</span>';
+        popSubtitle = "POCO EFICAZ";
+        popSubColor = "var(--muted)";
       }
 
       setDamagePopups((prev) => [
         ...prev,
-        { id: popId, idx: defIdx, content, isCrit: !!step.isCrit },
+        {
+          id: popId,
+          idx: defIdx,
+          damage: popDamage,
+          subtitle: popSubtitle,
+          subtitleColor: popSubColor,
+          isCrit: !!step.isCrit,
+          isImmune,
+        },
       ]);
       setTimeout(() => {
         setDamagePopups((prev) => prev.filter((p) => p.id !== popId));
@@ -127,9 +160,12 @@ export function BattleStage() {
         return;
       }
 
+      const ra = atkImg.getBoundingClientRect();
       const rd = defImg.getBoundingClientRect();
       const rv = viewport.getBoundingClientRect();
 
+      const sx = ra.left + ra.width / 2 - rv.left;
+      const sy = ra.top + ra.height / 2 - rv.top;
       const tx = rd.left + rd.width / 2 - rv.left;
       const ty = rd.top + rd.height / 2 - rv.top;
 
@@ -155,7 +191,7 @@ export function BattleStage() {
       const pid = ++projCounter.current;
       setProjectiles((prev) => [
         ...prev,
-        { id: pid, x: 0, y: 0, tx, ty, bg, shadow },
+        { id: pid, sx, sy, tx, ty, bg, shadow },
       ]);
       const animTime = 380 / state.playbackSpeed;
       setTimeout(() => {
@@ -348,11 +384,7 @@ export function BattleStage() {
             {damagePopups
               .filter((p) => p.idx === 0)
               .map((pop) => (
-                <div
-                  key={pop.id}
-                  className={`damage-popup${pop.isCrit ? " crit" : ""}`}
-                  dangerouslySetInnerHTML={{ __html: pop.content }}
-                />
+                <DamagePopup key={pop.id} pop={pop} />
               ))}
           </div>
           <div className="fighter-wrapper p2" id="fighter-wrapper-1">
@@ -368,26 +400,36 @@ export function BattleStage() {
             {damagePopups
               .filter((p) => p.idx === 1)
               .map((pop) => (
-                <div
-                  key={pop.id}
-                  className={`damage-popup${pop.isCrit ? " crit" : ""}`}
-                  dangerouslySetInnerHTML={{ __html: pop.content }}
-                />
+                <DamagePopup key={pop.id} pop={pop} />
               ))}
           </div>
         </div>
 
         {projectiles.map((proj) => (
-          <div
+          <motion.div
             key={proj.id}
             className="fx-projectile"
             style={{
               background: proj.bg,
               boxShadow: proj.shadow,
-              left: `${proj.tx}px`,
-              top: `${proj.ty}px`,
-              transition: `all ${380 / state.playbackSpeed}ms cubic-bezier(0.25, 1, 0.5, 1)`,
-              transform: "translate(-50%, -50%) scale(1.6)",
+            }}
+            initial={{
+              left: proj.sx,
+              top: proj.sy,
+              x: "-50%",
+              y: "-50%",
+              scale: 1.6,
+            }}
+            animate={{
+              left: proj.tx,
+              top: proj.ty,
+              x: "-50%",
+              y: "-50%",
+              scale: 1.6,
+            }}
+            transition={{
+              duration: 0.38 / state.playbackSpeed,
+              ease: [0.25, 1, 0.5, 1],
             }}
           />
         ))}
