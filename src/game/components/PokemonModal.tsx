@@ -1,7 +1,9 @@
 import { Dialog } from "@base-ui/react/dialog";
+import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   pokemonListOptions,
   pokemonRetrieveOptions,
@@ -161,47 +163,90 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
   const activeTab = useGameStore((s) => s.activeTab);
   const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 120;
 
   const queryClient = useQueryClient();
+
+  // Debounced search for client-side filtering
+  const [debouncedSearch] = useDebouncedValue(searchQuery, { wait: 300 });
+  const isSearching = debouncedSearch.trim().length > 0;
+
+  // Reset page when search or tab changes
+  const prevSearchRef = useRef(searchQuery);
+  const prevTabRef = useRef(activeTab);
+  if (prevSearchRef.current !== searchQuery || prevTabRef.current !== activeTab) {
+    setPage(1);
+    prevSearchRef.current = searchQuery;
+    prevTabRef.current = activeTab;
+  }
+
+  // ── "All" tab ──
+  // Without search: server-side pagination (limit + offset)
+  // With search:    fetch all 1010, filter client-side
   const listQuery = useQuery({
-    ...pokemonListOptions({ query: { limit: 1010 } }),
+    ...pokemonListOptions({
+      query: isSearching ? { limit: 1010 } : { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
+    }),
     staleTime: 5 * 60 * 1000,
-    select: (data) => data.results,
   });
-  const allPokemon = listQuery.data?.map((p) => ({
+  const listCount = listQuery.data?.count ?? 0;
+  const allListItems = listQuery.data?.results?.map((p) => ({
     name: p.name,
     id: getIdFromUrl(p.url),
   }));
+  const listItems = (() => {
+    if (!allListItems) return undefined;
+    if (!isSearching) return allListItems;
+    const q = debouncedSearch.toLowerCase().trim();
+    return allListItems.filter((p) => {
+      const cached = localizedNameCache.get(p.id);
+      const localized = cached?.get(pokemonLanguage);
+      const name = (localized || p.name).toLowerCase();
+      return name.includes(q) || String(p.id).padStart(3, "0").includes(q);
+    });
+  })();
 
+  // ── Type tab: fetch all, paginate + search client-side ──
   const typeQuery = useQuery({
     ...typeRetrieveOptions({ path: { id: activeTab } }),
     enabled: activeTab !== "all",
   });
-  const typeData = typeQuery.data?.pokemon.map((p) => ({
-    name: p.pokemon!.name,
-    id: getIdFromUrl(p.pokemon!.url!),
+  const typeItemsRaw = typeQuery.data?.pokemon.map((p) => ({
+    name: p.pokemon!.name ?? "",
+    id: getIdFromUrl(p.pokemon!.url ?? ""),
   }));
+  const typeItems = (() => {
+    if (!typeItemsRaw) return undefined;
+    if (!isSearching) return typeItemsRaw;
+    const q = debouncedSearch.toLowerCase().trim();
+    return typeItemsRaw.filter((p) => {
+      const cached = localizedNameCache.get(p.id);
+      const localized = cached?.get(pokemonLanguage);
+      const name = (localized || p.name).toLowerCase();
+      return name.includes(q) || String(p.id).padStart(3, "0").includes(q);
+    });
+  })();
+  const typeCount = typeItems?.length ?? 0;
+
+  // ── Resolve current list and pagination ──
+  // "All" tab uses server pagination; type tab uses client pagination
+  const currentList = activeTab !== "all" ? typeItems : listItems;
+  const totalCount = activeTab !== "all" ? typeCount : isSearching ? (listItems?.length ?? 0) : listCount;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const clampedPage = Math.min(page, totalPages);
+
+  const pageItems =
+    activeTab === "all" && !isSearching
+      ? (currentList ?? [])
+      : (currentList ?? []).slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE);
+
+  const isLoading = activeTab === "all" ? listQuery.isFetching : typeQuery.isFetching;
 
   const handleSelect = (id: number) => {
     useGameStore.getState().selectPokemon(slot, id);
     pickerDialogHandle.close();
   };
-
-  const filteredList = (() => {
-    const q = searchQuery.toLowerCase().trim();
-    let list = activeTab === "all" ? allPokemon : typeData;
-    if (!list) return [];
-    if (!list.length && activeTab === "all") return [];
-    if (q) {
-      list = allPokemon?.filter((p) => {
-        const cached = localizedNameCache.get(p.id);
-        const localized = cached?.get(pokemonLanguage);
-        const name = localized || p.name;
-        return name.includes(q) || String(p.id).padStart(3, "0").includes(q);
-      });
-    }
-    return list ?? [];
-  })();
 
   return (
     <>
@@ -238,31 +283,70 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
       </div>
       <div className="modal-body">
         <div className="poke-grid-wrap">
-          {filteredList.length > 0 ? (
-            <div className="poke-grid" id="poke-grid">
-              {filteredList.slice(0, 200).map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="poke-thumb"
-                  onClick={() => handleSelect(p.id)}
-                  onMouseEnter={() => {
-                    queryClient
-                      .ensureQueryData(pokemonRetrieveOptions({ path: { id: String(p.id) } }))
-                      .then((data) => {
-                        queryClient.prefetchQuery(pokemonSpeciesRetrieveOptions({ path: { id: data.species.name } }));
-                      })
-                      .catch(() => {
-                        /* ignore prefetch errors */
-                      });
-                    setHoveredId(p.id);
-                  }}
-                >
-                  <img src={getSpriteUrl(p.id)} alt={p.name} loading="lazy" className="select-none" />
-                  <div className="pt-name">{localizedNameCache.get(p.id)?.get(pokemonLanguage) || p.name}</div>
-                  <div className="pt-num">#{String(p.id).padStart(3, "0")}</div>
-                </button>
-              ))}
+          {isLoading && (!currentList || currentList.length === 0) ? (
+            <div className="poke-grid-loading">
+              <div className="spinner" />
+              <span>Cargando Pokémon…</span>
+            </div>
+          ) : currentList && currentList.length > 0 ? (
+            <div className="poke-grid-container">
+              {isLoading && (
+                <div className="poke-grid-overlay">
+                  <div className="spinner" />
+                </div>
+              )}
+              <div className="poke-grid" id="poke-grid">
+                {pageItems.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="poke-thumb"
+                    onClick={() => handleSelect(p.id)}
+                    onMouseEnter={() => {
+                      queryClient
+                        .ensureQueryData(pokemonRetrieveOptions({ path: { id: String(p.id) } }))
+                        .then((data) => {
+                          queryClient.prefetchQuery(pokemonSpeciesRetrieveOptions({ path: { id: data.species.name } }));
+                        })
+                        .catch(() => {
+                          /* ignore prefetch errors */
+                        });
+                      setHoveredId(p.id);
+                    }}
+                  >
+                    <img src={getSpriteUrl(p.id)} alt={p.name} loading="lazy" className="select-none" />
+                    <div className="pt-name">{localizedNameCache.get(p.id)?.get(pokemonLanguage) || p.name}</div>
+                    <div className="pt-num">#{String(p.id).padStart(3, "0")}</div>
+                  </button>
+                ))}
+              </div>
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <span className="page-info">
+                    Pág. {clampedPage} de {totalPages}
+                  </span>
+                  <div className="page-arrows">
+                    <button
+                      type="button"
+                      className="page-btn"
+                      disabled={clampedPage <= 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      aria-label="Página anterior"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="page-btn"
+                      disabled={clampedPage >= totalPages}
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      aria-label="Página siguiente"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="no-results" style={{ gridColumn: "1/-1" }}>

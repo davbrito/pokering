@@ -1,6 +1,3 @@
-import { randomInt } from "es-toolkit/math";
-import { useEffect, useEffectEvent, useRef, useState } from "react";
-
 const loadingMessages = [
   "Atrapando datos salvajes... \uD83D\uDCFE",
   "Eligiendo a tu Pokémon... \uD83D\uDCB0",
@@ -10,22 +7,8 @@ const loadingMessages = [
   "Buscando rival digno... \uD83D\uDC7E",
   "Afinando Pokéballs... \uD83D\uDDFB",
 ];
-const messageCount = loadingMessages.length;
 
 export function GameLoading() {
-  const [msgIndex, setMsgIndex] = useState(() => randomInt(0, messageCount - 1));
-  const prevIndex = useRef<number | null>(null);
-
-  const onUpdate = useEffectEvent(() => {
-    prevIndex.current = msgIndex;
-    setMsgIndex(randomInt(0, messageCount - 1));
-  });
-
-  useEffect(() => {
-    const interval = setInterval(onUpdate, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <div className="route-loading h-full">
       <div className="pokeball-shake">
@@ -68,15 +51,12 @@ export function GameLoading() {
           </g>
         </svg>
       </div>
-      <div className="relative h-5">
-        {prevIndex.current !== null && (
-          <p key={`exit-${prevIndex.current}`} className="route-loading-msg exit -translate-x-1/2">
-            {loadingMessages[prevIndex.current]}
+      <div className="route-loading-msg-stack">
+        {loadingMessages.map((msg, i) => (
+          <p key={i} className="route-loading-msg" style={{ animationDelay: `${i * 3}s` }}>
+            {msg}
           </p>
-        )}
-        <p key={`enter-${msgIndex}`} className="route-loading-msg enter -translate-x-1/2" suppressHydrationWarning>
-          {loadingMessages[msgIndex]}
-        </p>
+        ))}
       </div>
     </div>
   );

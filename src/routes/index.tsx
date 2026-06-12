@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Settings } from "lucide-react";
 import { useCallback } from "react";
 import { calcHpStat, fetchPokemonMoves, generateBattleSteps, getStatsObject } from "../game/combat";
 import { BattleResult } from "../game/components/BattleResult";
@@ -73,7 +74,7 @@ function Home() {
       <div className="wrap">
         <header>
           <Link to="/settings" className="settings-gear" aria-label="Ajustes">
-            ⚙
+            <Settings size={20} />
           </Link>
           <p className="eyebrow">{"\u2014 Simulador de batalla Pokémon \u2014"}</p>
           <h1>
