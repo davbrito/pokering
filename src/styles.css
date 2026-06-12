@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./style/game.css";
+@import "./style/error.css";
 
 :root {
   --bg: oklab(14.734% 0.00278 -0.01038);

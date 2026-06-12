@@ -74,5 +74,14 @@
   "modal_tab_type": "Type",
   "modal_no_results": "No Pok\u00e9mon found",
   "modal_load_more": "Load more \u2193",
-  "modal_loaded_count": "{count} / {total} loaded"
+  "modal_loaded_count": "{count} / {total} loaded",
+
+  "error_ooops": "Oops!",
+  "error_default_title": "Something went wrong",
+  "error_default_desc": "An unexpected error occurred. Please try again.",
+  "error_not_found_title": "Page not found",
+  "error_not_found_desc": "The page you're looking for doesn't exist or has been moved.",
+  "error_go_home": "Go home",
+  "error_retry": "Retry",
+  "error_details": "Error details"
 }

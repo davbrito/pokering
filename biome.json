@@ -71,6 +71,9 @@
       "includes": ["src/api/pokeapi/**", "src/i18n/paraglide/**"],
       "linter": {
         "enabled": false
+      },
+      "assist": {
+        "enabled": false
       }
     }
   ]

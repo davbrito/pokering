@@ -13,7 +13,11 @@ const POKEAPI_SCHEMA_URL = "https://raw.githubusercontent.com/PokeAPI/pokeapi/re
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
-    paraglideVitePlugin({ project: "./project.inlang", outdir: "./src/i18n/paraglide" }),
+    paraglideVitePlugin({
+      project: "./project.inlang",
+      outdir: "./src/i18n/paraglide",
+      strategy: ["cookie", "preferredLanguage", "baseLocale"],
+    }),
     heyApiPlugin({
       config: {
         input: POKEAPI_SCHEMA_URL,

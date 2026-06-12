@@ -21,7 +21,7 @@ function SettingsPage() {
   const { data, isLoading } = useQuery({
     ...languageListOptions({ query: { limit: 100 } }),
     staleTime: 10 * 60 * 1000,
-    select: (d) => d.results.map((l) => ({ name: l.name, url: l.url })).sort((a, b) => a.name.localeCompare(b.name)),
+    select: (d) => d.results.toSorted((a, b) => a.name.localeCompare(b.name)),
   });
 
   const displayNames = new Intl.DisplayNames(["es"], { type: "language" });
