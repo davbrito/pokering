@@ -212,7 +212,8 @@ export function generateBattleSteps(
 
       let msg = `¡<strong>${act.atk.name.toUpperCase()}</strong> usó <span>${activeBestMove.name.toUpperCase()}</span>! `;
       if (isCrit) msg += `<em>¡Impacto Crítico!</em> 💥 `;
-      if (eff > 1.5) msg += `<span class="super-eff">¡Es súper eficaz!</span> `;
+      if (eff > 1.5)
+        msg += `<span className="super-eff">¡Es súper eficaz!</span> `;
       if (eff < 0.6 && eff > 0) msg += `<span>No es muy eficaz...</span> `;
       if (eff === 0) msg += `<span>¡No le afecta en absoluto!</span> `;
 

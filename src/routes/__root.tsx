@@ -3,17 +3,17 @@ import {
   HeadContent,
   Outlet,
   Scripts,
-} from "@tanstack/solid-router";
-import { TanStackRouterDevtools } from "@tanstack/solid-router-devtools";
-import { Suspense } from "solid-js";
-import { HydrationScript } from "solid-js/web";
+} from "@tanstack/react-router";
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
+import { Suspense } from "react";
 
+import { GameProvider } from "../game/store";
 import styleCss from "../styles.css?url";
 
 export const Route = createRootRouteWithContext()({
   head: () => ({
     meta: [
-      { charset: "UTF-8" },
+      { charSet: "UTF-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1.0" },
       { title: "PokeRing — Simulador de Batalla" },
     ],
@@ -25,21 +25,22 @@ export const Route = createRootRouteWithContext()({
       { rel: "stylesheet", href: styleCss },
     ],
   }),
-  shellComponent: RootComponent,
+  component: RootComponent,
 });
 
 function RootComponent() {
   return (
     <html lang="es">
       <head>
-        <HydrationScript />
         <HeadContent />
       </head>
       <body>
-        <Suspense>
-          <Outlet />
-          <TanStackRouterDevtools />
-        </Suspense>
+        <GameProvider>
+          <Suspense>
+            <Outlet />
+            <TanStackRouterDevtools />
+          </Suspense>
+        </GameProvider>
         <Scripts />
       </body>
     </html>

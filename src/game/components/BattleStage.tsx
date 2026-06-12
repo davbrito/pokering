@@ -1,21 +1,7 @@
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
-import {
-  battlePhase,
-  battleSteps,
-  chosen,
-  currentHps,
-  currentStepIdx,
-  isPaused,
-  maxHealths,
-  playbackSpeed,
-  setBattlePhase,
-  setCurrentHps,
-  setCurrentStepIdx,
-  setIsPaused,
-  setPlaybackSpeed,
-} from "../store";
+import { useGame, useGameActions } from "../store";
 import type { BattleStep } from "../types";
 
 function getStepDuration(step: BattleStep, speed: number): number {
@@ -23,49 +9,50 @@ function getStepDuration(step: BattleStep, speed: number): number {
   if (step.type === "start") base = 2200;
   if (step.type === "faint") base = 2000;
   if (step.type === "end") base = 2500;
-  if (step.type === "action") {
-    base = step.category === "special" ? 2000 : 1800;
-  }
+  if (step.type === "action") base = step.category === "special" ? 2000 : 1800;
   return base / speed;
 }
 
+interface DamagePopup {
+  id: number;
+  idx: number;
+  content: string;
+  isCrit: boolean;
+}
+
+interface Projectile {
+  id: number;
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  bg: string;
+  shadow: string;
+}
+
 export function BattleStage() {
-  const [dialogHtml, setDialogHtml] = createSignal(
+  const state = useGame();
+  const actions = useGameActions();
+  const [dialogHtml, setDialogHtml] = useState(
     "Preparando la arena de combate...",
   );
-  const [animClass0, setAnimClass0] = createSignal("");
-  const [animClass1, setAnimClass1] = createSignal("");
-  const [shakeScreen, setShakeScreen] = createSignal(false);
-  const [damagePopups, setDamagePopups] = createSignal<
-    Array<{
-      id: number;
-      idx: number;
-      content: string;
-      isCrit: boolean;
-    }>
-  >([]);
-  const [projectiles, setProjectiles] = createSignal<
-    Array<{
-      id: number;
-      x: number;
-      y: number;
-      tx: number;
-      ty: number;
-      bg: string;
-      shadow: string;
-    }>
-  >([]);
+  const [animClass0, setAnimClass0] = useState("");
+  const [animClass1, setAnimClass1] = useState("");
+  const [shakeScreen, setShakeScreen] = useState(false);
+  const [damagePopups, setDamagePopups] = useState<DamagePopup[]>([]);
+  const [projectiles, setProjectiles] = useState<Projectile[]>([]);
 
-  let viewportRef: HTMLDivElement | undefined;
-  let imgRef0: HTMLImageElement | undefined;
-  let imgRef1: HTMLImageElement | undefined;
-  let playbackTimer: ReturnType<typeof setTimeout> | null = null;
-  let popupCounter = 0;
-  let projCounter = 0;
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const imgRef0 = useRef<HTMLImageElement>(null);
+  const imgRef1 = useRef<HTMLImageElement>(null);
+  const playbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const popupCounter = useRef(0);
+  const projCounter = useRef(0);
+  const startedRef = useRef(false);
 
   const hpPct = (idx: number) => {
-    const cur = currentHps();
-    const max = maxHealths();
+    const cur = state.currentHps;
+    const max = state.maxHealths;
     return Math.max(0, Math.min(100, (cur[idx] / max[idx]) * 100));
   };
 
@@ -76,392 +63,353 @@ export function BattleStage() {
     return "var(--accent)";
   };
 
-  function playStep(idx: number) {
-    if (isPaused()) return;
-    const steps = battleSteps();
-    if (idx >= steps.length) {
-      finishBattle();
-      return;
-    }
-
-    const step = steps[idx];
-    setCurrentStepIdx(idx);
-    executeStepVisuals(step);
-
-    const duration = getStepDuration(step, playbackSpeed());
-    playbackTimer = setTimeout(() => playStep(idx + 1), duration);
-  }
-
-  function executeStepVisuals(step: BattleStep) {
-    setDialogHtml(step.text);
-
-    if (step.type === "start") {
-      const mh = maxHealths();
-      setCurrentHps([...mh]);
-    }
-
-    if (step.type === "action") {
-      const atkIdx = step.attackerIdx ?? 0;
-      const defIdx = atkIdx === 0 ? 1 : 0;
-
-      if (step.category === "physical") {
-        // Lunge animation
-        setAnimClass0("");
-        setAnimClass1("");
-        if (atkIdx === 0) setAnimClass0("lunge-right");
-        else setAnimClass1("lunge-left");
-
-        setTimeout(() => {
-          applyImpact(defIdx, step);
-        }, 200 / playbackSpeed());
-
-        setTimeout(() => {
-          if (atkIdx === 0) setAnimClass0("");
-          else setAnimClass1("");
-        }, 450 / playbackSpeed());
-      } else {
-        triggerProjectile(atkIdx, defIdx, step.moveType || "normal", () => {
-          applyImpact(defIdx, step);
-        });
-      }
-    }
-
-    if (step.type === "faint" && step.faintedIdx !== undefined) {
-      if (step.faintedIdx === 0) setAnimClass0("faint-slide");
-      else setAnimClass1("faint-slide");
-    }
-
-    if (step.type === "end") {
-      setAnimClass0("");
-      setAnimClass1("");
-    }
-  }
-
-  function applyImpact(defIdx: number, step: BattleStep) {
-    // Shake the defender
-    if (defIdx === 0) setAnimClass0("hit-shake");
-    else setAnimClass1("hit-shake");
-
-    // Screen shake for crit/super effective
-    if (step.isCrit || (step.eff != null && step.eff > 1.5)) {
-      setShakeScreen(true);
-      setTimeout(() => setShakeScreen(false), 350);
-    }
-
-    const popId = ++popupCounter;
-    let content = `-${step.damage ?? 0}`;
-    if (step.isCrit) {
-      content +=
-        '<span class="popup-sub" style="color:var(--gold)">¡CRÍTICO!</span>';
-    } else if (step.eff != null && step.eff > 1.5) {
-      content +=
-        '<span class="popup-sub" style="color:var(--green)">¡SÚPER EFICAZ!</span>';
-    } else if (step.eff != null && step.eff < 0.6 && step.eff > 0) {
-      content +=
-        '<span class="popup-sub" style="color:var(--muted)">POCO EFICAZ</span>';
-    } else if (step.eff === 0) {
-      content = '<span style="font-size: 24px">INMUNE</span>';
-    }
-
-    setDamagePopups((prev) => [
-      ...prev,
-      { id: popId, idx: defIdx, content, isCrit: !!step.isCrit },
-    ]);
-    setTimeout(() => {
-      setDamagePopups((prev) => prev.filter((p) => p.id !== popId));
-    }, 900);
-
-    // Update HP
-    if (step.postHp) {
-      setCurrentHps(step.postHp);
-    }
-
-    setTimeout(() => {
-      if (defIdx === 0) setAnimClass0("");
-      else setAnimClass1("");
-    }, 400);
-  }
-
-  function triggerProjectile(
-    atkIdx: number,
-    defIdx: number,
-    moveType: string,
-    onComplete: () => void,
-  ) {
-    const atkImg = atkIdx === 0 ? imgRef0 : imgRef1;
-    const defImg = defIdx === 0 ? imgRef0 : imgRef1;
-    const viewport = viewportRef;
-
-    if (!atkImg || !defImg || !viewport) {
-      onComplete();
-      return;
-    }
-
-    const rectAtk = atkImg.getBoundingClientRect();
-    const rectDef = defImg.getBoundingClientRect();
-    const rectViewport = viewport.getBoundingClientRect();
-
-    const startX = rectAtk.left + rectAtk.width / 2 - rectViewport.left;
-    const startY = rectAtk.top + rectAtk.height / 2 - rectViewport.top;
-    const targetX = rectDef.left + rectDef.width / 2 - rectViewport.left;
-    const targetY = rectDef.top + rectDef.height / 2 - rectViewport.top;
-
-    let bg = "#ffffff";
-    let shadow = "0 0 15px #ffffff";
-    if (["fire"].includes(moveType)) {
-      bg = "#ff4500";
-      shadow = "0 0 20px #ff0000, 0 0 40px #ff4500";
-    } else if (["water", "ice"].includes(moveType)) {
-      bg = "#00bfff";
-      shadow = "0 0 20px #1e90ff, 0 0 40px #00bfff";
-    } else if (["electric"].includes(moveType)) {
-      bg = "#ffd700";
-      shadow = "0 0 20px #ffff00, 0 0 40px #ffd700";
-    } else if (["grass", "bug"].includes(moveType)) {
-      bg = "#32cd32";
-      shadow = "0 0 20px #00ff00, 0 0 40px #32cd32";
-    } else if (["ghost", "dark", "poison", "psychic"].includes(moveType)) {
-      bg = "#8a2be2";
-      shadow = "0 0 20px #9400d3, 0 0 40px #8a2be2";
-    }
-
-    const pid = ++projCounter;
-    setProjectiles((prev) => [
-      ...prev,
-      { id: pid, x: startX, y: startY, tx: targetX, ty: targetY, bg, shadow },
-    ]);
-
-    const animTime = 380 / playbackSpeed();
-    setTimeout(() => {
-      setProjectiles((prev) => prev.filter((p) => p.id !== pid));
-      onComplete();
-    }, animTime);
-  }
-
-  function finishBattle() {
-    setBattlePhase("result");
+  const finishBattle = useCallback(() => {
+    actions.setBattlePhase("result");
     setAnimClass0("");
     setAnimClass1("");
-  }
+  }, [actions]);
 
-  function togglePause() {
-    if (isPaused()) {
-      setIsPaused(false);
-      playStep(currentStepIdx());
-    } else {
-      setIsPaused(true);
-      if (playbackTimer) clearTimeout(playbackTimer);
-    }
-  }
+  const applyImpact = useCallback(
+    (defIdx: number, step: BattleStep) => {
+      if (defIdx === 0) setAnimClass0("hit-shake");
+      else setAnimClass1("hit-shake");
 
-  function toggleSpeed() {
-    setPlaybackSpeed((s) => (s === 4 ? 1 : ((s * 2) as 1 | 2 | 4)));
-  }
+      if (step.isCrit || (step.eff != null && step.eff > 1.5)) {
+        setShakeScreen(true);
+        setTimeout(() => setShakeScreen(false), 350);
+      }
 
-  function skipCinematics() {
-    if (playbackTimer) clearTimeout(playbackTimer);
-    setIsPaused(false);
-    finishBattle();
-  }
+      const popId = ++popupCounter.current;
+      let content = `-${step.damage ?? 0}`;
+      if (step.isCrit) {
+        content +=
+          '<span className="popup-sub" style="color:var(--gold)">¡CRÍTICO!</span>';
+      } else if (step.eff != null && step.eff > 1.5) {
+        content +=
+          '<span className="popup-sub" style="color:var(--green)">¡SÚPER EFICAZ!</span>';
+      } else if (step.eff != null && step.eff < 0.6 && step.eff > 0) {
+        content +=
+          '<span className="popup-sub" style="color:var(--muted)">POCO EFICAZ</span>';
+      } else if (step.eff === 0) {
+        content = '<span style="font-size: 24px">INMUNE</span>';
+      }
 
-  onCleanup(() => {
-    if (playbackTimer) clearTimeout(playbackTimer);
-  });
+      setDamagePopups((prev) => [
+        ...prev,
+        { id: popId, idx: defIdx, content, isCrit: !!step.isCrit },
+      ]);
+      setTimeout(() => {
+        setDamagePopups((prev) => prev.filter((p) => p.id !== popId));
+      }, 900);
 
-  // Watch for battle phase changes and start playback when steps are ready
-  createEffect(() => {
-    const phase = battlePhase();
-    if (phase === "battle") {
-      const steps = battleSteps();
-      if (steps.length > 0) {
-        setDialogHtml("Preparando la arena de combate...");
+      if (step.postHp) actions.setCurrentHps(step.postHp);
+
+      setTimeout(() => {
+        if (defIdx === 0) setAnimClass0("");
+        else setAnimClass1("");
+      }, 400);
+    },
+    [actions],
+  );
+
+  const triggerProjectile = useCallback(
+    (
+      atkIdx: number,
+      defIdx: number,
+      moveType: string,
+      onComplete: () => void,
+    ) => {
+      const atkImg = atkIdx === 0 ? imgRef0.current : imgRef1.current;
+      const defImg = defIdx === 0 ? imgRef0.current : imgRef1.current;
+      const viewport = viewportRef.current;
+      if (!atkImg || !defImg || !viewport) {
+        onComplete();
+        return;
+      }
+
+      const rd = defImg.getBoundingClientRect();
+      const rv = viewport.getBoundingClientRect();
+
+      const tx = rd.left + rd.width / 2 - rv.left;
+      const ty = rd.top + rd.height / 2 - rv.top;
+
+      let bg = "#ffffff",
+        shadow = "0 0 15px #ffffff";
+      if (["fire"].includes(moveType)) {
+        bg = "#ff4500";
+        shadow = "0 0 20px #ff0000, 0 0 40px #ff4500";
+      } else if (["water", "ice"].includes(moveType)) {
+        bg = "#00bfff";
+        shadow = "0 0 20px #1e90ff, 0 0 40px #00bfff";
+      } else if (["electric"].includes(moveType)) {
+        bg = "#ffd700";
+        shadow = "0 0 20px #ffff00, 0 0 40px #ffd700";
+      } else if (["grass", "bug"].includes(moveType)) {
+        bg = "#32cd32";
+        shadow = "0 0 20px #00ff00, 0 0 40px #32cd32";
+      } else if (["ghost", "dark", "poison", "psychic"].includes(moveType)) {
+        bg = "#8a2be2";
+        shadow = "0 0 20px #9400d3, 0 0 40px #8a2be2";
+      }
+
+      const pid = ++projCounter.current;
+      setProjectiles((prev) => [
+        ...prev,
+        { id: pid, x: 0, y: 0, tx, ty, bg, shadow },
+      ]);
+      const animTime = 380 / state.playbackSpeed;
+      setTimeout(() => {
+        setProjectiles((prev) => prev.filter((p) => p.id !== pid));
+        onComplete();
+      }, animTime);
+    },
+    [state.playbackSpeed],
+  );
+
+  const executeStepVisuals = useCallback(
+    (step: BattleStep) => {
+      setDialogHtml(step.text);
+      if (step.type === "start") actions.setCurrentHps([...state.maxHealths]);
+      if (step.type === "action") {
+        const atkIdx = step.attackerIdx ?? 0;
+        const defIdx = atkIdx === 0 ? 1 : 0;
+        if (step.category === "physical") {
+          setAnimClass0("");
+          setAnimClass1("");
+          if (atkIdx === 0) setAnimClass0("lunge-right");
+          else setAnimClass1("lunge-left");
+          setTimeout(
+            () => applyImpact(defIdx, step),
+            200 / state.playbackSpeed,
+          );
+          setTimeout(() => {
+            if (atkIdx === 0) setAnimClass0("");
+            else setAnimClass1("");
+          }, 450 / state.playbackSpeed);
+        } else {
+          triggerProjectile(atkIdx, defIdx, step.moveType || "normal", () =>
+            applyImpact(defIdx, step),
+          );
+        }
+      }
+      if (step.type === "faint" && step.faintedIdx !== undefined) {
+        if (step.faintedIdx === 0) setAnimClass0("faint-slide");
+        else setAnimClass1("faint-slide");
+      }
+      if (step.type === "end") {
         setAnimClass0("");
         setAnimClass1("");
-        setDamagePopups([]);
-        setProjectiles([]);
-        const timer = setTimeout(() => playStep(0), 400);
-        onCleanup(() => clearTimeout(timer));
       }
+    },
+    [
+      state.playbackSpeed,
+      state.maxHealths,
+      actions,
+      applyImpact,
+      triggerProjectile,
+    ],
+  );
+
+  const playStep = useCallback(
+    (idx: number) => {
+      if (state.isPaused) return;
+      const steps = state.battleSteps;
+      if (idx >= steps.length) {
+        finishBattle();
+        return;
+      }
+      const step = steps[idx];
+      actions.setCurrentStepIdx(idx);
+      executeStepVisuals(step);
+      const duration = getStepDuration(step, state.playbackSpeed);
+      playbackTimer.current = setTimeout(() => playStep(idx + 1), duration);
+    },
+    [
+      state.isPaused,
+      state.battleSteps,
+      state.playbackSpeed,
+      actions,
+      executeStepVisuals,
+      finishBattle,
+    ],
+  );
+
+  // Start playback when battle phase changes
+  useEffect(() => {
+    if (
+      state.battlePhase === "battle" &&
+      state.battleSteps.length > 0 &&
+      !startedRef.current
+    ) {
+      startedRef.current = true;
+      setDialogHtml("Preparando la arena de combate...");
+      setAnimClass0("");
+      setAnimClass1("");
+      setDamagePopups([]);
+      setProjectiles([]);
+      const timer = setTimeout(() => playStep(0), 400);
+      return () => clearTimeout(timer);
     }
-  });
+    if (state.battlePhase !== "battle") startedRef.current = false;
+    return undefined;
+  }, [state.battlePhase, state.battleSteps.length, playStep]);
 
-  const speedLabel = () => `${playbackSpeed()}x`;
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (playbackTimer.current) clearTimeout(playbackTimer.current);
+    };
+  }, []);
 
-  const p1Data = () => chosen()[0];
-  const p2Data = () => chosen()[1];
-
-  const p1Name = () => p1Data()?.name ?? "Luchador 1";
-  const p2Name = () => p2Data()?.name ?? "Luchador 2";
-  const p1Meta = () => {
-    const d = p1Data();
-    if (!d) return "#000 · BST 0";
-    const t = Object.values(getStatsObject(d)).reduce((a, b) => a + b, 0);
-    return `#${String(d.id).padStart(3, "0")} · BST ${t}`;
+  const togglePause = () => {
+    if (state.isPaused) {
+      actions.setIsPaused(false);
+      playStep(state.currentStepIdx);
+    } else {
+      actions.setIsPaused(true);
+      if (playbackTimer.current) clearTimeout(playbackTimer.current);
+    }
   };
-  const p2Meta = () => {
-    const d = p2Data();
-    if (!d) return "#000 · BST 0";
-    const t = Object.values(getStatsObject(d)).reduce((a, b) => a + b, 0);
-    return `#${String(d.id).padStart(3, "0")} · BST ${t}`;
+
+  const toggleSpeed = () =>
+    actions.setPlaybackSpeed(
+      state.playbackSpeed === 4 ? 1 : ((state.playbackSpeed * 2) as 1 | 2 | 4),
+    );
+  const skipCinematics = () => {
+    if (playbackTimer.current) clearTimeout(playbackTimer.current);
+    actions.setIsPaused(false);
+    finishBattle();
   };
+
+  const phase = state.battlePhase;
+  if (phase !== "battle" && phase !== "result") return null;
+
+  const p1Data = state.chosen[0];
+  const p2Data = state.chosen[1];
+  const p1Name = p1Data?.name ?? "Luchador 1";
+  const p2Name = p2Data?.name ?? "Luchador 2";
+  const p1Meta = p1Data
+    ? `#${String(p1Data.id).padStart(3, "0")} · BST ${Object.values(getStatsObject(p1Data)).reduce((a, b) => a + b, 0)}`
+    : "#000 · BST 0";
+  const p2Meta = p2Data
+    ? `#${String(p2Data.id).padStart(3, "0")} · BST ${Object.values(getStatsObject(p2Data)).reduce((a, b) => a + b, 0)}`
+    : "#000 · BST 0";
 
   return (
-    <Show when={battlePhase() === "battle" || battlePhase() === "result"}>
+    <div
+      className={`stage-container${phase === "battle" ? " show" : ""}`}
+      id="stageContainer"
+    >
       <div
-        class={`stage-container${battlePhase() === "battle" ? " show" : ""}`}
-        id="stageContainer"
+        className={`stage-viewport${shakeScreen ? " screen-shake-anim" : ""}`}
+        id="stageViewport"
+        ref={viewportRef}
       >
-        <div
-          class={`stage-viewport${shakeScreen() ? " screen-shake-anim" : ""}`}
-          id="stageViewport"
-          ref={(el) => (viewportRef = el)}
-        >
-          {/* HUDS */}
-          <div class="stage-huds">
-            <div class="hud-box" id="hud-0">
-              <div class="hud-name" id="hud-name-0">
-                {p1Name()}
-              </div>
-              <div class="hud-meta" id="hud-meta-0">
-                {p1Meta()}
-              </div>
-              <div class="hud-hp-wrap">
-                <div
-                  class="hud-hp-fill"
-                  id="hp-bar-0"
-                  style={{
-                    width: `${hpPct(0)}%`,
-                    "background-color": hpColor(0),
-                  }}
-                />
-              </div>
-              <div class="hud-hp-text" id="hp-txt-0">
-                {currentHps()[0]} / {maxHealths()[0]} PS
-              </div>
-            </div>
-
-            <div class="hud-box" id="hud-1">
-              <div class="hud-name" id="hud-name-1">
-                {p2Name()}
-              </div>
-              <div class="hud-meta" id="hud-meta-1">
-                {p2Meta()}
-              </div>
-              <div class="hud-hp-wrap">
-                <div
-                  class="hud-hp-fill"
-                  id="hp-bar-1"
-                  style={{
-                    width: `${hpPct(1)}%`,
-                    "background-color": hpColor(1),
-                  }}
-                />
-              </div>
-              <div class="hud-hp-text" id="hp-txt-1">
-                {currentHps()[1]} / {maxHealths()[1]} PS
-              </div>
-            </div>
-          </div>
-
-          {/* Fighters */}
-          <div class="stage-grid" id="stageGrid">
-            <div class={`fighter-wrapper p1`} id="fighter-wrapper-0">
-              <div class="fighter-platform"></div>
-              <Show when={p1Data()}>
-                {(d) => (
-                  <img
-                    class={`fighter-sprite${animClass0() ? ` ${animClass0()}` : ""}`}
-                    id="fighter-img-0"
-                    src={getArtworkUrl(d())}
-                    alt="Fighter 1"
-                    ref={(el) => (imgRef0 = el)}
-                  />
-                )}
-              </Show>
-              {/* Damage popups */}
-              <For each={damagePopups().filter((p) => p.idx === 0)}>
-                {(pop) => (
-                  <div
-                    class={`damage-popup${pop.isCrit ? " crit" : ""}`}
-                    innerHTML={pop.content}
-                  />
-                )}
-              </For>
-            </div>
-
-            <div class={`fighter-wrapper p2`} id="fighter-wrapper-1">
-              <div class="fighter-platform"></div>
-              <Show when={p2Data()}>
-                {(d) => (
-                  <img
-                    class={`fighter-sprite${animClass1() ? ` ${animClass1()}` : ""}`}
-                    id="fighter-img-1"
-                    src={getArtworkUrl(d())}
-                    alt="Fighter 2"
-                    ref={(el) => (imgRef1 = el)}
-                  />
-                )}
-              </Show>
-              <For each={damagePopups().filter((p) => p.idx === 1)}>
-                {(pop) => (
-                  <div
-                    class={`damage-popup${pop.isCrit ? " crit" : ""}`}
-                    innerHTML={pop.content}
-                  />
-                )}
-              </For>
-            </div>
-          </div>
-
-          {/* Projectiles */}
-          <For each={projectiles()}>
-            {(proj) => (
+        <div className="stage-huds">
+          <div className="hud-box" id="hud-0">
+            <div className="hud-name">{p1Name}</div>
+            <div className="hud-meta">{p1Meta}</div>
+            <div className="hud-hp-wrap">
               <div
-                class="fx-projectile"
-                style={{
-                  background: proj.bg,
-                  "box-shadow": proj.shadow,
-                  left: `${proj.tx}px`,
-                  top: `${proj.ty}px`,
-                  transition: `all ${380 / playbackSpeed()}ms cubic-bezier(0.25, 1, 0.5, 1)`,
-                  transform: "translate(-50%, -50%) scale(1.6)",
-                }}
+                className="hud-hp-fill"
+                style={{ width: `${hpPct(0)}%`, backgroundColor: hpColor(0) }}
+              />
+            </div>
+            <div className="hud-hp-text">
+              {state.currentHps[0]} / {state.maxHealths[0]} PS
+            </div>
+          </div>
+          <div className="hud-box" id="hud-1">
+            <div className="hud-name">{p2Name}</div>
+            <div className="hud-meta">{p2Meta}</div>
+            <div className="hud-hp-wrap">
+              <div
+                className="hud-hp-fill"
+                style={{ width: `${hpPct(1)}%`, backgroundColor: hpColor(1) }}
+              />
+            </div>
+            <div className="hud-hp-text">
+              {state.currentHps[1]} / {state.maxHealths[1]} PS
+            </div>
+          </div>
+        </div>
+
+        <div className="stage-grid" id="stageGrid">
+          <div className="fighter-wrapper p1" id="fighter-wrapper-0">
+            <div className="fighter-platform" />
+            {p1Data && (
+              <img
+                className={`fighter-sprite${animClass0 ? ` ${animClass0}` : ""}`}
+                src={getArtworkUrl(p1Data)}
+                alt="Fighter 1"
+                ref={imgRef0}
               />
             )}
-          </For>
-        </div>
-
-        {/* Footer controls */}
-        <div class="stage-footer">
-          <div class="stage-dialog" id="stageDialog" innerHTML={dialogHtml()} />
-          <div class="stage-controls">
-            <button
-              type="button"
-              class="ctrl-btn"
-              id="btn-pause"
-              onClick={togglePause}
-            >
-              {isPaused() ? "Reanudar" : "Pausa"}
-            </button>
-            <button
-              type="button"
-              class="ctrl-btn"
-              id="btn-speed"
-              onClick={toggleSpeed}
-            >
-              Velocidad {speedLabel()}
-            </button>
-            <button
-              type="button"
-              class="ctrl-btn"
-              id="btn-skip"
-              onClick={skipCinematics}
-            >
-              Saltar
-            </button>
+            {damagePopups
+              .filter((p) => p.idx === 0)
+              .map((pop) => (
+                <div
+                  key={pop.id}
+                  className={`damage-popup${pop.isCrit ? " crit" : ""}`}
+                  dangerouslySetInnerHTML={{ __html: pop.content }}
+                />
+              ))}
+          </div>
+          <div className="fighter-wrapper p2" id="fighter-wrapper-1">
+            <div className="fighter-platform" />
+            {p2Data && (
+              <img
+                className={`fighter-sprite${animClass1 ? ` ${animClass1}` : ""}`}
+                src={getArtworkUrl(p2Data)}
+                alt="Fighter 2"
+                ref={imgRef1}
+              />
+            )}
+            {damagePopups
+              .filter((p) => p.idx === 1)
+              .map((pop) => (
+                <div
+                  key={pop.id}
+                  className={`damage-popup${pop.isCrit ? " crit" : ""}`}
+                  dangerouslySetInnerHTML={{ __html: pop.content }}
+                />
+              ))}
           </div>
         </div>
+
+        {projectiles.map((proj) => (
+          <div
+            key={proj.id}
+            className="fx-projectile"
+            style={{
+              background: proj.bg,
+              boxShadow: proj.shadow,
+              left: `${proj.tx}px`,
+              top: `${proj.ty}px`,
+              transition: `all ${380 / state.playbackSpeed}ms cubic-bezier(0.25, 1, 0.5, 1)`,
+              transform: "translate(-50%, -50%) scale(1.6)",
+            }}
+          />
+        ))}
       </div>
-    </Show>
+
+      <div className="stage-footer">
+        <div
+          className="stage-dialog"
+          dangerouslySetInnerHTML={{ __html: dialogHtml }}
+        />
+        <div className="stage-controls">
+          <button type="button" className="ctrl-btn" onClick={togglePause}>
+            {state.isPaused ? "Reanudar" : "Pausa"}
+          </button>
+          <button type="button" className="ctrl-btn" onClick={toggleSpeed}>
+            Velocidad {state.playbackSpeed}x
+          </button>
+          <button type="button" className="ctrl-btn" onClick={skipCinematics}>
+            Saltar
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

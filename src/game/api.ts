@@ -42,7 +42,7 @@ export async function fetchTypeData(type: string): Promise<PokemonListItem[]> {
   return d.pokemon
     .map((p) => {
       const parts = p.pokemon.url.split("/").filter(Boolean);
-      const id = parseInt(parts[parts.length - 1]);
+      const id = parseInt(parts[parts.length - 1], 10);
       return { name: p.pokemon.name, id };
     })
     .filter((p) => p.id <= 1010)

@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/solid-router";
-import { onMount, Show } from "solid-js";
+import { createFileRoute } from "@tanstack/react-router";
+import { useCallback, useEffect } from "react";
 import {
   calcHpStat,
   generateBattleSteps,
@@ -9,31 +9,24 @@ import { BattleResult } from "../game/components/BattleResult";
 import { BattleStage } from "../game/components/BattleStage";
 import { PokemonModal } from "../game/components/PokemonModal";
 import { PokemonSlot } from "../game/components/PokemonSlot";
-import {
-  battlePhase,
-  bothReady,
-  chosen,
-  loadAllPokemon,
-  setBattlePhase,
-  setBattleSteps,
-  setCurrentHps,
-  setCurrentStepIdx,
-  setIsPaused,
-  setMaxHealths,
-} from "../game/store";
+import { useBothReady, useGame, useGameActions } from "../game/store";
 
 export const Route = createFileRoute("/")({
   component: Home,
 });
 
 function Home() {
-  onMount(() => {
-    loadAllPokemon();
-  });
+  const state = useGame();
+  const actions = useGameActions();
+  const bothReady = useBothReady();
 
-  const startBattle = () => {
-    const poke1 = chosen()[0];
-    const poke2 = chosen()[1];
+  useEffect(() => {
+    actions.loadAllPokemon();
+  }, [actions]);
+
+  const startBattle = useCallback(() => {
+    const poke1 = state.chosen[0];
+    const poke2 = state.chosen[1];
     if (!poke1 || !poke2) return;
 
     const s1 = getStatsObject(poke1);
@@ -41,95 +34,89 @@ function Home() {
     const mh1 = calcHpStat(s1.hp);
     const mh2 = calcHpStat(s2.hp);
 
-    setMaxHealths([mh1, mh2]);
-    setCurrentHps([mh1, mh2]);
+    actions.setMaxHealths([mh1, mh2]);
+    actions.setCurrentHps([mh1, mh2]);
 
     const steps = generateBattleSteps(poke1, poke2, s1, s2, mh1, mh2);
-    setBattleSteps(steps);
-    setCurrentStepIdx(0);
-    setIsPaused(false);
+    actions.setBattleSteps(steps);
+    actions.setCurrentStepIdx(0);
+    actions.setIsPaused(false);
+    actions.setBattlePhase("battle");
 
-    setBattlePhase("battle");
-
-    // Scroll to stage
     setTimeout(() => {
       const stage = document.getElementById("stageContainer");
       stage?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 100);
-  };
+  }, [state.chosen, actions]);
 
-  // Reset handler
-  const goBackToSelection = () => {
-    setBattlePhase("selection");
-  };
+  const goBackToSelection = useCallback(() => {
+    actions.setBattlePhase("selection");
+  }, [actions]);
 
   return (
     <>
-      <div class="wrap">
+      <div className="wrap">
         <header>
-          <p class="eyebrow">— Simulador de batalla Pokémon —</p>
+          <p className="eyebrow">
+            {"\u2014 Simulador de batalla Pokémon \u2014"}
+          </p>
           <h1>
-            Poké<em>Arena</em>
+            Poke
+            <em>Ring</em>
           </h1>
-          <p class="tagline">
-            Elige tus combatientes, analiza sus estadísticas y descubre quién
-            dominaría el campo de batalla
+          <p className="tagline">
+            Elige tus combatientes, analiza sus estad{"\u00ed"}sticas y descubre
+            qui{"\u00e9"}n dominar{"\u00ed"}a el campo de batalla
           </p>
         </header>
 
-        {/* ARENA SELECTION CONTAINER */}
-        <Show
-          when={battlePhase() === "selection"}
-          fallback={
-            <div class="battle-section" id="battleSection">
+        {state.battlePhase === "selection" ? (
+          <>
+            <div className="arena-grid" id="arenaGrid">
+              <PokemonSlot index={0} label="Luchador 1" />
+              <div className="vs-col">
+                <div className="vs-line" />
+                <div className="vs-txt">VS</div>
+                <div className="vs-line" />
+              </div>
+              <PokemonSlot index={1} label="Luchador 2" />
+            </div>
+            <div className="battle-section" id="battleSection">
               <button
-                class="battle-btn"
+                className="battle-btn"
+                id="battleBtn"
+                disabled={!bothReady}
                 type="button"
-                onClick={goBackToSelection}
+                onClick={startBattle}
               >
-                ⚔ Nueva batalla
+                {"\u2694"} Comenzar batalla
               </button>
             </div>
-          }
-        >
-          <div class="arena-grid" id="arenaGrid">
-            <PokemonSlot index={0} label="Luchador 1" />
-            <div class="vs-col">
-              <div class="vs-line"></div>
-              <div class="vs-txt">VS</div>
-              <div class="vs-line"></div>
-            </div>
-            <PokemonSlot index={1} label="Luchador 2" />
-          </div>
-
-          <div class="battle-section" id="battleSection">
+          </>
+        ) : (
+          <div className="battle-section" id="battleSection">
             <button
-              class="battle-btn"
-              id="battleBtn"
-              disabled={!bothReady()}
+              className="battle-btn"
               type="button"
-              onClick={startBattle}
+              onClick={goBackToSelection}
             >
-              ⚔ Comenzar batalla
+              {"\u2694"} Nueva batalla
             </button>
           </div>
-        </Show>
+        )}
 
-        {/* STAGE DE COMBATE VISUAL */}
         <BattleStage />
-
-        {/* RESULTADOS */}
         <BattleResult />
       </div>
 
       <footer>
-        <div class="wrap">
-          Datos por <span>PokéAPI</span> · Motor de Combate por{" "}
-          <span>PokéArena JS</span>· No afiliado con Nintendo o Game Freak
+        <div className="wrap">
+          Datos por <span>Pok{"\u00e9"}API</span> {"\u00b7"} Motor de Combate
+          por <span>Pok{"\u00e9"}Arena JS</span>
+          {"\u00b7"} No afiliado con Nintendo o Game Freak
         </div>
       </footer>
 
-      {/* MODAL */}
       <PokemonModal />
     </>
   );

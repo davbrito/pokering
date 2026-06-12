@@ -1,4 +1,4 @@
-import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
+import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import { getContext } from "./integrations/tanstack-query/provider";
 import { routeTree } from "./routeTree.gen";
 
@@ -16,7 +16,7 @@ export function getRouter() {
   return router;
 }
 
-declare module "@tanstack/solid-router" {
+declare module "@tanstack/react-router" {
   interface Register {
     router: ReturnType<typeof getRouter>;
   }
