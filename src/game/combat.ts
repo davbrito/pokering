@@ -108,6 +108,25 @@ export function calcHpStat(baseHp: number): number {
   return baseHp * 2 + 110;
 }
 
+/**
+ * Determina qué Pokémon ataca primero basándose en la estadística de Speed.
+ * - Si P1 tiene más Speed, retorna true (P1 ataca primero).
+ * - Si P2 tiene más Speed, retorna false (P2 ataca primero).
+ * - En caso de empate exacto, se decide al azar (coin flip).
+ */
+export function determineFirstAttacker(speP1: number, speP2: number): boolean {
+  if (speP1 > speP2) return true;
+  if (speP2 > speP1) return false;
+  // Empate de velocidad: coin flip aleatorio
+  return safeCoinFlip();
+}
+
+function safeCoinFlip(): boolean {
+  const array = new Uint32Array(1);
+  window.crypto.getRandomValues(array);
+  return (array[0] & 1) === 0; // Retorna true o false con igual probabilidad
+}
+
 // GENERAR LA SECUENCIA DE PASOS DE COMBATE
 export function generateBattleSteps(
   p1: PokemonDetail,
@@ -133,10 +152,7 @@ export function generateBattleSteps(
   let turn = 1;
 
   while (hp1 > 0 && hp2 > 0 && turn <= 15) {
-    const spd1 = p1s.spe * (0.85 + Math.random() * 0.3);
-    const spd2 = p2s.spe * (0.85 + Math.random() * 0.3);
-
-    const firstAttackerP1 = spd1 >= spd2;
+    const firstAttackerP1 = determineFirstAttacker(p1s.spe, p2s.spe);
 
     const order: Array<{
       atkStats: PokemonStats;
