@@ -16,11 +16,13 @@
     "lint": "biome lint",
     "check": "biome check",
     "deploy": "pnpm run build && wrangler deploy",
-    "pokeapi:gen": "openapi-ts"
+    "pokeapi:gen": "openapi-ts",
+    "machine-translate": "inlang machine translate --project project.inlang"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
     "@cloudflare/vite-plugin": "^1.26.0",
+    "@inlang/paraglide-js-react": "^1.0.2",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/query-async-storage-persister": "^5.101.0",
     "@tanstack/react-pacer": "^0.22.1",
@@ -47,6 +49,8 @@
     "@biomejs/biome": "2.4.16",
     "@hey-api/openapi-ts": "0.98.2",
     "@hey-api/vite-plugin": "0.3.1",
+    "@inlang/cli": "^3.0.0",
+    "@inlang/paraglide-js": "^2.19.0",
     "@rolldown/plugin-babel": "^0.2.3",
     "@tanstack/devtools-vite": "latest",
     "@tanstack/react-devtools": "^0.10.5",

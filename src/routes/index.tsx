@@ -1,18 +1,20 @@
+import { Toggle } from "@base-ui/react/toggle";
+import { ToggleGroup } from "@base-ui/react/toggle-group";
+import { ParaglideMessage } from "@inlang/paraglide-js-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Settings } from "lucide-react";
 import { useCallback } from "react";
+import { m } from "#/i18n/paraglide/messages.js";
+import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
 import { calcHpStat, fetchPokemonMoves, generateBattleSteps, getStatsObject } from "../game/combat";
 import { BattleResult } from "../game/components/BattleResult";
 import { BattleStage } from "../game/components/BattleStage";
-import { GameLoading } from "../game/components/GameLoading";
 import { PokemonModal } from "../game/components/PokemonModal";
 import { PokemonSlot } from "../game/components/PokemonSlot";
 import { useBothReady, useChosenPokemon, useGameStore } from "../game/store";
 
 export const Route = createFileRoute("/")({
-  ssr: false,
   component: Home,
-  pendingComponent: GameLoading,
 });
 
 function Home() {
@@ -72,41 +74,28 @@ function Home() {
   return (
     <>
       <div className="wrap">
-        <header>
-          <Link to="/settings" className="settings-gear" aria-label="Ajustes">
-            <Settings size={20} />
-          </Link>
-          <p className="eyebrow">{"\u2014 Simulador de batalla Pokémon \u2014"}</p>
-          <h1>
-            Poke
-            <em>Ring</em>
-          </h1>
-          <p className="tagline">
-            Elige tus combatientes, analiza sus estad{"\u00ed"}sticas y descubre qui{"\u00e9"}n dominar{"\u00ed"}a el
-            campo de batalla
-          </p>
-        </header>
+        <Header />
 
         {battlePhase === "selection" ? (
           <>
             <div className="arena-grid" id="arenaGrid">
-              <PokemonSlot index={0} label="Luchador 1" />
+              <PokemonSlot index={0} label={m.home_fighter_1()} />
               <div className="vs-col">
                 <div className="vs-line" />
                 <div className="vs-txt">VS</div>
                 <div className="vs-line" />
               </div>
-              <PokemonSlot index={1} label="Luchador 2" />
+              <PokemonSlot index={1} label={m.home_fighter_2()} />
             </div>
             <div className="battle-section" id="battleSection">
               {isLoadingMoves ? (
                 <div className="battle-loading">
                   <div className="spinner" />
-                  <span className="battle-loading-msg">Analizando movimientos…</span>
+                  <span className="battle-loading-msg">{m.home_analyzing_moves()}</span>
                 </div>
               ) : (
                 <button className="battle-btn" id="battleBtn" disabled={!bothReady} type="button" onClick={startBattle}>
-                  {"\u2694"} Comenzar batalla
+                  {m.home_start_battle()}
                 </button>
               )}
             </div>
@@ -114,7 +103,7 @@ function Home() {
         ) : (
           <div className="battle-section" id="battleSection">
             <button className="battle-btn" type="button" onClick={goBackToSelection}>
-              {"\u2694"} Nueva batalla
+              {m.home_new_battle()}
             </button>
           </div>
         )}
@@ -125,12 +114,61 @@ function Home() {
 
       <footer>
         <div className="wrap">
-          Datos por <span>Pok{"\u00e9"}API</span> {"\u00b7"} Motor de Combate por <span>Pok{"\u00e9"}Arena JS</span>
-          {"\u00b7"} No afiliado con Nintendo o Game Freak
+          <ParaglideMessage
+            message={m.app_footer}
+            markup={{
+              span: ({ children }) => <span>{children}</span>,
+            }}
+          />
+          <br />
+          <small>{m.app_footer_copyright({ year: new Date().getFullYear() })}</small>
         </div>
       </footer>
 
       <PokemonModal />
     </>
+  );
+}
+
+function Header() {
+  const locale = getLocale();
+  return (
+    <header>
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        <ToggleGroup
+          className="flex gap-0.5 overflow-hidden rounded-lg"
+          value={[locale]}
+          onValueChange={(v) => {
+            const next = v[0];
+            if (next && next !== locale) {
+              setLocale(next);
+            }
+          }}
+          multiple={false}
+        >
+          <Toggle
+            className="flex h-7 cursor-pointer select-none items-center px-2 font-semibold text-[11px] text-muted uppercase tracking-wider transition-colors hover:bg-surface data-pressed:bg-accent/20 data-pressed:text-accent"
+            value="es"
+          >
+            ES
+          </Toggle>
+          <Toggle
+            className="flex h-7 cursor-pointer select-none items-center px-2 font-semibold text-[11px] text-muted uppercase tracking-wider transition-colors hover:bg-surface data-pressed:bg-accent/20 data-pressed:text-accent"
+            value="en"
+          >
+            EN
+          </Toggle>
+        </ToggleGroup>
+        <Link to="/settings" className="settings-gear" aria-label={m.settings_title()}>
+          <Settings size={20} />
+        </Link>
+      </div>
+      <p className="eyebrow">{m.app_eyebrow()}</p>
+      <h1>
+        Poke
+        <em>Ring</em>
+      </h1>
+      <p className="tagline">{m.app_tagline()}</p>
+    </header>
   );
 }

@@ -1,7 +1,11 @@
 import { Select } from "@base-ui/react/select";
+import { Toggle } from "@base-ui/react/toggle";
+import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
+import { m } from "#/i18n/paraglide/messages.js";
+import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
 import { languageListOptions } from "../api/pokeapi/@tanstack/react-query.gen";
 import { localizedNameCache } from "../game/api";
 import { useGameStore } from "../game/store";
@@ -27,21 +31,48 @@ function SettingsPage() {
       <div className="wrap">
         <header className="settings-header">
           <Link to="/" className="settings-back">
-            ← Volver
+            {m.settings_back()}
           </Link>
-          <h1>Ajustes</h1>
+          <h1>{m.settings_title()}</h1>
         </header>
 
         <section className="settings-section">
-          <h2 className="settings-section-title">Idioma de los Pokémon</h2>
-          <p className="settings-desc">
-            Elige el idioma en el que se mostrarán los nombres de los Pokémon en el selector y la previsualización.
-          </p>
+          <h2 className="settings-section-title">{m.settings_ui_language()}</h2>
+          <p className="settings-desc">{m.settings_ui_language_desc()}</p>
+          <ToggleGroup
+            className="flex gap-2"
+            value={[getLocale()]}
+            onValueChange={(v) => {
+              const next = v[0];
+              if (next && next !== getLocale()) {
+                setLocale(next);
+              }
+            }}
+            multiple={false}
+          >
+            <Toggle
+              className="flex h-9 cursor-pointer select-none items-center gap-1.5 rounded-lg border border-border-2 bg-neutral-950 px-4 font-medium text-muted text-sm transition-colors hover:bg-surface data-pressed:border-accent data-pressed:text-accent"
+              value="es"
+            >
+              ES
+            </Toggle>
+            <Toggle
+              className="flex h-9 cursor-pointer select-none items-center gap-1.5 rounded-lg border border-border-2 bg-neutral-950 px-4 font-medium text-muted text-sm transition-colors hover:bg-surface data-pressed:border-accent data-pressed:text-accent"
+              value="en"
+            >
+              EN
+            </Toggle>
+          </ToggleGroup>
+        </section>
+
+        <section className="settings-section">
+          <h2 className="settings-section-title">{m.settings_pokemon_language()}</h2>
+          <p className="settings-desc">{m.settings_pokemon_language_desc()}</p>
 
           {isLoading ? (
             <div className="flex items-center gap-2 py-8 text-neutral-500 text-sm">
               <div className="spinner" />
-              <span>Cargando idiomas…</span>
+              <span>{m.settings_loading()}</span>
             </div>
           ) : (
             <div className="max-w-sm">
@@ -55,10 +86,13 @@ function SettingsPage() {
                 }}
               >
                 <Select.Label className="mb-1.5 block cursor-default font-semibold text-muted text-xs">
-                  Idioma
+                  {m.settings_language_label()}
                 </Select.Label>
                 <Select.Trigger className="flex h-10 w-full select-none items-center justify-between gap-3 whitespace-nowrap rounded-lg border border-border-2 bg-neutral-950 pr-2 pl-3 font-normal text-sm text-white leading-none hover:not-data-disabled:bg-surface focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-1 active:not-data-disabled:bg-surface data-popup-open:border-accent">
-                  <Select.Value className="capitalize data-placeholder:text-muted" placeholder="Seleccionar idioma" />
+                  <Select.Value
+                    className="capitalize data-placeholder:text-muted"
+                    placeholder={m.settings_language_placeholder()}
+                  />
                   <Select.Icon className="flex shrink-0 text-muted">
                     <ChevronsUpDown size={16} />
                   </Select.Icon>
@@ -101,7 +135,7 @@ function SettingsPage() {
         </section>
 
         <section className="settings-section">
-          <h2 className="settings-section-title">Acerca de</h2>
+          <h2 className="settings-section-title">{m.settings_about()}</h2>
           <p className="settings-desc">
             Los nombres traducidos provienen de la{" "}
             <a href="https://pokeapi.co" target="_blank" rel="noopener noreferrer">

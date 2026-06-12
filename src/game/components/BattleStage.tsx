@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
@@ -30,7 +31,7 @@ function DamagePopup({ pop }: { pop: DamagePopupData }) {
   return (
     <div className={`damage-popup${pop.isCrit ? "crit" : ""}`}>
       {pop.isImmune ? (
-        <span style={{ fontSize: 24 }}>INMUNE</span>
+        <span style={{ fontSize: 24 }}>{m.battle_immune()}</span>
       ) : (
         <>
           <span className="popup-dmg">-{pop.damage}</span>

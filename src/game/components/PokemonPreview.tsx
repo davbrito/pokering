@@ -1,6 +1,7 @@
 import { Progress } from "@base-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "motion/react";
+import { m } from "#/i18n/paraglide/messages.js";
 import { pokemonRetrieveOptions, pokemonSpeciesRetrieveOptions } from "../../api/pokeapi/@tanstack/react-query.gen";
 import { getArtworkUrl, getLocalizedName, localizedNameCache } from "../api";
 import { STAT_ABBR } from "../data";
@@ -44,7 +45,7 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
         ) : (
           <div className="preview-empty">
             <div className="pe-icon">👆</div>
-            <div>Pasa el cursor sobre un Pokémon para verlo</div>
+            <div>{m.preview_hover_hint()}</div>
           </div>
         )}
       </div>

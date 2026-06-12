@@ -1,14 +1,16 @@
-const loadingMessages = [
-  "Atrapando datos salvajes... \uD83D\uDCFE",
-  "Eligiendo a tu Pokémon... \uD83D\uDCB0",
-  "Preparando la arena... \u2694\uFE0F",
-  "Calculando estadísticas... \uD83D\uDCCA",
-  "Calentando motores... \uD83D\uDE80",
-  "Buscando rival digno... \uD83D\uDC7E",
-  "Afinando Pokéballs... \uD83D\uDDFB",
-];
+import { m } from "#/i18n/paraglide/messages.js";
 
 export function GameLoading() {
+  const loadingMessages = [
+    m.game_loading_1(),
+    m.game_loading_2(),
+    m.game_loading_3(),
+    m.game_loading_4(),
+    m.game_loading_5(),
+    m.game_loading_6(),
+    m.game_loading_7(),
+  ];
+
   return (
     <div className="route-loading h-full">
       <div className="pokeball-shake">

@@ -5,6 +5,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { XIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useDeferredValue, useState } from "react";
+import { m } from "#/i18n/paraglide/messages.js";
 import {
   pokemonListInfiniteOptions,
   pokemonRetrieveOptions,
@@ -169,7 +170,7 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
           className="modal-search"
           id="modal-search"
           type="text"
-          placeholder="Buscar por nombre o número..."
+          placeholder={m.home_search_placeholder()}
           value={searchQuery}
           onChange={(e) => useGameStore.getState().setSearchQuery(e.currentTarget.value)}
         />
@@ -183,7 +184,7 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
           {isInitialLoading ? (
             <div className="poke-grid-loading">
               <div className="spinner" />
-              <span>Cargando Pokémon…</span>
+              <span>{m.preview_loading()}</span>
             </div>
           ) : currentList && currentList.length > 0 ? (
             <div className="poke-grid-container">
@@ -207,7 +208,10 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
               {hasNextPage && (
                 <div className="pagination" style={{ justifyContent: "center", gap: 12 }}>
                   <span className="page-info">
-                    {allAccumulatedItems?.length ?? 0} / {listInfinite.data?.pages[0]?.count ?? "?"} cargados
+                    {m.modal_loaded_count({
+                      count: String(allAccumulatedItems?.length ?? 0),
+                      total: String(listInfinite.data?.pages[0]?.count ?? "?"),
+                    })}
                   </span>
                   <button
                     type="button"
@@ -224,10 +228,10 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
                     {isFetchingNextPage ? (
                       <>
                         <div className="spinner" style={{ width: 14, height: 14 }} />
-                        &nbsp;Cargando…
+                        &nbsp;{m.preview_loading()}
                       </>
                     ) : (
-                      "Cargar más ↓"
+                      m.modal_load_more()
                     )}
                   </button>
                 </div>
@@ -235,7 +239,7 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
             </div>
           ) : (
             <div className="no-results" style={{ gridColumn: "1/-1" }}>
-              No se encontraron Pokémon
+              {m.modal_no_results()}
             </div>
           )}
         </div>
@@ -306,7 +310,7 @@ function TypesTabs({ value, onValueChange }: { value: string; onValueChange: (v:
                 style={{ display: "block" }}
               />
             )}
-            {t.name === "all" ? "Todos" : t.name}
+            {t.name === "all" ? m.modal_tab_all() : t.name}
           </Toggle>
         );
       })}

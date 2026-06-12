@@ -1,4 +1,5 @@
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
+import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { getEffectiveness, getStatsObject } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
@@ -49,18 +50,19 @@ function computeWinner(
 
   let razon: string;
   if (hasElementalAdvantage) {
-    razon = `La ventaja elemental de tipo de ${wp.name.toUpperCase()} desarmó por completo la defensa del contrincante.`;
+    razon = m.result_reason_elemental({ name: wp.name.toUpperCase() });
   } else if (ws.spe > ls.spe && ws.spe - ls.spe >= 20) {
-    razon = `Su superioridad de velocidad le otorgó la iniciativa de cada turno, sentenciando el combate.`;
+    razon = m.result_reason_speed();
   } else {
-    razon = `La consistencia física y el poder acumulado de sus estadísticas de combate fueron arrolladores.`;
+    razon = m.result_reason_stats();
   }
 
-  const analisis = `La arena de batalla presenció un combate de alto nivel entre ${poke1.name.toUpperCase()} y ${poke2.name.toUpperCase()}. ${
-    hasElementalAdvantage
-      ? `La ventaja elemental y de tipo estratégica del ganador le confirió el control de los daños en todo momento.`
-      : `El ritmo del combate estuvo dictaminado por sutiles diferencias tácticas en las estadísticas de combate individuales.`
-  } Finalmente, la contundencia coronó a ${wp.name.toUpperCase()} como el gladiador supremo de la contienda tras el simulacro cinematográfico.`;
+  const p1Upper = poke1.name.toUpperCase();
+  const p2Upper = poke2.name.toUpperCase();
+  const wpUpper = wp.name.toUpperCase();
+  const analisis = hasElementalAdvantage
+    ? m.result_analysis_advantage({ p1: p1Upper, p2: p2Upper })
+    : m.result_analysis_no_advantage({ p1: p1Upper, p2: p2Upper, winner: wpUpper });
 
   return { wp, lp, ws, ls, wt, lt, razon, analisis, winnerIdx };
 }
@@ -90,32 +92,31 @@ export function BattleResult() {
           <div className="result-top">
             <img className="win-art" src={wart} alt={w.wp.name} />
             <div>
-              <div className="win-eyebrow">🏆 Ganador de la batalla</div>
+              <div className="win-eyebrow">{m.battle_winner_trophy()}</div>
               <div className="win-name">{w.wp.name}</div>
               <div className="win-reason">{w.razon}</div>
             </div>
             <div className="bst-box">
-              <div className="bst-lbl">BST</div>
+              <div className="bst-lbl">{m.battle_bst()}</div>
               <div className="bst-num">{w.wt}</div>
-              <div className="bst-vs">vs {w.lt}</div>
+              <div className="bst-vs">{m.battle_vs({ total: String(w.lt) })}</div>
             </div>
           </div>
           <div className="result-body">
             <p className="analysis">{w.analisis}</p>
-            <div className="section-lbl">Registro de batalla</div>
+            <div className="section-lbl">{m.battle_log_title()}</div>
             <div className="log-list">
               {actionSteps.map((step, i) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: Using index as key is acceptable here because the list is static and does not change order.
                 <div key={`${step.type}-${i}`} className="log-item">
-                  <span className="log-t">T{i + 1}</span>
+                  <span className="log-t">{m.battle_step_t({ turn: String(i + 1) })}</span>
                   <span>{renderStepContent(step, p1.name, p2.name)}</span>
                 </div>
               ))}
             </div>
             <div className="cmp-wrap">
               <div className="section-lbl" style={{ color: "var(--blue)", marginBottom: ".8rem" }}>
-                Comparativa · <span style={{ color: "var(--muted)" }}>{w.wp.name}</span> vs{" "}
-                <span style={{ color: "var(--muted)" }}>{w.lp.name}</span>
+                {m.battle_comparison({ name1: w.wp.name, name2: w.lp.name })}
               </div>
               {statKeys.map((key, i) => {
                 const v1 = w.winnerIdx === 0 ? w.ws[key] : w.ls[key];

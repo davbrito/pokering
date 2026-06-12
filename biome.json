@@ -68,7 +68,7 @@
   },
   "overrides": [
     {
-      "includes": ["src/api/pokeapi/**"],
+      "includes": ["src/api/pokeapi/**", "src/i18n/paraglide/**"],
       "linter": {
         "enabled": false
       }

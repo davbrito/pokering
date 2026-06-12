@@ -1,5 +1,6 @@
 import { Dialog } from "@base-ui/react";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
+import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { STAT_ABBR } from "../data";
@@ -63,13 +64,13 @@ export function PokemonSlot({ index, label }: { index: number; label: string }) 
       <Dialog.Trigger type="button" className="pick-btn" handle={pickerDialogHandle} payload={{ slot: index }}>
         {!loading && pokemon ? (
           <>
-            <span className="pb-icon">✔</span> {pokemon.name} — cambiar
+            <span className="pb-icon">✔</span> {pokemon.name} — {m.home_change()}
           </>
         ) : loading ? (
           <div className="spinner" />
         ) : (
           <>
-            <span className="pb-icon">⊕</span> Seleccionar Pokémon
+            <span className="pb-icon">⊕</span> {m.home_select_pokemon()}
           </>
         )}
       </Dialog.Trigger>

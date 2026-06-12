@@ -7,6 +7,7 @@
     "module": "ESNext",
     "lib": ["ES2025", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
+    "allowJs": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",
