@@ -1,8 +1,8 @@
+import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { STAT_ABBR } from "../data";
 import { useGame, useGameActions } from "../store";
-import type { PokemonDetail } from "../types";
 
 function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
   const d = pokemon;
@@ -18,8 +18,8 @@ function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
       </div>
       <div className="poke-name">{d.name}</div>
       <div className="poke-sub">
-        #{String(d.id).padStart(3, "0")} · {d.height / 10}m · {d.weight / 10}kg
-        · BST {total}
+        #{String(d.id).padStart(3, "0")} · {d.height! / 10}m · {d.weight! / 10}
+        kg · BST {total}
       </div>
       <div className="types">
         {types.map((t) => (
@@ -55,7 +55,6 @@ function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
           );
         })}
       </div>
-      {d.flavor && <p className="flavor">"{d.flavor}"</p>}
     </div>
   );
 }
@@ -70,7 +69,7 @@ export function PokemonSlot({
   const { chosen, chosenLoading } = useGame();
   const { setActiveSlot, setModalOpen } = useGameActions();
 
-  const p = chosen[index];
+  const pokemon = chosen[index];
   const loading = chosenLoading[index];
 
   const openForSlot = () => {
@@ -79,12 +78,12 @@ export function PokemonSlot({
   };
 
   return (
-    <div className={`slot${p ? " filled" : ""}`} id={`slot${index}`}>
+    <div className={`slot${pokemon ? " filled" : ""}`} id={`slot${index}`}>
       <div className="slot-lbl">{label}</div>
       <button type="button" className="pick-btn" onClick={openForSlot}>
-        {!loading && p ? (
+        {!loading && pokemon ? (
           <>
-            <span className="pb-icon">✔</span> {p.name} — cambiar
+            <span className="pb-icon">✔</span> {pokemon.name} — cambiar
           </>
         ) : loading ? (
           <div className="spinner" />
@@ -94,7 +93,7 @@ export function PokemonSlot({
           </>
         )}
       </button>
-      {p && <PokemonCard pokemon={p} />}
+      {pokemon && <PokemonCard pokemon={pokemon} />}
     </div>
   );
 }

@@ -21,18 +21,6 @@ export interface PokemonSprite {
   };
 }
 
-export interface PokemonDetail {
-  name: string;
-  id: number;
-  height: number;
-  weight: number;
-  types: PokemonTypeInfo[];
-  stats: PokemonStat[];
-  sprites: PokemonSprite;
-  species: { url: string };
-  flavor?: string;
-}
-
 export interface PokemonStats {
   hp: number;
   atk: number;

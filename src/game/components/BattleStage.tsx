@@ -4,6 +4,7 @@ import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { useGame, useGameActions } from "../store";
 import type { BattleStep } from "../types";
+import { renderStepContent } from "./renderStepContent";
 
 function getStepDuration(step: BattleStep, speed: number): number {
   let base = 1800;
@@ -56,9 +57,7 @@ interface Projectile {
 export function BattleStage() {
   const state = useGame();
   const actions = useGameActions();
-  const [dialogHtml, setDialogHtml] = useState(
-    "Preparando la arena de combate...",
-  );
+  const [currentStep, setCurrentStep] = useState<BattleStep | null>(null);
   const [animClass0, setAnimClass0] = useState("");
   const [animClass1, setAnimClass1] = useState("");
   const [shakeScreen, setShakeScreen] = useState(false);
@@ -204,7 +203,7 @@ export function BattleStage() {
 
   const executeStepVisuals = useCallback(
     (step: BattleStep) => {
-      setDialogHtml(step.text);
+      setCurrentStep(step);
       if (step.type === "start") actions.setCurrentHps([...state.maxHealths]);
       if (step.type === "action") {
         const atkIdx = step.attackerIdx ?? 0;
@@ -278,7 +277,7 @@ export function BattleStage() {
       !startedRef.current
     ) {
       startedRef.current = true;
-      setDialogHtml("Preparando la arena de combate...");
+      setCurrentStep(null);
       setAnimClass0("");
       setAnimClass1("");
       setDamagePopups([]);
@@ -436,10 +435,9 @@ export function BattleStage() {
       </div>
 
       <div className="stage-footer">
-        <div
-          className="stage-dialog"
-          dangerouslySetInnerHTML={{ __html: dialogHtml }}
-        />
+        <div className="stage-dialog">
+          {renderStepContent(currentStep, p1Name, p2Name)}
+        </div>
         <div className="stage-controls">
           <button type="button" className="ctrl-btn" onClick={togglePause}>
             {state.isPaused ? "Reanudar" : "Pausa"}

@@ -1,10 +1,6 @@
+import type { PokemonDetail } from "../api/pokeapi";
 import { TYPE_CHART, TYPE_MOVES } from "./data";
-import type {
-  BattleStep,
-  MoveResult,
-  PokemonDetail,
-  PokemonStats,
-} from "./types";
+import type { BattleStep, MoveResult, PokemonStats } from "./types";
 
 // Retorna multiplicador de efectividad acumulado
 export function getEffectiveness(

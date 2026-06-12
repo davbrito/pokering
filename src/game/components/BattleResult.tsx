@@ -1,7 +1,9 @@
+import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { getArtworkUrl } from "../api";
 import { getEffectiveness, getStatsObject } from "../combat";
 import { useGame } from "../store";
-import type { PokemonDetail, PokemonStats } from "../types";
+import type { PokemonStats } from "../types";
+import { renderStepContent } from "./renderStepContent";
 
 interface WinnerInfo {
   wp: PokemonDetail;
@@ -102,9 +104,10 @@ export function BattleResult() {
             <div className="section-lbl">Registro de batalla</div>
             <div className="log-list">
               {actionSteps.map((step, i) => (
-                <div key={i} className="log-item">
+                // biome-ignore lint/suspicious/noArrayIndexKey: Using index as key is acceptable here because the list is static and does not change order.
+                <div key={`${step.type}-${i}`} className="log-item">
                   <span className="log-t">T{i + 1}</span>
-                  <span dangerouslySetInnerHTML={{ __html: step.text }} />
+                  <span>{renderStepContent(step, p1.name, p2.name)}</span>
                 </div>
               ))}
             </div>

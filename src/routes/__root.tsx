@@ -1,16 +1,22 @@
+import { TanStackDevtools } from "@tanstack/react-devtools";
+import type { QueryClient } from "@tanstack/react-query";
 import {
   createRootRouteWithContext,
   HeadContent,
   Outlet,
   Scripts,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { Suspense } from "react";
-
+import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { GameProvider } from "../game/store";
+import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
+
 import styleCss from "../styles.css?url";
 
-export const Route = createRootRouteWithContext()({
+interface RootRouteContext {
+  queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<RootRouteContext>()({
   head: () => ({
     meta: [
       { charSet: "UTF-8" },
@@ -36,11 +42,20 @@ function RootComponent() {
       </head>
       <body>
         <GameProvider>
-          <Suspense>
-            <Outlet />
-            <TanStackRouterDevtools />
-          </Suspense>
+          <Outlet />
         </GameProvider>
+        <TanStackDevtools
+          config={{
+            position: "bottom-right",
+          }}
+          plugins={[
+            {
+              name: "Tanstack Router",
+              render: <TanStackRouterDevtoolsPanel />,
+            },
+            TanStackQueryDevtools,
+          ]}
+        />
         <Scripts />
       </body>
     </html>

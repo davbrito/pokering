@@ -1,28 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect } from "react";
-import {
-  calcHpStat,
-  generateBattleSteps,
-  getStatsObject,
-} from "../game/combat";
+import { useCallback, useState } from "react";
+import { calcHpStat, generateBattleSteps, getStatsObject } from "../game/combat";
 import { BattleResult } from "../game/components/BattleResult";
 import { BattleStage } from "../game/components/BattleStage";
+import { GameLoading } from "../game/components/GameLoading";
 import { PokemonModal } from "../game/components/PokemonModal";
 import { PokemonSlot } from "../game/components/PokemonSlot";
 import { useBothReady, useGame, useGameActions } from "../game/store";
 
 export const Route = createFileRoute("/")({
+  ssr: false,
   component: Home,
+  pendingComponent: GameLoading,
 });
 
 function Home() {
   const state = useGame();
   const actions = useGameActions();
   const bothReady = useBothReady();
-
-  useEffect(() => {
-    actions.loadAllPokemon();
-  }, [actions]);
 
   const startBattle = useCallback(() => {
     const poke1 = state.chosen[0];
@@ -57,16 +52,14 @@ function Home() {
     <>
       <div className="wrap">
         <header>
-          <p className="eyebrow">
-            {"\u2014 Simulador de batalla Pokémon \u2014"}
-          </p>
+          <p className="eyebrow">{"\u2014 Simulador de batalla Pokémon \u2014"}</p>
           <h1>
             Poke
             <em>Ring</em>
           </h1>
           <p className="tagline">
-            Elige tus combatientes, analiza sus estad{"\u00ed"}sticas y descubre
-            qui{"\u00e9"}n dominar{"\u00ed"}a el campo de batalla
+            Elige tus combatientes, analiza sus estad{"\u00ed"}sticas y descubre qui{"\u00e9"}n dominar{"\u00ed"}a el
+            campo de batalla
           </p>
         </header>
 
@@ -82,24 +75,14 @@ function Home() {
               <PokemonSlot index={1} label="Luchador 2" />
             </div>
             <div className="battle-section" id="battleSection">
-              <button
-                className="battle-btn"
-                id="battleBtn"
-                disabled={!bothReady}
-                type="button"
-                onClick={startBattle}
-              >
+              <button className="battle-btn" id="battleBtn" disabled={!bothReady} type="button" onClick={startBattle}>
                 {"\u2694"} Comenzar batalla
               </button>
             </div>
           </>
         ) : (
           <div className="battle-section" id="battleSection">
-            <button
-              className="battle-btn"
-              type="button"
-              onClick={goBackToSelection}
-            >
+            <button className="battle-btn" type="button" onClick={goBackToSelection}>
               {"\u2694"} Nueva batalla
             </button>
           </div>
@@ -111,8 +94,7 @@ function Home() {
 
       <footer>
         <div className="wrap">
-          Datos por <span>Pok{"\u00e9"}API</span> {"\u00b7"} Motor de Combate
-          por <span>Pok{"\u00e9"}Arena JS</span>
+          Datos por <span>Pok{"\u00e9"}API</span> {"\u00b7"} Motor de Combate por <span>Pok{"\u00e9"}Arena JS</span>
           {"\u00b7"} No afiliado con Nintendo o Game Freak
         </div>
       </footer>

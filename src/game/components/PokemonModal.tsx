@@ -1,30 +1,27 @@
-import { useEffect, useRef, useState } from "react";
-import { fetchPokemonById, getArtworkUrl, getSpriteUrl } from "../api";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { Dialog } from "@base-ui/react/dialog";
+import {
+  pokemonListOptions,
+  pokemonRetrieveOptions,
+  typeRetrieveOptions,
+} from "../../api/pokeapi/@tanstack/react-query.gen";
+import { getArtworkUrl, getSpriteUrl } from "../api";
 import { STAT_ABBR, TYPE_TAB_COLORS, TYPES } from "../data";
 import { useGame, useGameActions } from "../store";
-import type { PokemonDetail } from "../types";
 
 function PokemonPreview({
   pokemonId,
   onSelect,
 }: {
   pokemonId: number | null;
-  onSelect: (name: string) => void;
+  onSelect: (id: number) => void;
 }) {
-  const [previewData, setPreviewData] = useState<PokemonDetail | null>(null);
-  const [loading, setLoading] = useState(false);
-  const lastFetched = useRef(0);
-
-  useEffect(() => {
-    if (pokemonId === null || pokemonId === lastFetched.current) return;
-    lastFetched.current = pokemonId;
-    setLoading(true);
-    setPreviewData(null);
-    fetchPokemonById(pokemonId)
-      .then(setPreviewData)
-      .catch(() => setPreviewData(null))
-      .finally(() => setLoading(false));
-  }, [pokemonId]);
+  const { data: previewData, isLoading: loading } = useQuery({
+    ...pokemonRetrieveOptions({ path: { id: String(pokemonId) } }),
+    enabled: pokemonId !== null,
+    staleTime: Infinity,
+  });
 
   if (!loading && previewData) {
     const d = previewData;
@@ -83,7 +80,7 @@ function PokemonPreview({
         <button
           type="button"
           className="prev-select-btn"
-          onClick={() => onSelect(d.name)}
+          onClick={() => onSelect(d.id)}
         >
           Elegir este ▶
         </button>
@@ -112,119 +109,120 @@ export function PokemonModal() {
   const actions = useGameActions();
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") actions.setModalOpen(false);
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [actions]);
+  const listQuery = useQuery({
+    ...pokemonListOptions({ query: { limit: 1010 } }),
+    staleTime: 5 * 60 * 1000,
+    select: (data) => data.results,
+  });
+  const allPokemon = listQuery.data?.map((p) => ({
+    name: p.name,
+    id: getIdFromUrl(p.url),
+  }));
 
-  const handleSelect = (name: string) => {
-    actions.selectPokemon(state.activeSlot, name);
+  const typeQuery = useQuery({
+    ...typeRetrieveOptions({ path: { id: state.activeTab } }),
+    enabled: state.activeTab !== "all",
+  });
+  const typeData = typeQuery.data?.pokemon.map((p) => ({
+    name: p.pokemon!.name,
+    id: getIdFromUrl(p.pokemon!.url!),
+  }));
+
+  const handleSelect = (id: number) => {
+    actions.selectPokemon(state.activeSlot, id);
     actions.setModalOpen(false);
   };
 
   const filteredList = (() => {
     const tab = state.activeTab;
     const q = state.searchQuery.toLowerCase().trim();
-    let list = tab === "all" ? state.allPokemon : state.typePokemon;
+    let list = tab === "all" ? allPokemon : typeData;
+    if (!list) return [];
     if (!list.length && tab === "all") return [];
     if (q) {
-      list = state.allPokemon.filter(
+      list = allPokemon?.filter(
         (p) => p.name.includes(q) || String(p.id).padStart(3, "0").includes(q),
       );
     }
-    return list;
+    return list ?? [];
   })();
 
-  const switchTabHandler = async (type: string) => {
-    actions.setActiveTab(type);
-    if (type !== "all") {
-      const data = await actions.loadTypeData(type);
-      actions.setTypePokemon(data);
-    }
-  };
-
   return (
-    <div className={`modal-overlay${state.modalOpen ? " open" : ""}`}>
-      {state.modalOpen && (
-        <button
-          type="button"
-          className="modal-overlay-bg"
-          aria-label="Cerrar modal"
-          onClick={() => actions.setModalOpen(false)}
-        />
-      )}
-      <div className="modal">
-        <div className="modal-head">
-          <input
-            className="modal-search"
-            id="modal-search"
-            type="text"
-            placeholder="Buscar por nombre o número..."
-            value={state.searchQuery}
-            onChange={(e) => actions.setSearchQuery(e.currentTarget.value)}
-          />
-          <button
-            type="button"
-            className="modal-close"
-            onClick={() => actions.setModalOpen(false)}
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="tabs-bar" id="tabs-bar">
-          {TYPES.map((t) => {
-            const c = TYPE_TAB_COLORS[t] || TYPE_TAB_COLORS.normal;
-            return (
-              <button
-                key={t}
-                type="button"
-                className={`tab-btn${state.activeTab === t ? " active" : ""}`}
-                style={{
-                  background: c.bg,
-                  color: c.color,
-                  borderColor: c.border,
-                }}
-                onClick={() => switchTabHandler(t)}
-              >
-                {t === "all" ? "Todos" : t}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="modal-body">
-          <div className="poke-grid-wrap">
-            {filteredList.length > 0 ? (
-              <div className="poke-grid" id="poke-grid">
-                {filteredList.slice(0, 200).map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    className="poke-thumb"
-                    onClick={() => handleSelect(p.name)}
-                    onMouseEnter={() => setHoveredId(p.id)}
-                  >
-                    <img src={getSpriteUrl(p.id)} alt={p.name} loading="lazy" />
-                    <div className="pt-name">{p.name}</div>
-                    <div className="pt-num">
-                      #{String(p.id).padStart(3, "0")}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="no-results" style={{ gridColumn: "1/-1" }}>
-                No se encontraron Pokémon
-              </div>
-            )}
+    <Dialog.Root
+      open={state.modalOpen}
+      onOpenChange={(open) => actions.setModalOpen(open)}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop className="modal-overlay" />
+        <Dialog.Popup className="modal">
+          <div className="modal-head">
+            <input
+              className="modal-search"
+              id="modal-search"
+              type="text"
+              placeholder="Buscar por nombre o número..."
+              value={state.searchQuery}
+              onChange={(e) => actions.setSearchQuery(e.currentTarget.value)}
+            />
+            <Dialog.Close className="modal-close">✕</Dialog.Close>
           </div>
-          <PokemonPreview pokemonId={hoveredId} onSelect={handleSelect} />
-        </div>
-      </div>
-    </div>
+
+          <div className="tabs-bar" id="tabs-bar">
+            {TYPES.map((t) => {
+              const c = TYPE_TAB_COLORS[t] || TYPE_TAB_COLORS.normal;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  className={`tab-btn${state.activeTab === t ? " active" : ""}`}
+                  style={{
+                    background: c.bg,
+                    color: c.color,
+                    borderColor: c.border,
+                  }}
+                  onClick={() => actions.setActiveTab(t)}
+                >
+                  {t === "all" ? "Todos" : t}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="modal-body">
+            <div className="poke-grid-wrap">
+              {filteredList.length > 0 ? (
+                <div className="poke-grid" id="poke-grid">
+                  {filteredList.slice(0, 200).map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="poke-thumb"
+                      onClick={() => handleSelect(p.id)}
+                      onMouseEnter={() => setHoveredId(p.id)}
+                    >
+                      <img src={getSpriteUrl(p.id)} alt={p.name} loading="lazy" />
+                      <div className="pt-name">{p.name}</div>
+                      <div className="pt-num">
+                        #{String(p.id).padStart(3, "0")}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="no-results" style={{ gridColumn: "1/-1" }}>
+                  No se encontraron Pokémon
+                </div>
+              )}
+            </div>
+            <PokemonPreview pokemonId={hoveredId} onSelect={handleSelect} />
+          </div>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
+}
+
+function getIdFromUrl(url: string): number {
+  const parts = url.split("/").filter(Boolean);
+  return parseInt(parts[parts.length - 1], 10);
 }

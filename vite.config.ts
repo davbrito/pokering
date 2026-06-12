@@ -1,9 +1,10 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { heyApiPlugin } from "@hey-api/vite-plugin";
+import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
@@ -12,8 +13,13 @@ export default defineConfig({
     devtools(),
     cloudflare({ viteEnvironment: { name: "ssr" } }),
     tailwindcss(),
-    tanstackStart(),
+    tanstackStart({
+      spa: {
+        enabled: true,
+      },
+    }),
     react(),
+    babel({ presets: [reactCompilerPreset()] }),
     heyApiPlugin({
       config: {
         input:
