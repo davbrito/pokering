@@ -5,8 +5,6 @@ import { pokemonRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen
 import type { BattleStep } from "./types";
 
 interface GameState {
-  modalOpen: boolean;
-  activeSlot: number;
   searchQuery: string;
   activeTab: string;
   chosen: [PokemonDetail | null, PokemonDetail | null];
@@ -21,8 +19,6 @@ interface GameState {
 }
 
 interface GameActions {
-  setModalOpen: (open: boolean) => void;
-  setActiveSlot: (slot: number) => void;
   setSearchQuery: (q: string) => void;
   setActiveTab: (tab: string) => void;
   selectPokemon: (slot: number, id: number) => Promise<void>;
@@ -40,8 +36,6 @@ const GameContext = createContext<GameState | null>(null);
 const GameActionsContext = createContext<GameActions | null>(null);
 
 export function GameProvider(props: { children: ReactNode }) {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [activeSlot, setActiveSlot] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [chosenIds, setChosenIds] = useState<[number | null, number | null]>([null, null]);
@@ -85,8 +79,6 @@ export function GameProvider(props: { children: ReactNode }) {
   };
 
   const state: GameState = {
-    modalOpen,
-    activeSlot,
     searchQuery,
     activeTab,
     chosen,
@@ -101,8 +93,6 @@ export function GameProvider(props: { children: ReactNode }) {
   };
 
   const actions: GameActions = {
-    setModalOpen,
-    setActiveSlot,
     setSearchQuery,
     setActiveTab,
     selectPokemon: selectPokemonFn,

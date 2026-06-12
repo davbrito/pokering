@@ -10,6 +10,8 @@ import { getArtworkUrl, getSpriteUrl } from "../api";
 import { STAT_ABBR, TYPE_TAB_COLORS, TYPES } from "../data";
 import { useGame, useGameActions } from "../store";
 
+export const pickerDialogHandle = Dialog.createHandle<{ slot: number }>();
+
 function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | null; onSelect: (id: number) => void }) {
   const { data: previewData, isLoading: loading } = useQuery({
     ...pokemonRetrieveOptions({ path: { id: String(pokemonId) } }),
@@ -91,6 +93,26 @@ function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | null; onS
 }
 
 export function PokemonModal() {
+  return (
+    <Dialog.Root handle={pickerDialogHandle}>
+      {({ payload }) => (
+        <Dialog.Portal>
+          <Dialog.Backdrop className="modal-overlay" />
+          <Dialog.Popup className="modal">
+            <DialogContent slot={payload?.slot} />
+          </Dialog.Popup>
+        </Dialog.Portal>
+      )}
+    </Dialog.Root>
+  );
+}
+
+function getIdFromUrl(url: string): number {
+  const parts = url.split("/").filter(Boolean);
+  return parseInt(parts[parts.length - 1], 10);
+}
+
+function DialogContent({ slot = 0 }: { slot: number | undefined }) {
   const state = useGame();
   const actions = useGameActions();
   const [hoveredId, setHoveredId] = useState<number | null>(null);
@@ -115,8 +137,8 @@ export function PokemonModal() {
   }));
 
   const handleSelect = (id: number) => {
-    actions.selectPokemon(state.activeSlot, id);
-    actions.setModalOpen(false);
+    actions.selectPokemon(slot, id);
+    pickerDialogHandle.close();
   };
 
   const filteredList = (() => {
@@ -132,76 +154,66 @@ export function PokemonModal() {
   })();
 
   return (
-    <Dialog.Root open={state.modalOpen} onOpenChange={(open) => actions.setModalOpen(open)}>
-      <Dialog.Portal>
-        <Dialog.Backdrop className="modal-overlay" />
-        <Dialog.Popup className="modal">
-          <div className="modal-head">
-            <input
-              className="modal-search"
-              id="modal-search"
-              type="text"
-              placeholder="Buscar por nombre o número..."
-              value={state.searchQuery}
-              onChange={(e) => actions.setSearchQuery(e.currentTarget.value)}
-            />
-            <Dialog.Close className="modal-close">✕</Dialog.Close>
-          </div>
+    <>
+      <div className="modal-head">
+        <input
+          className="modal-search"
+          id="modal-search"
+          type="text"
+          placeholder="Buscar por nombre o número..."
+          value={state.searchQuery}
+          onChange={(e) => actions.setSearchQuery(e.currentTarget.value)}
+        />
+        <Dialog.Close className="modal-close">✕</Dialog.Close>
+      </div>
 
-          <div className="tabs-bar" id="tabs-bar">
-            {TYPES.map((t) => {
-              const c = TYPE_TAB_COLORS[t] || TYPE_TAB_COLORS.normal;
-              return (
+      <div className="tabs-bar" id="tabs-bar">
+        {TYPES.map((t) => {
+          const c = TYPE_TAB_COLORS[t] || TYPE_TAB_COLORS.normal;
+          return (
+            <button
+              key={t}
+              type="button"
+              className={`tab-btn ${state.activeTab === t ? "active" : ""}`}
+              style={{
+                background: c.bg,
+                color: c.color,
+                borderColor: c.border,
+              }}
+              onClick={() => actions.setActiveTab(t)}
+            >
+              {t === "all" ? "Todos" : t}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="modal-body">
+        <div className="poke-grid-wrap">
+          {filteredList.length > 0 ? (
+            <div className="poke-grid" id="poke-grid">
+              {filteredList.slice(0, 200).map((p) => (
                 <button
-                  key={t}
+                  key={p.id}
                   type="button"
-                  className={`tab-btn${state.activeTab === t ? "active" : ""}`}
-                  style={{
-                    background: c.bg,
-                    color: c.color,
-                    borderColor: c.border,
-                  }}
-                  onClick={() => actions.setActiveTab(t)}
+                  className="poke-thumb"
+                  onClick={() => handleSelect(p.id)}
+                  onMouseEnter={() => setHoveredId(p.id)}
                 >
-                  {t === "all" ? "Todos" : t}
+                  <img src={getSpriteUrl(p.id)} alt={p.name} loading="lazy" className="select-none" />
+                  <div className="pt-name">{p.name}</div>
+                  <div className="pt-num">#{String(p.id).padStart(3, "0")}</div>
                 </button>
-              );
-            })}
-          </div>
-
-          <div className="modal-body">
-            <div className="poke-grid-wrap">
-              {filteredList.length > 0 ? (
-                <div className="poke-grid" id="poke-grid">
-                  {filteredList.slice(0, 200).map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className="poke-thumb"
-                      onClick={() => handleSelect(p.id)}
-                      onMouseEnter={() => setHoveredId(p.id)}
-                    >
-                      <img src={getSpriteUrl(p.id)} alt={p.name} loading="lazy" className="select-none" />
-                      <div className="pt-name">{p.name}</div>
-                      <div className="pt-num">#{String(p.id).padStart(3, "0")}</div>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="no-results" style={{ gridColumn: "1/-1" }}>
-                  No se encontraron Pokémon
-                </div>
-              )}
+              ))}
             </div>
-            <PokemonPreview pokemonId={hoveredId} onSelect={handleSelect} />
-          </div>
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
+          ) : (
+            <div className="no-results" style={{ gridColumn: "1/-1" }}>
+              No se encontraron Pokémon
+            </div>
+          )}
+        </div>
+        <PokemonPreview pokemonId={hoveredId} onSelect={handleSelect} />
+      </div>
+    </>
   );
-}
-
-function getIdFromUrl(url: string): number {
-  const parts = url.split("/").filter(Boolean);
-  return parseInt(parts[parts.length - 1], 10);
 }

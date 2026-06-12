@@ -1,8 +1,10 @@
+import { Dialog } from "@base-ui/react";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { STAT_ABBR } from "../data";
-import { useGame, useGameActions } from "../store";
+import { useGame } from "../store";
+import { pickerDialogHandle } from "./PokemonModal";
 
 function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
   const d = pokemon;
@@ -51,20 +53,14 @@ function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
 
 export function PokemonSlot({ index, label }: { index: number; label: string }) {
   const { chosen, chosenLoading } = useGame();
-  const { setActiveSlot, setModalOpen } = useGameActions();
 
   const pokemon = chosen[index];
   const loading = chosenLoading[index];
 
-  const openForSlot = () => {
-    setActiveSlot(index);
-    setModalOpen(true);
-  };
-
   return (
     <div className={`slot${pokemon ? "filled" : ""}`} id={`slot${index}`}>
       <div className="slot-lbl">{label}</div>
-      <button type="button" className="pick-btn" onClick={openForSlot}>
+      <Dialog.Trigger type="button" className="pick-btn" handle={pickerDialogHandle} payload={{ slot: index }}>
         {!loading && pokemon ? (
           <>
             <span className="pb-icon">✔</span> {pokemon.name} — cambiar
@@ -76,7 +72,7 @@ export function PokemonSlot({ index, label }: { index: number; label: string }) 
             <span className="pb-icon">⊕</span> Seleccionar Pokémon
           </>
         )}
-      </button>
+      </Dialog.Trigger>
       {pokemon && <PokemonCard pokemon={pokemon} />}
     </div>
   );

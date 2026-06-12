@@ -299,8 +299,8 @@ export function BattleStage() {
     : "#000 · BST 0";
 
   return (
-    <div className={`stage-container${phase === "battle" ? "show" : ""}`} id="stageContainer">
-      <div className={`stage-viewport${shakeScreen ? "screen-shake-anim" : ""}`} id="stageViewport" ref={viewportRef}>
+    <div className={`stage-container ${phase === "battle" ? "show" : ""}`} id="stageContainer">
+      <div className={`stage-viewport ${shakeScreen ? "screen-shake-anim" : ""}`} id="stageViewport" ref={viewportRef}>
         <div className="stage-huds">
           <div className="hud-box" id="hud-0">
             <div className="hud-name">{p1Name}</div>
@@ -329,7 +329,7 @@ export function BattleStage() {
             <div className="fighter-platform" />
             {p1Data && (
               <img
-                className={`fighter-sprite${animClass0 ? ` ${animClass0}` : ""}`}
+                className={`fighter-sprite ${animClass0 ? ` ${animClass0}` : ""}`}
                 src={getArtworkUrl(p1Data)}
                 alt="Fighter 1"
                 ref={imgRef0}
