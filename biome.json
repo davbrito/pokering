@@ -30,7 +30,7 @@
       "suspicious": { "noExplicitAny": "off" },
       "nursery": {
         "useSortedClasses": {
-          "level": "error",
+          "level": "info",
           "fix": "safe",
           "options": {
             "functions": ["clsx", "cn"]

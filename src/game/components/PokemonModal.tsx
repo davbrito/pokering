@@ -284,16 +284,27 @@ function TypesTabs({ value, onValueChange }: { value: string; onValueChange: (v:
         return (
           <Toggle
             key={t.name}
-            className={cn("tab-btn inline-flex items-center gap-2 rounded-full p-3 pr-4", value === t.name && "active")}
+            className={cn(
+              "tab-btn inline-flex items-center gap-2 rounded-full p-1 pr-4",
+              "outline-accent outline-offset-3 focus-visible:outline-3",
+              value === t.name && "active",
+              t.name === "all" && "px-4",
+            )}
             style={{
               background: c.bg,
               color: c.color,
               borderColor: c.border,
+              outlineColor: c.border,
             }}
             value={t.name}
           >
             {spriteUrl && (
-              <img src={spriteUrl} alt={t.name} className="size-5 rounded-md object-contain" style={{ display: "block" }} />
+              <img
+                src={spriteUrl}
+                alt={t.name}
+                className="size-5 rounded-md object-contain"
+                style={{ display: "block" }}
+              />
             )}
             {t.name === "all" ? "Todos" : t.name}
           </Toggle>

@@ -30,6 +30,9 @@
   --color-gold: var(--gold);
   --color-blue: var(--blue);
   --color-green: var(--green);
+  --font-display: var(--font-d);
+  --font-body: var(--font-b);
+  --font-mono: var(--font-m);
 }
 * {
   box-sizing: border-box;

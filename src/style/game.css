@@ -1104,8 +1104,8 @@ h1 em {
   display: block;
   margin: 0 auto;
   filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
-  transition: transform 0.3s;
 }
+
 .prev-art:hover {
   transform: scale(1.06);
 }
@@ -1431,9 +1431,10 @@ footer {
   font-family: var(--font-m);
   letter-spacing: 0.05em;
   margin-top: 1rem;
-}
-footer span {
-  color: var(--accent);
+
+  & :where(span) {
+    color: var(--accent);
+  }
 }
 
 @media (max-width: 640px) {
