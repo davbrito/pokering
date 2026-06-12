@@ -1,0 +1,308 @@
+export const STAT_ABBR: Record<string, string> = {
+  hp: "HP",
+  attack: "ATK",
+  defense: "DEF",
+  "special-attack": "SpA",
+  "special-defense": "SpD",
+  speed: "SPD",
+};
+
+export const TYPES = [
+  "all",
+  "normal",
+  "fire",
+  "water",
+  "grass",
+  "electric",
+  "ice",
+  "fighting",
+  "poison",
+  "ground",
+  "flying",
+  "psychic",
+  "bug",
+  "rock",
+  "ghost",
+  "dragon",
+  "dark",
+  "steel",
+  "fairy",
+] as const;
+
+export type PokemonType = (typeof TYPES)[number];
+
+export const TYPE_TAB_COLORS: Record<
+  PokemonType,
+  { bg: string; color: string; border: string }
+> = {
+  all: {
+    bg: "rgba(255,255,255,.1)",
+    color: "#e0e0f0",
+    border: "rgba(255,255,255,.25)",
+  },
+  fire: {
+    bg: "rgba(214,90,48,.25)",
+    color: "#ff8c5a",
+    border: "rgba(214,90,48,.5)",
+  },
+  water: {
+    bg: "rgba(58,130,220,.25)",
+    color: "#6db4ff",
+    border: "rgba(58,130,220,.5)",
+  },
+  grass: {
+    bg: "rgba(90,170,50,.25)",
+    color: "#7ed957",
+    border: "rgba(90,170,50,.5)",
+  },
+  electric: {
+    bg: "rgba(240,200,0,.2)",
+    color: "#ffd52e",
+    border: "rgba(240,200,0,.4)",
+  },
+  ice: {
+    bg: "rgba(60,190,200,.25)",
+    color: "#5ae0e8",
+    border: "rgba(60,190,200,.5)",
+  },
+  fighting: {
+    bg: "rgba(180,60,40,.25)",
+    color: "#ff8060",
+    border: "rgba(180,60,40,.5)",
+  },
+  poison: {
+    bg: "rgba(120,60,180,.25)",
+    color: "#c080ff",
+    border: "rgba(120,60,180,.5)",
+  },
+  ground: {
+    bg: "rgba(180,150,60,.25)",
+    color: "#e0c060",
+    border: "rgba(180,150,60,.5)",
+  },
+  flying: {
+    bg: "rgba(100,160,220,.25)",
+    color: "#90ccff",
+    border: "rgba(100,160,220,.5)",
+  },
+  psychic: {
+    bg: "rgba(200,60,120,.25)",
+    color: "#ff7eb5",
+    border: "rgba(200,60,120,.5)",
+  },
+  bug: {
+    bg: "rgba(100,160,60,.25)",
+    color: "#a0d060",
+    border: "rgba(100,160,60,.5)",
+  },
+  rock: {
+    bg: "rgba(150,130,80,.25)",
+    color: "#c8b870",
+    border: "rgba(150,130,80,.5)",
+  },
+  ghost: {
+    bg: "rgba(60,60,120,.35)",
+    color: "#9090d8",
+    border: "rgba(60,60,120,.6)",
+  },
+  dragon: {
+    bg: "rgba(80,60,180,.25)",
+    color: "#9f90ff",
+    border: "rgba(80,60,180,.5)",
+  },
+  dark: {
+    bg: "rgba(60,50,50,.4)",
+    color: "#c0b0b0",
+    border: "rgba(120,100,100,.5)",
+  },
+  steel: {
+    bg: "rgba(150,150,180,.25)",
+    color: "#c0c0d8",
+    border: "rgba(150,150,180,.5)",
+  },
+  fairy: {
+    bg: "rgba(220,80,140,.2)",
+    color: "#ff99c8",
+    border: "rgba(220,80,140,.4)",
+  },
+  normal: {
+    bg: "rgba(130,130,130,.2)",
+    color: "#c0c0c0",
+    border: "rgba(130,130,130,.45)",
+  },
+};
+
+// TABLA DE EFECTIVIDAD COMPLETA (Pokémon Oficial)
+export const TYPE_CHART: Record<string, Record<string, number>> = {
+  normal: { rock: 0.5, ghost: 0, steel: 0.5 },
+  fire: {
+    fire: 0.5,
+    water: 0.5,
+    grass: 2,
+    ice: 2,
+    bug: 2,
+    rock: 0.5,
+    dragon: 0.5,
+    steel: 2,
+  },
+  water: {
+    fire: 2,
+    water: 0.5,
+    grass: 0.5,
+    ground: 2,
+    rock: 2,
+    dragon: 0.5,
+  },
+  grass: {
+    fire: 0.5,
+    water: 2,
+    grass: 0.5,
+    poison: 0.5,
+    ground: 2,
+    flying: 0.5,
+    bug: 0.5,
+    rock: 2,
+    dragon: 0.5,
+    steel: 0.5,
+  },
+  electric: {
+    water: 2,
+    grass: 0.5,
+    electric: 0.5,
+    ground: 0,
+    flying: 2,
+    dragon: 0.5,
+  },
+  ice: {
+    fire: 0.5,
+    water: 0.5,
+    grass: 2,
+    ice: 0.5,
+    ground: 2,
+    flying: 2,
+    dragon: 2,
+    steel: 0.5,
+  },
+  fighting: {
+    normal: 2,
+    ice: 2,
+    poison: 0.5,
+    flying: 0.5,
+    psychic: 0.5,
+    bug: 0.5,
+    rock: 2,
+    ghost: 0,
+    dark: 2,
+    steel: 2,
+    fairy: 0.5,
+  },
+  poison: {
+    grass: 2,
+    poison: 0.5,
+    ground: 0.5,
+    rock: 0.5,
+    ghost: 0.5,
+    steel: 0,
+    fairy: 2,
+  },
+  ground: {
+    fire: 2,
+    grass: 0.5,
+    electric: 2,
+    poison: 2,
+    flying: 0,
+    bug: 0.5,
+    rock: 2,
+    steel: 2,
+  },
+  flying: {
+    grass: 2,
+    electric: 0.5,
+    fighting: 2,
+    bug: 2,
+    rock: 0.5,
+    steel: 0.5,
+  },
+  psychic: { fighting: 2, poison: 2, psychic: 0.5, dark: 0, steel: 0.5 },
+  bug: {
+    fire: 0.5,
+    grass: 2,
+    fighting: 0.5,
+    poison: 0.5,
+    flying: 0.5,
+    psychic: 2,
+    ghost: 0.5,
+    dark: 2,
+    steel: 0.5,
+    fairy: 0.5,
+  },
+  rock: {
+    fire: 2,
+    ice: 2,
+    fighting: 0.5,
+    ground: 0.5,
+    flying: 2,
+    bug: 2,
+    steel: 0.5,
+  },
+  ghost: { normal: 0, psychic: 2, ghost: 2, dark: 0.5 },
+  dragon: { dragon: 2, steel: 0.5, fairy: 0 },
+  dark: { fighting: 0.5, psychic: 2, ghost: 2, dark: 0.5, fairy: 0.5 },
+  steel: {
+    fire: 0.5,
+    water: 0.5,
+    electric: 0.5,
+    ice: 2,
+    rock: 2,
+    steel: 0.5,
+    fairy: 2,
+  },
+  fairy: {
+    fire: 0.5,
+    fighting: 2,
+    poison: 0.5,
+    dragon: 2,
+    dark: 2,
+    steel: 0.5,
+  },
+};
+
+export interface MoveOptions {
+  physical: string;
+  special: string;
+  power: number;
+}
+
+// MOVIMIENTOS TEMÁTICOS SEGÚN EL TIPO DEL POKÉMON
+export const TYPE_MOVES: Record<string, MoveOptions> = {
+  normal: { physical: "Golpe Cuerpo", special: "Triataque", power: 85 },
+  fire: { physical: "Envite Ígneo", special: "Lanzallamas", power: 90 },
+  water: { physical: "Cascada", special: "Hidrobomba", power: 90 },
+  grass: { physical: "Latigazo", special: "Giga Drenado", power: 80 },
+  electric: { physical: "Puño Trueno", special: "Rayo", power: 80 },
+  ice: { physical: "Chuzos", special: "Rayo Hielo", power: 85 },
+  fighting: {
+    physical: "A Bocajarro",
+    special: "Onda Certera",
+    power: 100,
+  },
+  poison: { physical: "Puya Nociva", special: "Bomba Lodo", power: 80 },
+  ground: { physical: "Terremoto", special: "Tierra Viva", power: 95 },
+  flying: { physical: "Pájaro Osado", special: "Tornado", power: 80 },
+  psychic: { physical: "Cabezazo Zen", special: "Psíquico", power: 85 },
+  bug: { physical: "Tijera X", special: "Zumbido", power: 80 },
+  rock: { physical: "Afilagarras", special: "Poder Pasado", power: 75 },
+  ghost: { physical: "Garra Umbría", special: "Bola Sombra", power: 80 },
+  dragon: {
+    physical: "Garra Dragón",
+    special: "Pulso Dragón",
+    power: 85,
+  },
+  dark: { physical: "Tajo Umbrío", special: "Pulso Umbrío", power: 80 },
+  steel: {
+    physical: "Cabeza de Hierro",
+    special: "Foco Resplandor",
+    power: 80,
+  },
+  fairy: { physical: "Carantoña", special: "Fuerza Lunar", power: 90 },
+};

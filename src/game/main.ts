@@ -301,8 +301,8 @@ let allPokemon: Pokemon[] = [],
   activeSlot = 0,
   activeTab = "all",
   searchQ = "";
-let chosen: (Pokemon | null)[] = [null, null];
-let previewCache: Record<number, Pokemon> = {};
+const chosen: (Pokemon | null)[] = [null, null];
+const previewCache: Record<number, Pokemon> = {};
 
 // Variables para el motor cinemático de combate
 let battleSteps: any[] = [];
@@ -310,7 +310,7 @@ let currentStepIdx = 0;
 let playbackTimeout: any = null;
 let playbackSpeed = 1; // Multiplicador (1x, 2x, 4x)
 let isPaused = false;
-let maxHealths = [100, 100];
+const maxHealths = [100, 100];
 
 async function init() {
   const bar = document.getElementById("tabs-bar")!;
@@ -774,7 +774,7 @@ function generateBattleSteps(p1, p2, p1s, p2s, t1, t2) {
       const offVal = isPhys ? act.atkStats.atk : act.atkStats.spa;
       const defVal = isPhys ? act.defStats.def : act.defStats.spd;
 
-      let baseDamage =
+      const baseDamage =
         (((2 * 50) / 5 + 2) * activeBestMove.power * (offVal / defVal)) / 50 +
         2;
       const eff = activeBestMove.eff;

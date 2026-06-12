@@ -1,14 +1,68 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import gameScript from "../game/main.ts?url";
+import { onMount, Show } from "solid-js";
+import {
+  calcHpStat,
+  generateBattleSteps,
+  getStatsObject,
+} from "../game/combat";
+import { BattleResult } from "../game/components/BattleResult";
+import { BattleStage } from "../game/components/BattleStage";
+import { PokemonModal } from "../game/components/PokemonModal";
+import { PokemonSlot } from "../game/components/PokemonSlot";
+import {
+  battlePhase,
+  bothReady,
+  chosen,
+  loadAllPokemon,
+  setBattlePhase,
+  setBattleSteps,
+  setCurrentHps,
+  setCurrentStepIdx,
+  setIsPaused,
+  setMaxHealths,
+} from "../game/store";
 
 export const Route = createFileRoute("/")({
   component: Home,
-  scripts() {
-    return [{ src: gameScript }];
-  },
 });
 
 function Home() {
+  onMount(() => {
+    loadAllPokemon();
+  });
+
+  const startBattle = () => {
+    const poke1 = chosen()[0];
+    const poke2 = chosen()[1];
+    if (!poke1 || !poke2) return;
+
+    const s1 = getStatsObject(poke1);
+    const s2 = getStatsObject(poke2);
+    const mh1 = calcHpStat(s1.hp);
+    const mh2 = calcHpStat(s2.hp);
+
+    setMaxHealths([mh1, mh2]);
+    setCurrentHps([mh1, mh2]);
+
+    const steps = generateBattleSteps(poke1, poke2, s1, s2, mh1, mh2);
+    setBattleSteps(steps);
+    setCurrentStepIdx(0);
+    setIsPaused(false);
+
+    setBattlePhase("battle");
+
+    // Scroll to stage
+    setTimeout(() => {
+      const stage = document.getElementById("stageContainer");
+      stage?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  };
+
+  // Reset handler
+  const goBackToSelection = () => {
+    setBattlePhase("selection");
+  };
+
   return (
     <>
       <div class="wrap">
@@ -24,190 +78,59 @@ function Home() {
         </header>
 
         {/* ARENA SELECTION CONTAINER */}
-        <div class="arena-grid" id="arenaGrid">
-          <div class="slot" id="slot0">
-            <div class="slot-lbl">Luchador 1</div>
-            <button
-              type="button"
-              class="pick-btn"
-              onClick={(event) => openModal(0)}
-            >
-              <span class="pb-icon">⊕</span>
-              Seleccionar Pokémon
-            </button>
-            <div class="poke-card" id="card0"></div>
+        <Show
+          when={battlePhase() === "selection"}
+          fallback={
+            <div class="battle-section" id="battleSection">
+              <button
+                class="battle-btn"
+                type="button"
+                onClick={goBackToSelection}
+              >
+                ⚔ Nueva batalla
+              </button>
+            </div>
+          }
+        >
+          <div class="arena-grid" id="arenaGrid">
+            <PokemonSlot index={0} label="Luchador 1" />
+            <div class="vs-col">
+              <div class="vs-line"></div>
+              <div class="vs-txt">VS</div>
+              <div class="vs-line"></div>
+            </div>
+            <PokemonSlot index={1} label="Luchador 2" />
           </div>
-          <div class="vs-col">
-            <div class="vs-line"></div>
-            <div class="vs-txt">VS</div>
-            <div class="vs-line"></div>
-          </div>
-          <div class="slot" id="slot1">
-            <div class="slot-lbl">Luchador 2</div>
-            <button
-              type="button"
-              class="pick-btn"
-              onClick={(event) => openModal(1)}
-            >
-              <span class="pb-icon">⊕</span>
-              Seleccionar Pokémon
-            </button>
-            <div class="poke-card" id="card1"></div>
-          </div>
-        </div>
 
-        <div class="battle-section" id="battleSection">
-          <button
-            class="battle-btn"
-            id="battleBtn"
-            disabled
-            type="button"
-            onClick={(event) => initiateBattleSequence()}
-          >
-            ⚔ Comenzar batalla
-          </button>
-        </div>
+          <div class="battle-section" id="battleSection">
+            <button
+              class="battle-btn"
+              id="battleBtn"
+              disabled={!bothReady()}
+              type="button"
+              onClick={startBattle}
+            >
+              ⚔ Comenzar batalla
+            </button>
+          </div>
+        </Show>
 
         {/* STAGE DE COMBATE VISUAL */}
-        <div class="stage-container" id="stageContainer">
-          <div class="stage-viewport" id="stageViewport">
-            {/* HUDS */}
-            <div class="stage-huds">
-              <div class="hud-box" id="hud-0">
-                <div class="hud-name" id="hud-name-0">
-                  Luchador 1
-                </div>
-                <div class="hud-meta" id="hud-meta-0">
-                  #000 · BST 0
-                </div>
-                <div class="hud-hp-wrap">
-                  <div class="hud-hp-fill" id="hp-bar-0"></div>
-                </div>
-                <div class="hud-hp-text" id="hp-txt-0">
-                  100 / 100 PS
-                </div>
-              </div>
-
-              <div class="hud-box" id="hud-1">
-                <div class="hud-name" id="hud-name-1">
-                  Luchador 2
-                </div>
-                <div class="hud-meta" id="hud-meta-1">
-                  #000 · BST 0
-                </div>
-                <div class="hud-hp-wrap">
-                  <div class="hud-hp-fill" id="hp-bar-1"></div>
-                </div>
-                <div class="hud-hp-text" id="hp-txt-1">
-                  100 / 100 PS
-                </div>
-              </div>
-            </div>
-
-            {/* COMBATIENTES */}
-            <div class="stage-grid" id="stageGrid">
-              <div class="fighter-wrapper p1" id="fighter-wrapper-0">
-                <div class="fighter-platform"></div>
-                <img
-                  class="fighter-sprite"
-                  id="fighter-img-0"
-                  src=""
-                  alt="Fighter 1"
-                />
-              </div>
-
-              <div class="fighter-wrapper p2" id="fighter-wrapper-1">
-                <div class="fighter-platform"></div>
-                <img
-                  class="fighter-sprite"
-                  id="fighter-img-1"
-                  src=""
-                  alt="Fighter 2"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* PIE DEL ESTADIO CONTROLES */}
-          <div class="stage-footer">
-            <div class="stage-dialog" id="stageDialog">
-              Preparando la arena de combate...
-            </div>
-            <div class="stage-controls">
-              <button
-                type="button"
-                class="ctrl-btn"
-                id="btn-pause"
-                onClick={(event) => togglePlayback()}
-              >
-                Pausa
-              </button>
-              <button
-                type="button"
-                class="ctrl-btn"
-                id="btn-speed"
-                onClick={(event) => toggleSpeed()}
-              >
-                Velocidad 1x
-              </button>
-              <button
-                type="button"
-                class="ctrl-btn"
-                id="btn-skip"
-                onClick={(event) => skipCinematics()}
-              >
-                Saltar
-              </button>
-            </div>
-          </div>
-        </div>
+        <BattleStage />
 
         {/* RESULTADOS */}
-        <div id="result-wrap">
-          <div id="result-inner"></div>
-        </div>
+        <BattleResult />
       </div>
 
       <footer>
         <div class="wrap">
-          Datos por <span>PokéAPI</span> · Motor de Combate por
+          Datos por <span>PokéAPI</span> · Motor de Combate por{" "}
           <span>PokéArena JS</span>· No afiliado con Nintendo o Game Freak
         </div>
       </footer>
 
       {/* MODAL */}
-      <div
-        class="modal-overlay"
-        id="overlay"
-        onClick={(event) => handleOverlayClick(event)}
-      >
-        <div class="modal">
-          <div class="modal-head">
-            <input
-              class="modal-search"
-              id="modal-search"
-              type="text"
-              placeholder="Buscar por nombre o número..."
-              onInput={filterGrid}
-            />
-            <button type="button" class="modal-close" onClick={closeModal}>
-              ✕
-            </button>
-          </div>
-          <div class="tabs-bar" id="tabs-bar"></div>
-          <div class="modal-body">
-            <div class="poke-grid-wrap">
-              <div class="poke-grid" id="poke-grid"></div>
-            </div>
-            <div class="preview-panel" id="preview-panel">
-              <div class="preview-empty">
-                <div class="pe-icon">👆</div>
-                <div>Pasa el cursor sobre un Pokémon para verlo</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PokemonModal />
     </>
   );
 }

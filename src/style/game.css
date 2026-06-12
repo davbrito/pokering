@@ -181,8 +181,10 @@ h1 em {
   pointer-events: none;
 }
 .poke-art {
+  display: block;
   width: 130px;
   height: 130px;
+  margin: 0 auto;
   image-rendering: pixelated;
   position: relative;
   z-index: 1;
@@ -854,6 +856,14 @@ h1 em {
   opacity: 1;
   pointer-events: all;
 }
+.modal-overlay-bg {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 0;
+}
 .modal {
   background: #141420;
   border: 0.5px solid var(--border2);
@@ -867,6 +877,8 @@ h1 em {
   transform: scale(0.95) translateY(10px);
   transition: transform 0.25s ease;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
+  position: relative;
+  z-index: 1;
 }
 .modal-overlay.open .modal {
   transform: scale(1) translateY(0);
@@ -1004,9 +1016,13 @@ h1 em {
   transform: translateY(-2px);
 }
 .poke-thumb img {
-  width: 68px;
-  height: 68px;
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto;
   image-rendering: pixelated;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
 }
 .poke-thumb .pt-name {
   font-size: 11px;
