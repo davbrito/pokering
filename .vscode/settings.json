@@ -32,5 +32,6 @@
   "editor.codeActionsOnSave": {
     "source.organizeImports.biome": "explicit",
     "source.fixAll.biome": "explicit"
-  }
+  },
+  "npm.packageManager": "pnpm"
 }
