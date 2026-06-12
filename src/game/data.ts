@@ -263,9 +263,3 @@ export const TYPE_CHART: Record<string, Record<string, number>> = {
     steel: 0.5,
   },
 };
-
-export interface MoveOptions {
-  physical: string;
-  special: string;
-  power: number;
-}

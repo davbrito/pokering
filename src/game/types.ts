@@ -37,7 +37,3 @@ export interface BattleStep {
   faintedIdx?: number;
   winnerIdx?: number;
 }
-
-export interface TypeData {
-  pokemon: Array<{ pokemon: { name: string; url: string } }>;
-}
