@@ -44,13 +44,8 @@ export function GameProvider(props: { children: ReactNode }) {
   const [activeSlot, setActiveSlot] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-  const [chosenIds, setChosenIds] = useState<[number | null, number | null]>([
-    null,
-    null,
-  ]);
-  const [battlePhase, setBattlePhase] = useState<
-    "selection" | "battle" | "result"
-  >("selection");
+  const [chosenIds, setChosenIds] = useState<[number | null, number | null]>([null, null]);
+  const [battlePhase, setBattlePhase] = useState<"selection" | "battle" | "result">("selection");
   const [battleSteps, setBattleSteps] = useState<BattleStep[]>([]);
   const [currentStepIdx, setCurrentStepIdx] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -68,14 +63,8 @@ export function GameProvider(props: { children: ReactNode }) {
     enabled: chosenBId !== null,
   });
 
-  const chosen: [PokemonDetail | null, PokemonDetail | null] = [
-    chosenAQuery.data || null,
-    chosenBQuery.data || null,
-  ];
-  const chosenLoading: [boolean, boolean] = [
-    chosenAQuery.isLoading,
-    chosenBQuery.isLoading,
-  ];
+  const chosen: [PokemonDetail | null, PokemonDetail | null] = [chosenAQuery.data || null, chosenBQuery.data || null];
+  const chosenLoading: [boolean, boolean] = [chosenAQuery.isLoading, chosenBQuery.isLoading];
 
   const selectPokemonFn = async (slot: number, id: number) => {
     setChosenIds((prev) => {
@@ -129,9 +118,7 @@ export function GameProvider(props: { children: ReactNode }) {
 
   return (
     <GameContext.Provider value={state}>
-      <GameActionsContext.Provider value={actions}>
-        {props.children}
-      </GameActionsContext.Provider>
+      <GameActionsContext.Provider value={actions}>{props.children}</GameActionsContext.Provider>
     </GameContext.Provider>
   );
 }

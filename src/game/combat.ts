@@ -3,16 +3,10 @@ import { TYPE_CHART, TYPE_MOVES } from "./data";
 import type { BattleStep, MoveResult, PokemonStats } from "./types";
 
 // Retorna multiplicador de efectividad acumulado
-export function getEffectiveness(
-  attackerType: string,
-  defenderTypes: string[],
-): number {
+export function getEffectiveness(attackerType: string, defenderTypes: string[]): number {
   let eff = 1;
   for (const defType of defenderTypes) {
-    if (
-      TYPE_CHART[attackerType] &&
-      TYPE_CHART[attackerType][defType] !== undefined
-    ) {
+    if (TYPE_CHART[attackerType] && TYPE_CHART[attackerType][defType] !== undefined) {
       eff *= TYPE_CHART[attackerType][defType];
     }
   }
@@ -20,8 +14,7 @@ export function getEffectiveness(
 }
 
 export function getStatsObject(p: PokemonDetail): PokemonStats {
-  const gs = (name: string) =>
-    p.stats.find((s) => s.stat.name === name)?.base_stat || 0;
+  const gs = (name: string) => p.stats.find((s) => s.stat.name === name)?.base_stat || 0;
   return {
     hp: gs("hp"),
     atk: gs("attack"),
@@ -50,12 +43,8 @@ export function selectBestMove(
     const moveName = moveOptions[category];
     const movePower = moveOptions.power;
 
-    const offensiveStat = isPhysicalAttacker
-      ? attackerStats.atk
-      : attackerStats.spa;
-    const defensiveStat = isPhysicalAttacker
-      ? defenderStats.def
-      : defenderStats.spd;
+    const offensiveStat = isPhysicalAttacker ? attackerStats.atk : attackerStats.spa;
+    const defensiveStat = isPhysicalAttacker ? defenderStats.def : defenderStats.spd;
 
     const typeEff = getEffectiveness(type, defenderTypes);
     const expectedDmg = (offensiveStat / defensiveStat) * movePower * typeEff;
@@ -174,28 +163,19 @@ export function generateBattleSteps(
       const act = order[i];
       if (hp1 <= 0 || hp2 <= 0) break;
 
-      const activeBestMove = selectBestMove(
-        act.atk,
-        act.atkStats,
-        act.defTypes,
-        act.defStats,
-      );
+      const activeBestMove = selectBestMove(act.atk, act.atkStats, act.defTypes, act.defStats);
       const isPhys = activeBestMove.category === "physical";
       const offVal = isPhys ? act.atkStats.atk : act.atkStats.spa;
       const defVal = isPhys ? act.defStats.def : act.defStats.spd;
 
-      const baseDamage =
-        (((2 * 50) / 5 + 2) * activeBestMove.power * (offVal / defVal)) / 50 +
-        2;
+      const baseDamage = (((2 * 50) / 5 + 2) * activeBestMove.power * (offVal / defVal)) / 50 + 2;
       const eff = activeBestMove.eff;
 
       const isCrit = Math.random() < 0.12;
       const critMultiplier = isCrit ? 1.5 : 1;
 
       const randomMultiplier = 0.85 + Math.random() * 0.15;
-      let finalDamage = Math.floor(
-        baseDamage * eff * critMultiplier * randomMultiplier,
-      );
+      let finalDamage = Math.floor(baseDamage * eff * critMultiplier * randomMultiplier);
       if (finalDamage <= 0 && eff > 0) finalDamage = 1;
 
       const preHp: [number, number] = [hp1, hp2];
@@ -208,8 +188,7 @@ export function generateBattleSteps(
 
       let msg = `¡<strong>${act.atk.name.toUpperCase()}</strong> usó <span>${activeBestMove.name.toUpperCase()}</span>! `;
       if (isCrit) msg += `<em>¡Impacto Crítico!</em> 💥 `;
-      if (eff > 1.5)
-        msg += `<span className="super-eff">¡Es súper eficaz!</span> `;
+      if (eff > 1.5) msg += `<span className="super-eff">¡Es súper eficaz!</span> `;
       if (eff < 0.6 && eff > 0) msg += `<span>No es muy eficaz...</span> `;
       if (eff === 0) msg += `<span>¡No le afecta en absoluto!</span> `;
 

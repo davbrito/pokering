@@ -30,25 +30,15 @@ function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
       </div>
       <div className="stats">
         {d.stats.map((s) => {
-          const abbr =
-            STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
+          const abbr = STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
           const pct = Math.round(Math.min((s.base_stat / 180) * 100, 100));
           const col =
-            s.base_stat >= 100
-              ? "#4ade80"
-              : s.base_stat >= 70
-                ? "#60d8a0"
-                : s.base_stat >= 45
-                  ? "#f5c842"
-                  : "#e63e3e";
+            s.base_stat >= 100 ? "#4ade80" : s.base_stat >= 70 ? "#60d8a0" : s.base_stat >= 45 ? "#f5c842" : "#e63e3e";
           return (
             <div key={s.stat.name} className="srow">
               <span className="sname">{abbr}</span>
               <div className="strack">
-                <div
-                  className="sfill"
-                  style={{ width: `${pct}%`, background: col }}
-                />
+                <div className="sfill" style={{ width: `${pct}%`, background: col }} />
               </div>
               <span className="sval">{s.base_stat}</span>
             </div>
@@ -59,13 +49,7 @@ function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
   );
 }
 
-export function PokemonSlot({
-  index,
-  label,
-}: {
-  index: number;
-  label: string;
-}) {
+export function PokemonSlot({ index, label }: { index: number; label: string }) {
   const { chosen, chosenLoading } = useGame();
   const { setActiveSlot, setModalOpen } = useGameActions();
 
@@ -78,7 +62,7 @@ export function PokemonSlot({
   };
 
   return (
-    <div className={`slot${pokemon ? " filled" : ""}`} id={`slot${index}`}>
+    <div className={`slot${pokemon ? "filled" : ""}`} id={`slot${index}`}>
       <div className="slot-lbl">{label}</div>
       <button type="button" className="pick-btn" onClick={openForSlot}>
         {!loading && pokemon ? (

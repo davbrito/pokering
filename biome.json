@@ -22,12 +22,22 @@
   },
   "linter": {
     "enabled": true,
+    "includes": ["!src/api/pokeapi/**"],
     "rules": {
       "recommended": true,
       "style": {
         "noNonNullAssertion": "off"
       },
-      "suspicious": { "noExplicitAny": "off" }
+      "suspicious": { "noExplicitAny": "off" },
+      "nursery": {
+        "useSortedClasses": {
+          "level": "info",
+          "fix": "safe",
+          "options": {
+            "functions": ["clsx", "cn"]
+          }
+        }
+      }
     }
   },
   "javascript": {

@@ -22,8 +22,7 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
     heyApiPlugin({
       config: {
-        input:
-          "https://raw.githubusercontent.com/PokeAPI/pokeapi/refs/heads/master/openapi.yml",
+        input: "https://raw.githubusercontent.com/PokeAPI/pokeapi/refs/heads/master/openapi.yml",
         output: "src/api/pokeapi",
         plugins: [{ name: "@tanstack/react-query" }],
       },

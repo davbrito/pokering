@@ -68,7 +68,7 @@ export function GameLoading() {
           </g>
         </svg>
       </div>
-      <div className="h-5 relative">
+      <div className="relative h-5">
         {prevIndex.current !== null && (
           <p key={`exit-${prevIndex.current}`} className="route-loading-msg exit -translate-x-1/2">
             {loadingMessages[prevIndex.current]}

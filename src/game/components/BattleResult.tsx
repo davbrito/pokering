@@ -77,9 +77,7 @@ export function BattleResult() {
   if (!p1 || !p2 || state.battleSteps.length === 0) return null;
 
   const w = computeWinner(p1, p2, state.battleSteps);
-  const actionSteps = state.battleSteps.filter(
-    (s) => s.type === "action" || s.type === "faint",
-  );
+  const actionSteps = state.battleSteps.filter((s) => s.type === "action" || s.type === "faint");
   const wart = getArtworkUrl(w.wp);
 
   return (
@@ -112,12 +110,8 @@ export function BattleResult() {
               ))}
             </div>
             <div className="cmp-wrap">
-              <div
-                className="section-lbl"
-                style={{ color: "var(--blue)", marginBottom: ".8rem" }}
-              >
-                Comparativa ·{" "}
-                <span style={{ color: "var(--muted)" }}>{w.wp.name}</span> vs{" "}
+              <div className="section-lbl" style={{ color: "var(--blue)", marginBottom: ".8rem" }}>
+                Comparativa · <span style={{ color: "var(--muted)" }}>{w.wp.name}</span> vs{" "}
                 <span style={{ color: "var(--muted)" }}>{w.lp.name}</span>
               </div>
               {statKeys.map((key, i) => {
@@ -148,10 +142,7 @@ export function BattleResult() {
                           minWidth: "4px",
                         }}
                       >
-                        <div
-                          className="sfill"
-                          style={{ width: "100%", background: c1 }}
-                        />
+                        <div className="sfill" style={{ width: "100%", background: c1 }} />
                       </div>
                     </div>
                     <div className="cmp-lbl">{statLabels[i]}</div>
@@ -164,10 +155,7 @@ export function BattleResult() {
                           minWidth: "4px",
                         }}
                       >
-                        <div
-                          className="sfill"
-                          style={{ width: "100%", background: c2 }}
-                        />
+                        <div className="sfill" style={{ width: "100%", background: c2 }} />
                       </div>
                       <span
                         style={{

@@ -27,7 +27,7 @@ interface DamagePopupData {
 
 function DamagePopup({ pop }: { pop: DamagePopupData }) {
   return (
-    <div className={`damage-popup${pop.isCrit ? " crit" : ""}`}>
+    <div className={`damage-popup${pop.isCrit ? "crit" : ""}`}>
       {pop.isImmune ? (
         <span style={{ fontSize: 24 }}>INMUNE</span>
       ) : (
@@ -145,12 +145,7 @@ export function BattleStage() {
   );
 
   const triggerProjectile = useCallback(
-    (
-      atkIdx: number,
-      defIdx: number,
-      moveType: string,
-      onComplete: () => void,
-    ) => {
+    (atkIdx: number, defIdx: number, moveType: string, onComplete: () => void) => {
       const atkImg = atkIdx === 0 ? imgRef0.current : imgRef1.current;
       const defImg = defIdx === 0 ? imgRef0.current : imgRef1.current;
       const viewport = viewportRef.current;
@@ -188,10 +183,7 @@ export function BattleStage() {
       }
 
       const pid = ++projCounter.current;
-      setProjectiles((prev) => [
-        ...prev,
-        { id: pid, sx, sy, tx, ty, bg, shadow },
-      ]);
+      setProjectiles((prev) => [...prev, { id: pid, sx, sy, tx, ty, bg, shadow }]);
       const animTime = 380 / state.playbackSpeed;
       setTimeout(() => {
         setProjectiles((prev) => prev.filter((p) => p.id !== pid));
@@ -213,18 +205,13 @@ export function BattleStage() {
           setAnimClass1("");
           if (atkIdx === 0) setAnimClass0("lunge-right");
           else setAnimClass1("lunge-left");
-          setTimeout(
-            () => applyImpact(defIdx, step),
-            200 / state.playbackSpeed,
-          );
+          setTimeout(() => applyImpact(defIdx, step), 200 / state.playbackSpeed);
           setTimeout(() => {
             if (atkIdx === 0) setAnimClass0("");
             else setAnimClass1("");
           }, 450 / state.playbackSpeed);
         } else {
-          triggerProjectile(atkIdx, defIdx, step.moveType || "normal", () =>
-            applyImpact(defIdx, step),
-          );
+          triggerProjectile(atkIdx, defIdx, step.moveType || "normal", () => applyImpact(defIdx, step));
         }
       }
       if (step.type === "faint" && step.faintedIdx !== undefined) {
@@ -236,13 +223,7 @@ export function BattleStage() {
         setAnimClass1("");
       }
     },
-    [
-      state.playbackSpeed,
-      state.maxHealths,
-      actions,
-      applyImpact,
-      triggerProjectile,
-    ],
+    [state.playbackSpeed, state.maxHealths, actions, applyImpact, triggerProjectile],
   );
 
   const playStep = useCallback(
@@ -259,23 +240,12 @@ export function BattleStage() {
       const duration = getStepDuration(step, state.playbackSpeed);
       playbackTimer.current = setTimeout(() => playStep(idx + 1), duration);
     },
-    [
-      state.isPaused,
-      state.battleSteps,
-      state.playbackSpeed,
-      actions,
-      executeStepVisuals,
-      finishBattle,
-    ],
+    [state.isPaused, state.battleSteps, state.playbackSpeed, actions, executeStepVisuals, finishBattle],
   );
 
   // Start playback when battle phase changes
   useEffect(() => {
-    if (
-      state.battlePhase === "battle" &&
-      state.battleSteps.length > 0 &&
-      !startedRef.current
-    ) {
+    if (state.battlePhase === "battle" && state.battleSteps.length > 0 && !startedRef.current) {
       startedRef.current = true;
       setCurrentStep(null);
       setAnimClass0("");
@@ -307,9 +277,7 @@ export function BattleStage() {
   };
 
   const toggleSpeed = () =>
-    actions.setPlaybackSpeed(
-      state.playbackSpeed === 4 ? 1 : ((state.playbackSpeed * 2) as 1 | 2 | 4),
-    );
+    actions.setPlaybackSpeed(state.playbackSpeed === 4 ? 1 : ((state.playbackSpeed * 2) as 1 | 2 | 4));
   const skipCinematics = () => {
     if (playbackTimer.current) clearTimeout(playbackTimer.current);
     actions.setIsPaused(false);
@@ -331,24 +299,14 @@ export function BattleStage() {
     : "#000 · BST 0";
 
   return (
-    <div
-      className={`stage-container${phase === "battle" ? " show" : ""}`}
-      id="stageContainer"
-    >
-      <div
-        className={`stage-viewport${shakeScreen ? " screen-shake-anim" : ""}`}
-        id="stageViewport"
-        ref={viewportRef}
-      >
+    <div className={`stage-container${phase === "battle" ? "show" : ""}`} id="stageContainer">
+      <div className={`stage-viewport${shakeScreen ? "screen-shake-anim" : ""}`} id="stageViewport" ref={viewportRef}>
         <div className="stage-huds">
           <div className="hud-box" id="hud-0">
             <div className="hud-name">{p1Name}</div>
             <div className="hud-meta">{p1Meta}</div>
             <div className="hud-hp-wrap">
-              <div
-                className="hud-hp-fill"
-                style={{ width: `${hpPct(0)}%`, backgroundColor: hpColor(0) }}
-              />
+              <div className="hud-hp-fill" style={{ width: `${hpPct(0)}%`, backgroundColor: hpColor(0) }} />
             </div>
             <div className="hud-hp-text">
               {state.currentHps[0]} / {state.maxHealths[0]} PS
@@ -358,10 +316,7 @@ export function BattleStage() {
             <div className="hud-name">{p2Name}</div>
             <div className="hud-meta">{p2Meta}</div>
             <div className="hud-hp-wrap">
-              <div
-                className="hud-hp-fill"
-                style={{ width: `${hpPct(1)}%`, backgroundColor: hpColor(1) }}
-              />
+              <div className="hud-hp-fill" style={{ width: `${hpPct(1)}%`, backgroundColor: hpColor(1) }} />
             </div>
             <div className="hud-hp-text">
               {state.currentHps[1]} / {state.maxHealths[1]} PS
@@ -435,9 +390,7 @@ export function BattleStage() {
       </div>
 
       <div className="stage-footer">
-        <div className="stage-dialog">
-          {renderStepContent(currentStep, p1Name, p2Name)}
-        </div>
+        <div className="stage-dialog">{renderStepContent(currentStep, p1Name, p2Name)}</div>
         <div className="stage-controls">
           <button type="button" className="ctrl-btn" onClick={togglePause}>
             {state.isPaused ? "Reanudar" : "Pausa"}

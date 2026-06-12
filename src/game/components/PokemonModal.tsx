@@ -1,6 +1,6 @@
+import { Dialog } from "@base-ui/react/dialog";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Dialog } from "@base-ui/react/dialog";
 import {
   pokemonListOptions,
   pokemonRetrieveOptions,
@@ -10,13 +10,7 @@ import { getArtworkUrl, getSpriteUrl } from "../api";
 import { STAT_ABBR, TYPE_TAB_COLORS, TYPES } from "../data";
 import { useGame, useGameActions } from "../store";
 
-function PokemonPreview({
-  pokemonId,
-  onSelect,
-}: {
-  pokemonId: number | null;
-  onSelect: (id: number) => void;
-}) {
+function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | null; onSelect: (id: number) => void }) {
   const { data: previewData, isLoading: loading } = useQuery({
     ...pokemonRetrieveOptions({ path: { id: String(pokemonId) } }),
     enabled: pokemonId !== null,
@@ -44,8 +38,7 @@ function PokemonPreview({
         </div>
         <div className="prev-stats">
           {d.stats.map((s) => {
-            const abbr =
-              STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
+            const abbr = STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
             const pct = Math.round(Math.min((s.base_stat / 180) * 100, 100));
             const col =
               s.base_stat >= 100
@@ -59,10 +52,7 @@ function PokemonPreview({
               <div key={s.stat.name} className="prev-srow">
                 <span className="prev-sname">{abbr}</span>
                 <div className="strack">
-                  <div
-                    className="sfill"
-                    style={{ width: `${pct}%`, background: col }}
-                  />
+                  <div className="sfill" style={{ width: `${pct}%`, background: col }} />
                 </div>
                 <span
                   style={{
@@ -77,11 +67,7 @@ function PokemonPreview({
             );
           })}
         </div>
-        <button
-          type="button"
-          className="prev-select-btn"
-          onClick={() => onSelect(d.id)}
-        >
+        <button type="button" className="prev-select-btn" onClick={() => onSelect(d.id)}>
           Elegir este ▶
         </button>
       </div>
@@ -140,18 +126,13 @@ export function PokemonModal() {
     if (!list) return [];
     if (!list.length && tab === "all") return [];
     if (q) {
-      list = allPokemon?.filter(
-        (p) => p.name.includes(q) || String(p.id).padStart(3, "0").includes(q),
-      );
+      list = allPokemon?.filter((p) => p.name.includes(q) || String(p.id).padStart(3, "0").includes(q));
     }
     return list ?? [];
   })();
 
   return (
-    <Dialog.Root
-      open={state.modalOpen}
-      onOpenChange={(open) => actions.setModalOpen(open)}
-    >
+    <Dialog.Root open={state.modalOpen} onOpenChange={(open) => actions.setModalOpen(open)}>
       <Dialog.Portal>
         <Dialog.Backdrop className="modal-overlay" />
         <Dialog.Popup className="modal">
@@ -174,7 +155,7 @@ export function PokemonModal() {
                 <button
                   key={t}
                   type="button"
-                  className={`tab-btn${state.activeTab === t ? " active" : ""}`}
+                  className={`tab-btn${state.activeTab === t ? "active" : ""}`}
                   style={{
                     background: c.bg,
                     color: c.color,
@@ -200,11 +181,9 @@ export function PokemonModal() {
                       onClick={() => handleSelect(p.id)}
                       onMouseEnter={() => setHoveredId(p.id)}
                     >
-                      <img src={getSpriteUrl(p.id)} alt={p.name} loading="lazy" />
+                      <img src={getSpriteUrl(p.id)} alt={p.name} loading="lazy" className="select-none" />
                       <div className="pt-name">{p.name}</div>
-                      <div className="pt-num">
-                        #{String(p.id).padStart(3, "0")}
-                      </div>
+                      <div className="pt-num">#{String(p.id).padStart(3, "0")}</div>
                     </button>
                   ))}
                 </div>

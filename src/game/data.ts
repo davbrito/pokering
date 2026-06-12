@@ -31,10 +31,7 @@ export const TYPES = [
 
 export type PokemonType = (typeof TYPES)[number];
 
-export const TYPE_TAB_COLORS: Record<
-  PokemonType,
-  { bg: string; color: string; border: string }
-> = {
+export const TYPE_TAB_COLORS: Record<PokemonType, { bg: string; color: string; border: string }> = {
   all: {
     bg: "rgba(255,255,255,.1)",
     color: "#e0e0f0",
