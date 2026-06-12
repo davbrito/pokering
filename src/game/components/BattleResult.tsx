@@ -1,7 +1,7 @@
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { getArtworkUrl } from "../api";
 import { getEffectiveness, getStatsObject } from "../combat";
-import { useGame } from "../store";
+import { useChosenPokemon, useGameStore } from "../store";
 import type { PokemonStats } from "../types";
 import { renderStepContent } from "./renderStepContent";
 
@@ -69,15 +69,18 @@ const statKeys = ["hp", "atk", "def", "spa", "spd", "spe"] as const;
 const statLabels = ["HP", "ATK", "DEF", "SpA", "SpD", "VEL"];
 
 export function BattleResult() {
-  const state = useGame();
-  if (state.battlePhase !== "result") return null;
+  const battlePhase = useGameStore((s) => s.battlePhase);
+  const battleSteps = useGameStore((s) => s.battleSteps);
+  const { chosen } = useChosenPokemon();
 
-  const p1 = state.chosen[0];
-  const p2 = state.chosen[1];
-  if (!p1 || !p2 || state.battleSteps.length === 0) return null;
+  if (battlePhase !== "result") return null;
 
-  const w = computeWinner(p1, p2, state.battleSteps);
-  const actionSteps = state.battleSteps.filter((s) => s.type === "action" || s.type === "faint");
+  const p1 = chosen[0];
+  const p2 = chosen[1];
+  if (!p1 || !p2 || battleSteps.length === 0) return null;
+
+  const w = computeWinner(p1, p2, battleSteps);
+  const actionSteps = battleSteps.filter((s) => s.type === "action" || s.type === "faint");
   const wart = getArtworkUrl(w.wp);
 
   return (

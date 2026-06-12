@@ -11,14 +11,17 @@ function moveIdFromUrl(url: string): string {
 
 async function fetchSingleMove(queryClient: QueryClient, idOrName: string): Promise<RealMoveInfo | null> {
   try {
-    const data = await queryClient.fetchQuery(moveRetrieveOptions({ path: { id: idOrName } }));
+    const data = await queryClient.ensureQueryData({
+      ...moveRetrieveOptions({ path: { id: idOrName } }),
+      staleTime: Infinity,
+    });
     if (!data) return null;
     // Solo movimientos que causan daño
     if (data.power == null || data.power === 0) return null;
     const dc = data.damage_class?.name;
     if (dc !== "physical" && dc !== "special") return null;
     return {
-      name: data.name,
+      name: data.names.find((n) => n.language.name === "es")?.name || data.name,
       type: data.type?.name || "normal",
       category: dc,
       power: data.power,
@@ -125,7 +128,6 @@ export function generateBattleSteps(
 
   steps.push({
     type: "start",
-    text: `¡Comienza el duelo de exhibición! <strong>${p1.name.toUpperCase()}</strong> se enfrenta a <strong>${p2.name.toUpperCase()}</strong> en la arena.`,
   });
 
   let turn = 1;
@@ -207,13 +209,6 @@ export function generateBattleSteps(
       }
       const postHp: [number, number] = [hp1, hp2];
 
-      const attackerName = act.isAtkP1 ? p1.name : p2.name;
-      let msg = `¡<strong>${attackerName.toUpperCase()}</strong> usó <span>${activeBestMove.name.toUpperCase()}</span>! `;
-      if (isCrit) msg += `<em>¡Impacto Crítico!</em> 💥 `;
-      if (eff > 1.5) msg += `<span className="super-eff">¡Es súper eficaz!</span> `;
-      if (eff < 0.6 && eff > 0) msg += `<span>No es muy eficaz...</span> `;
-      if (eff === 0) msg += `<span>¡No le afecta en absoluto!</span> `;
-
       steps.push({
         type: "action",
         attackerIdx: act.isAtkP1 ? 0 : 1,
@@ -225,20 +220,17 @@ export function generateBattleSteps(
         eff,
         preHp,
         postHp,
-        text: msg,
       });
 
       if (act.isAtkP1 && hp2 <= 0) {
         steps.push({
           type: "faint",
           faintedIdx: 1,
-          text: `¡El oponente <strong>${p2.name.toUpperCase()}</strong> se ha desplomado agotado! 😵`,
         });
       } else if (!act.isAtkP1 && hp1 <= 0) {
         steps.push({
           type: "faint",
           faintedIdx: 0,
-          text: `¡El luchador <strong>${p1.name.toUpperCase()}</strong> no puede continuar el combate! 😵`,
         });
       }
     }
@@ -246,11 +238,9 @@ export function generateBattleSteps(
   }
 
   const winnerIdx = hp1 > 0 ? 0 : 1;
-  const victor = winnerIdx === 0 ? p1 : p2;
   steps.push({
     type: "end",
     winnerIdx,
-    text: `🏆 ¡El combate ha terminado! El absoluto ganador de la contienda es <strong>${victor.name.toUpperCase()}</strong>.`,
   });
 
   return steps;

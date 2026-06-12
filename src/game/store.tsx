@@ -1,19 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
-import { createContext, type ReactNode, useContext, useState } from "react";
+import { create } from "zustand";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { pokemonRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
 import type { BattleStep } from "./types";
 
+// ─── Store ───────────────────────────────────────────────────────────────────
+// Action-Driven Logic: state and actions coexist in a single store.
+// Selectors give you fine-grained re-render control.
+
 interface GameState {
   searchQuery: string;
   activeTab: string;
-  chosen: [PokemonDetail | null, PokemonDetail | null];
-  chosenLoading: [boolean, boolean];
+  /** Raw IDs; resolved via useChosenPokemon() + React Query */
+  chosenIds: [number | null, number | null];
   battlePhase: "selection" | "battle" | "result";
   battleSteps: BattleStep[];
   currentStepIdx: number;
   playbackSpeed: number;
   isPaused: boolean;
+  isLoadingMoves: boolean;
   maxHealths: [number, number];
   currentHps: [number, number];
 }
@@ -21,112 +26,98 @@ interface GameState {
 interface GameActions {
   setSearchQuery: (q: string) => void;
   setActiveTab: (tab: string) => void;
-  selectPokemon: (slot: number, id: number) => Promise<void>;
+  selectPokemon: (slot: number, id: number) => void;
   setBattlePhase: (phase: "selection" | "battle" | "result") => void;
   setBattleSteps: (steps: BattleStep[]) => void;
   setCurrentStepIdx: (idx: number) => void;
   setPlaybackSpeed: (speed: number) => void;
   setIsPaused: (paused: boolean) => void;
+  setIsLoadingMoves: (loading: boolean) => void;
   setMaxHealths: (hps: [number, number]) => void;
   setCurrentHps: (hps: [number, number]) => void;
   resetBattle: () => void;
 }
 
-const GameContext = createContext<GameState | null>(null);
-const GameActionsContext = createContext<GameActions | null>(null);
+export const useGameStore = create<GameState & GameActions>()((set) => ({
+  // ── State ──
+  searchQuery: "",
+  activeTab: "all",
+  chosenIds: [null, null],
+  battlePhase: "selection",
+  battleSteps: [],
+  currentStepIdx: 0,
+  playbackSpeed: 1,
+  isPaused: false,
+  isLoadingMoves: false,
+  maxHealths: [100, 100],
+  currentHps: [100, 100],
 
-export function GameProvider(props: { children: ReactNode }) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
-  const [chosenIds, setChosenIds] = useState<[number | null, number | null]>([null, null]);
-  const [battlePhase, setBattlePhase] = useState<"selection" | "battle" | "result">("selection");
-  const [battleSteps, setBattleSteps] = useState<BattleStep[]>([]);
-  const [currentStepIdx, setCurrentStepIdx] = useState(0);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
-  const [isPaused, setIsPaused] = useState(false);
-  const [maxHealths, setMaxHealths] = useState<[number, number]>([100, 100]);
-  const [currentHps, setCurrentHps] = useState<[number, number]>([100, 100]);
-  const [chosenAId, chosenBId] = chosenIds;
+  // ── Actions ──
+  setSearchQuery: (q) => set({ searchQuery: q }),
 
-  const chosenAQuery = useQuery({
-    ...pokemonRetrieveOptions({ path: { id: String(chosenAId) } }),
-    enabled: chosenAId !== null,
-  });
-  const chosenBQuery = useQuery({
-    ...pokemonRetrieveOptions({ path: { id: String(chosenBId) } }),
-    enabled: chosenBId !== null,
-  });
+  setActiveTab: (tab) => set({ activeTab: tab }),
 
-  const chosen: [PokemonDetail | null, PokemonDetail | null] = [chosenAQuery.data || null, chosenBQuery.data || null];
-  const chosenLoading: [boolean, boolean] = [chosenAQuery.isLoading, chosenBQuery.isLoading];
-
-  const selectPokemonFn = async (slot: number, id: number) => {
-    setChosenIds((prev) => {
-      const next: [number | null, number | null] = [...prev];
+  selectPokemon: (slot, id) =>
+    set((state) => {
+      const next: [number | null, number | null] = [...state.chosenIds];
       next[slot] = id;
-      return next;
-    });
-  };
+      return { chosenIds: next };
+    }),
 
-  const resetBattleFn = () => {
-    setBattlePhase("selection");
-    setBattleSteps([]);
-    setCurrentStepIdx(0);
-    setPlaybackSpeed(1);
-    setIsPaused(false);
-    setMaxHealths([100, 100]);
-    setCurrentHps([100, 100]);
-  };
+  setBattlePhase: (phase) => set({ battlePhase: phase }),
 
-  const state: GameState = {
-    searchQuery,
-    activeTab,
-    chosen,
-    chosenLoading,
-    battlePhase,
-    battleSteps,
-    currentStepIdx,
-    playbackSpeed,
-    isPaused,
-    maxHealths,
-    currentHps,
-  };
+  setBattleSteps: (steps) => set({ battleSteps: steps }),
 
-  const actions: GameActions = {
-    setSearchQuery,
-    setActiveTab,
-    selectPokemon: selectPokemonFn,
-    setBattlePhase,
-    setBattleSteps,
-    setCurrentStepIdx,
-    setPlaybackSpeed,
-    setIsPaused,
-    setMaxHealths,
-    setCurrentHps,
-    resetBattle: resetBattleFn,
-  };
+  setCurrentStepIdx: (idx) => set({ currentStepIdx: idx }),
 
-  return (
-    <GameContext.Provider value={state}>
-      <GameActionsContext.Provider value={actions}>{props.children}</GameActionsContext.Provider>
-    </GameContext.Provider>
-  );
+  setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+
+  setIsPaused: (paused) => set({ isPaused: paused }),
+
+  setIsLoadingMoves: (loading) => set({ isLoadingMoves: loading }),
+
+  setMaxHealths: (hps) => set({ maxHealths: hps }),
+
+  setCurrentHps: (hps) => set({ currentHps: hps }),
+
+  resetBattle: () =>
+    set({
+      battlePhase: "selection",
+      battleSteps: [],
+      currentStepIdx: 0,
+      playbackSpeed: 1,
+      isPaused: false,
+      maxHealths: [100, 100],
+      currentHps: [100, 100],
+    }),
+}));
+
+// ─── React Query bridge ──────────────────────────────────────────────────────
+// Fetch PokemonDetail from the API whenever chosenIds change.
+
+export function useChosenPokemon(): {
+  chosen: [PokemonDetail | null, PokemonDetail | null];
+  chosenLoading: [boolean, boolean];
+} {
+  const [idA, idB] = useGameStore((s) => s.chosenIds);
+
+  const qA = useQuery({
+    ...pokemonRetrieveOptions({ path: { id: String(idA) } }),
+    enabled: idA !== null,
+  });
+  const qB = useQuery({
+    ...pokemonRetrieveOptions({ path: { id: String(idB) } }),
+    enabled: idB !== null,
+  });
+
+  return {
+    chosen: [qA.data ?? null, qB.data ?? null],
+    chosenLoading: [qA.isLoading, qB.isLoading],
+  };
 }
 
-export function useGame(): GameState {
-  const ctx = useContext(GameContext);
-  if (!ctx) throw new Error("useGame must be used within GameProvider");
-  return ctx;
-}
-
-export function useGameActions(): GameActions {
-  const ctx = useContext(GameActionsContext);
-  if (!ctx) throw new Error("useGameActions must be used within GameProvider");
-  return ctx;
-}
-
-// Convenience hooks for commonly used state
+/** True when both fighters have been selected and loaded. */
 export function useBothReady(): boolean {
-  const { chosen } = useGame();
-  return chosen[0] !== null && chosen[1] !== null;
+  const ids = useGameStore((s) => s.chosenIds);
+  return ids[0] !== null && ids[1] !== null;
 }

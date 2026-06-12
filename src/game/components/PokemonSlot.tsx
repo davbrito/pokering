@@ -3,7 +3,7 @@ import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { STAT_ABBR } from "../data";
-import { useGame } from "../store";
+import { useChosenPokemon } from "../store";
 import { pickerDialogHandle } from "./PokemonModal";
 
 function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
@@ -52,7 +52,7 @@ function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
 }
 
 export function PokemonSlot({ index, label }: { index: number; label: string }) {
-  const { chosen, chosenLoading } = useGame();
+  const { chosen, chosenLoading } = useChosenPokemon();
 
   const pokemon = chosen[index];
   const loading = chosenLoading[index];

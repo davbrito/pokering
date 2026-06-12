@@ -9,7 +9,7 @@ import {
 } from "../../api/pokeapi/@tanstack/react-query.gen";
 import { getArtworkUrl, getSpriteUrl } from "../api";
 import { STAT_ABBR, TYPE_TAB_COLORS, TYPES } from "../data";
-import { useGame, useGameActions } from "../store";
+import { useGameStore } from "../store";
 
 export const pickerDialogHandle = Dialog.createHandle<{ slot: number }>();
 
@@ -140,8 +140,8 @@ function getIdFromUrl(url: string): number {
 }
 
 function DialogContent({ slot = 0 }: { slot: number | undefined }) {
-  const state = useGame();
-  const actions = useGameActions();
+  const searchQuery = useGameStore((s) => s.searchQuery);
+  const activeTab = useGameStore((s) => s.activeTab);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
   const listQuery = useQuery({
@@ -155,8 +155,8 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
   }));
 
   const typeQuery = useQuery({
-    ...typeRetrieveOptions({ path: { id: state.activeTab } }),
-    enabled: state.activeTab !== "all",
+    ...typeRetrieveOptions({ path: { id: activeTab } }),
+    enabled: activeTab !== "all",
   });
   const typeData = typeQuery.data?.pokemon.map((p) => ({
     name: p.pokemon!.name,
@@ -164,16 +164,15 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
   }));
 
   const handleSelect = (id: number) => {
-    actions.selectPokemon(slot, id);
+    useGameStore.getState().selectPokemon(slot, id);
     pickerDialogHandle.close();
   };
 
   const filteredList = (() => {
-    const tab = state.activeTab;
-    const q = state.searchQuery.toLowerCase().trim();
-    let list = tab === "all" ? allPokemon : typeData;
+    const q = searchQuery.toLowerCase().trim();
+    let list = activeTab === "all" ? allPokemon : typeData;
     if (!list) return [];
-    if (!list.length && tab === "all") return [];
+    if (!list.length && activeTab === "all") return [];
     if (q) {
       list = allPokemon?.filter((p) => p.name.includes(q) || String(p.id).padStart(3, "0").includes(q));
     }
@@ -188,8 +187,8 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
           id="modal-search"
           type="text"
           placeholder="Buscar por nombre o número..."
-          value={state.searchQuery}
-          onChange={(e) => actions.setSearchQuery(e.currentTarget.value)}
+          value={searchQuery}
+          onChange={(e) => useGameStore.getState().setSearchQuery(e.currentTarget.value)}
         />
         <Dialog.Close className="modal-close">✕</Dialog.Close>
       </div>
@@ -201,13 +200,13 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
             <button
               key={t}
               type="button"
-              className={`tab-btn ${state.activeTab === t ? "active" : ""}`}
+              className={`tab-btn ${activeTab === t ? "active" : ""}`}
               style={{
                 background: c.bg,
                 color: c.color,
                 borderColor: c.border,
               }}
-              onClick={() => actions.setActiveTab(t)}
+              onClick={() => useGameStore.getState().setActiveTab(t)}
             >
               {t === "all" ? "Todos" : t}
             </button>

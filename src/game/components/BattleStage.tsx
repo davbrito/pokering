@@ -2,7 +2,7 @@ import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
-import { useGame, useGameActions } from "../store";
+import { useChosenPokemon, useGameStore } from "../store";
 import type { BattleStep } from "../types";
 import { renderStepContent } from "./renderStepContent";
 
@@ -55,8 +55,14 @@ interface Projectile {
 }
 
 export function BattleStage() {
-  const state = useGame();
-  const actions = useGameActions();
+  const playbackSpeed = useGameStore((s) => s.playbackSpeed);
+  const maxHealths = useGameStore((s) => s.maxHealths);
+  const currentHps = useGameStore((s) => s.currentHps);
+  const isPaused = useGameStore((s) => s.isPaused);
+  const battleSteps = useGameStore((s) => s.battleSteps);
+  const battlePhase = useGameStore((s) => s.battlePhase);
+  const { chosen } = useChosenPokemon();
+
   const [currentStep, setCurrentStep] = useState<BattleStep | null>(null);
   const [animClass0, setAnimClass0] = useState("");
   const [animClass1, setAnimClass1] = useState("");
@@ -73,9 +79,7 @@ export function BattleStage() {
   const startedRef = useRef(false);
 
   const hpPct = (idx: number) => {
-    const cur = state.currentHps;
-    const max = state.maxHealths;
-    return Math.max(0, Math.min(100, (cur[idx] / max[idx]) * 100));
+    return Math.max(0, Math.min(100, (currentHps[idx] / maxHealths[idx]) * 100));
   };
 
   const hpColor = (idx: number) => {
@@ -86,117 +90,111 @@ export function BattleStage() {
   };
 
   const finishBattle = useCallback(() => {
-    actions.setBattlePhase("result");
+    useGameStore.getState().setBattlePhase("result");
     setAnimClass0("");
     setAnimClass1("");
-  }, [actions]);
+  }, []);
 
-  const applyImpact = useCallback(
-    (defIdx: number, step: BattleStep) => {
-      if (defIdx === 0) setAnimClass0("hit-shake");
-      else setAnimClass1("hit-shake");
+  const applyImpact = useCallback((defIdx: number, step: BattleStep) => {
+    if (defIdx === 0) setAnimClass0("hit-shake");
+    else setAnimClass1("hit-shake");
 
-      if (step.isCrit || (step.eff != null && step.eff > 1.5)) {
-        setShakeScreen(true);
-        setTimeout(() => setShakeScreen(false), 350);
-      }
+    if (step.isCrit || (step.eff != null && step.eff > 1.5)) {
+      setShakeScreen(true);
+      setTimeout(() => setShakeScreen(false), 350);
+    }
 
-      const popId = ++popupCounter.current;
-      const popDamage = step.eff === 0 ? undefined : (step.damage ?? 0);
-      let popSubtitle: string | undefined;
-      let popSubColor: string | undefined;
-      const isImmune = step.eff === 0;
+    const popId = ++popupCounter.current;
+    const popDamage = step.eff === 0 ? undefined : (step.damage ?? 0);
+    let popSubtitle: string | undefined;
+    let popSubColor: string | undefined;
+    const isImmune = step.eff === 0;
 
-      if (step.isCrit) {
-        popSubtitle = "¡CRÍTICO!";
-        popSubColor = "var(--gold)";
-      } else if (step.eff != null && step.eff > 1.5) {
-        popSubtitle = "¡SÚPER EFICAZ!";
-        popSubColor = "var(--green)";
-      } else if (step.eff != null && step.eff < 0.6 && step.eff > 0) {
-        popSubtitle = "POCO EFICAZ";
-        popSubColor = "var(--muted)";
-      }
+    if (step.isCrit) {
+      popSubtitle = "¡CRÍTICO!";
+      popSubColor = "var(--gold)";
+    } else if (step.eff != null && step.eff > 1.5) {
+      popSubtitle = "¡SÚPER EFICAZ!";
+      popSubColor = "var(--green)";
+    } else if (step.eff != null && step.eff < 0.6 && step.eff > 0) {
+      popSubtitle = "POCO EFICAZ";
+      popSubColor = "var(--muted)";
+    }
 
-      setDamagePopups((prev) => [
-        ...prev,
-        {
-          id: popId,
-          idx: defIdx,
-          damage: popDamage,
-          subtitle: popSubtitle,
-          subtitleColor: popSubColor,
-          isCrit: !!step.isCrit,
-          isImmune,
-        },
-      ]);
-      setTimeout(() => {
-        setDamagePopups((prev) => prev.filter((p) => p.id !== popId));
-      }, 900);
+    setDamagePopups((prev) => [
+      ...prev,
+      {
+        id: popId,
+        idx: defIdx,
+        damage: popDamage,
+        subtitle: popSubtitle,
+        subtitleColor: popSubColor,
+        isCrit: !!step.isCrit,
+        isImmune,
+      },
+    ]);
+    setTimeout(() => {
+      setDamagePopups((prev) => prev.filter((p) => p.id !== popId));
+    }, 900);
 
-      if (step.postHp) actions.setCurrentHps(step.postHp);
+    if (step.postHp) useGameStore.getState().setCurrentHps(step.postHp);
 
-      setTimeout(() => {
-        if (defIdx === 0) setAnimClass0("");
-        else setAnimClass1("");
-      }, 400);
-    },
-    [actions],
-  );
+    setTimeout(() => {
+      if (defIdx === 0) setAnimClass0("");
+      else setAnimClass1("");
+    }, 400);
+  }, []);
 
-  const triggerProjectile = useCallback(
-    (atkIdx: number, defIdx: number, moveType: string, onComplete: () => void) => {
-      const atkImg = atkIdx === 0 ? imgRef0.current : imgRef1.current;
-      const defImg = defIdx === 0 ? imgRef0.current : imgRef1.current;
-      const viewport = viewportRef.current;
-      if (!atkImg || !defImg || !viewport) {
-        onComplete();
-        return;
-      }
+  const triggerProjectile = useCallback((atkIdx: number, defIdx: number, moveType: string, onComplete: () => void) => {
+    const atkImg = atkIdx === 0 ? imgRef0.current : imgRef1.current;
+    const defImg = defIdx === 0 ? imgRef0.current : imgRef1.current;
+    const viewport = viewportRef.current;
+    if (!atkImg || !defImg || !viewport) {
+      onComplete();
+      return;
+    }
 
-      const ra = atkImg.getBoundingClientRect();
-      const rd = defImg.getBoundingClientRect();
-      const rv = viewport.getBoundingClientRect();
+    const ra = atkImg.getBoundingClientRect();
+    const rd = defImg.getBoundingClientRect();
+    const rv = viewport.getBoundingClientRect();
 
-      const sx = ra.left + ra.width / 2 - rv.left;
-      const sy = ra.top + ra.height / 2 - rv.top;
-      const tx = rd.left + rd.width / 2 - rv.left;
-      const ty = rd.top + rd.height / 2 - rv.top;
+    const sx = ra.left + ra.width / 2 - rv.left;
+    const sy = ra.top + ra.height / 2 - rv.top;
+    const tx = rd.left + rd.width / 2 - rv.left;
+    const ty = rd.top + rd.height / 2 - rv.top;
 
-      let bg = "#ffffff",
-        shadow = "0 0 15px #ffffff";
-      if (["fire"].includes(moveType)) {
-        bg = "#ff4500";
-        shadow = "0 0 20px #ff0000, 0 0 40px #ff4500";
-      } else if (["water", "ice"].includes(moveType)) {
-        bg = "#00bfff";
-        shadow = "0 0 20px #1e90ff, 0 0 40px #00bfff";
-      } else if (["electric"].includes(moveType)) {
-        bg = "#ffd700";
-        shadow = "0 0 20px #ffff00, 0 0 40px #ffd700";
-      } else if (["grass", "bug"].includes(moveType)) {
-        bg = "#32cd32";
-        shadow = "0 0 20px #00ff00, 0 0 40px #32cd32";
-      } else if (["ghost", "dark", "poison", "psychic"].includes(moveType)) {
-        bg = "#8a2be2";
-        shadow = "0 0 20px #9400d3, 0 0 40px #8a2be2";
-      }
+    let bg = "#ffffff",
+      shadow = "0 0 15px #ffffff";
+    if (["fire"].includes(moveType)) {
+      bg = "#ff4500";
+      shadow = "0 0 20px #ff0000, 0 0 40px #ff4500";
+    } else if (["water", "ice"].includes(moveType)) {
+      bg = "#00bfff";
+      shadow = "0 0 20px #1e90ff, 0 0 40px #00bfff";
+    } else if (["electric"].includes(moveType)) {
+      bg = "#ffd700";
+      shadow = "0 0 20px #ffff00, 0 0 40px #ffd700";
+    } else if (["grass", "bug"].includes(moveType)) {
+      bg = "#32cd32";
+      shadow = "0 0 20px #00ff00, 0 0 40px #32cd32";
+    } else if (["ghost", "dark", "poison", "psychic"].includes(moveType)) {
+      bg = "#8a2be2";
+      shadow = "0 0 20px #9400d3, 0 0 40px #8a2be2";
+    }
 
-      const pid = ++projCounter.current;
-      setProjectiles((prev) => [...prev, { id: pid, sx, sy, tx, ty, bg, shadow }]);
-      const animTime = 380 / state.playbackSpeed;
-      setTimeout(() => {
-        setProjectiles((prev) => prev.filter((p) => p.id !== pid));
-        onComplete();
-      }, animTime);
-    },
-    [state.playbackSpeed],
-  );
+    const pid = ++projCounter.current;
+    setProjectiles((prev) => [...prev, { id: pid, sx, sy, tx, ty, bg, shadow }]);
+    const animTime = 380 / useGameStore.getState().playbackSpeed;
+    setTimeout(() => {
+      setProjectiles((prev) => prev.filter((p) => p.id !== pid));
+      onComplete();
+    }, animTime);
+  }, []);
 
   const executeStepVisuals = useCallback(
     (step: BattleStep) => {
       setCurrentStep(step);
-      if (step.type === "start") actions.setCurrentHps([...state.maxHealths]);
+      if (step.type === "start") useGameStore.getState().setCurrentHps([...useGameStore.getState().maxHealths]);
       if (step.type === "action") {
         const atkIdx = step.attackerIdx ?? 0;
         const defIdx = atkIdx === 0 ? 1 : 0;
@@ -205,11 +203,12 @@ export function BattleStage() {
           setAnimClass1("");
           if (atkIdx === 0) setAnimClass0("lunge-right");
           else setAnimClass1("lunge-left");
-          setTimeout(() => applyImpact(defIdx, step), 200 / state.playbackSpeed);
+          const spd = useGameStore.getState().playbackSpeed;
+          setTimeout(() => applyImpact(defIdx, step), 200 / spd);
           setTimeout(() => {
             if (atkIdx === 0) setAnimClass0("");
             else setAnimClass1("");
-          }, 450 / state.playbackSpeed);
+          }, 450 / spd);
         } else {
           triggerProjectile(atkIdx, defIdx, step.moveType || "normal", () => applyImpact(defIdx, step));
         }
@@ -223,29 +222,30 @@ export function BattleStage() {
         setAnimClass1("");
       }
     },
-    [state.playbackSpeed, state.maxHealths, actions, applyImpact, triggerProjectile],
+    [applyImpact, triggerProjectile],
   );
 
   const playStep = useCallback(
     (idx: number) => {
-      if (state.isPaused) return;
-      const steps = state.battleSteps;
+      const store = useGameStore.getState();
+      if (store.isPaused) return;
+      const steps = store.battleSteps;
       if (idx >= steps.length) {
         finishBattle();
         return;
       }
       const step = steps[idx];
-      actions.setCurrentStepIdx(idx);
+      store.setCurrentStepIdx(idx);
       executeStepVisuals(step);
-      const duration = getStepDuration(step, state.playbackSpeed);
+      const duration = getStepDuration(step, store.playbackSpeed);
       playbackTimer.current = setTimeout(() => playStep(idx + 1), duration);
     },
-    [state.isPaused, state.battleSteps, state.playbackSpeed, actions, executeStepVisuals, finishBattle],
+    [executeStepVisuals, finishBattle],
   );
 
   // Start playback when battle phase changes
   useEffect(() => {
-    if (state.battlePhase === "battle" && state.battleSteps.length > 0 && !startedRef.current) {
+    if (battlePhase === "battle" && battleSteps.length > 0 && !startedRef.current) {
       startedRef.current = true;
       setCurrentStep(null);
       setAnimClass0("");
@@ -255,9 +255,9 @@ export function BattleStage() {
       const timer = setTimeout(() => playStep(0), 400);
       return () => clearTimeout(timer);
     }
-    if (state.battlePhase !== "battle") startedRef.current = false;
+    if (battlePhase !== "battle") startedRef.current = false;
     return undefined;
-  }, [state.battlePhase, state.battleSteps.length, playStep]);
+  }, [battlePhase, battleSteps.length, playStep]);
 
   // Cleanup
   useEffect(() => {
@@ -267,28 +267,30 @@ export function BattleStage() {
   }, []);
 
   const togglePause = () => {
-    if (state.isPaused) {
-      actions.setIsPaused(false);
-      playStep(state.currentStepIdx);
+    const store = useGameStore.getState();
+    if (store.isPaused) {
+      store.setIsPaused(false);
+      playStep(store.currentStepIdx);
     } else {
-      actions.setIsPaused(true);
+      store.setIsPaused(true);
       if (playbackTimer.current) clearTimeout(playbackTimer.current);
     }
   };
 
-  const toggleSpeed = () =>
-    actions.setPlaybackSpeed(state.playbackSpeed === 4 ? 1 : ((state.playbackSpeed * 2) as 1 | 2 | 4));
+  const toggleSpeed = () => {
+    const store = useGameStore.getState();
+    store.setPlaybackSpeed(store.playbackSpeed === 4 ? 1 : ((store.playbackSpeed * 2) as 1 | 2 | 4));
+  };
   const skipCinematics = () => {
     if (playbackTimer.current) clearTimeout(playbackTimer.current);
-    actions.setIsPaused(false);
+    useGameStore.getState().setIsPaused(false);
     finishBattle();
   };
 
-  const phase = state.battlePhase;
-  if (phase !== "battle" && phase !== "result") return null;
+  if (battlePhase !== "battle" && battlePhase !== "result") return null;
 
-  const p1Data = state.chosen[0];
-  const p2Data = state.chosen[1];
+  const p1Data = chosen[0];
+  const p2Data = chosen[1];
   const p1Name = p1Data?.name ?? "Luchador 1";
   const p2Name = p2Data?.name ?? "Luchador 2";
   const p1Meta = p1Data
@@ -299,7 +301,7 @@ export function BattleStage() {
     : "#000 · BST 0";
 
   return (
-    <div className={`stage-container ${phase === "battle" ? "show" : ""}`} id="stageContainer">
+    <div className={`stage-container ${battlePhase === "battle" ? "show" : ""}`} id="stageContainer">
       <div className={`stage-viewport ${shakeScreen ? "screen-shake-anim" : ""}`} id="stageViewport" ref={viewportRef}>
         <div className="stage-huds">
           <div className="hud-box" id="hud-0">
@@ -309,7 +311,7 @@ export function BattleStage() {
               <div className="hud-hp-fill" style={{ width: `${hpPct(0)}%`, backgroundColor: hpColor(0) }} />
             </div>
             <div className="hud-hp-text">
-              {state.currentHps[0]} / {state.maxHealths[0]} PS
+              {currentHps[0]} / {maxHealths[0]} PS
             </div>
           </div>
           <div className="hud-box" id="hud-1">
@@ -319,7 +321,7 @@ export function BattleStage() {
               <div className="hud-hp-fill" style={{ width: `${hpPct(1)}%`, backgroundColor: hpColor(1) }} />
             </div>
             <div className="hud-hp-text">
-              {state.currentHps[1]} / {state.maxHealths[1]} PS
+              {currentHps[1]} / {maxHealths[1]} PS
             </div>
           </div>
         </div>
@@ -382,7 +384,7 @@ export function BattleStage() {
               scale: 1.6,
             }}
             transition={{
-              duration: 0.38 / state.playbackSpeed,
+              duration: 0.38 / playbackSpeed,
               ease: [0.25, 1, 0.5, 1],
             }}
           />
@@ -393,10 +395,10 @@ export function BattleStage() {
         <div className="stage-dialog">{renderStepContent(currentStep, p1Name, p2Name)}</div>
         <div className="stage-controls">
           <button type="button" className="ctrl-btn" onClick={togglePause}>
-            {state.isPaused ? "Reanudar" : "Pausa"}
+            {isPaused ? "Reanudar" : "Pausa"}
           </button>
           <button type="button" className="ctrl-btn" onClick={toggleSpeed}>
-            Velocidad {state.playbackSpeed}x
+            Velocidad {playbackSpeed}x
           </button>
           <button type="button" className="ctrl-btn" onClick={skipCinematics}>
             Saltar

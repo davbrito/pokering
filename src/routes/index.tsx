@@ -6,7 +6,7 @@ import { BattleStage } from "../game/components/BattleStage";
 import { GameLoading } from "../game/components/GameLoading";
 import { PokemonModal } from "../game/components/PokemonModal";
 import { PokemonSlot } from "../game/components/PokemonSlot";
-import { useBothReady, useGame, useGameActions } from "../game/store";
+import { useBothReady, useChosenPokemon, useGameStore } from "../game/store";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -15,18 +15,20 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const state = useGame();
-  const actions = useGameActions();
+  const battlePhase = useGameStore((s) => s.battlePhase);
+  const isLoadingMoves = useGameStore((s) => s.isLoadingMoves);
   const bothReady = useBothReady();
+  const { chosen } = useChosenPokemon();
 
   const { queryClient } = Route.useRouteContext();
 
   const startBattle = useCallback(async () => {
-    const poke1 = state.chosen[0];
-    const poke2 = state.chosen[1];
+    const poke1 = chosen[0];
+    const poke2 = chosen[1];
     if (!poke1 || !poke2) return;
 
-    // Obtener movimientos reales desde la API (cacheados por TanStack Query)
+    useGameStore.getState().setIsLoadingMoves(true);
+
     const [p1Moves, p2Moves] = await Promise.all([
       fetchPokemonMoves(queryClient, poke1),
       fetchPokemonMoves(queryClient, poke2),
@@ -37,24 +39,34 @@ function Home() {
     const mh1 = calcHpStat(s1.hp);
     const mh2 = calcHpStat(s2.hp);
 
-    actions.setMaxHealths([mh1, mh2]);
-    actions.setCurrentHps([mh1, mh2]);
+    const {
+      setMaxHealths,
+      setCurrentHps,
+      setBattleSteps,
+      setCurrentStepIdx,
+      setIsPaused,
+      setBattlePhase,
+      setIsLoadingMoves,
+    } = useGameStore.getState();
+    setMaxHealths([mh1, mh2]);
+    setCurrentHps([mh1, mh2]);
 
     const steps = generateBattleSteps(poke1, poke2, s1, s2, mh1, mh2, p1Moves, p2Moves);
-    actions.setBattleSteps(steps);
-    actions.setCurrentStepIdx(0);
-    actions.setIsPaused(false);
-    actions.setBattlePhase("battle");
+    setBattleSteps(steps);
+    setCurrentStepIdx(0);
+    setIsPaused(false);
+    setIsLoadingMoves(false);
+    setBattlePhase("battle");
 
     setTimeout(() => {
       const stage = document.getElementById("stageContainer");
       stage?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 100);
-  }, [state.chosen, actions]);
+  }, [chosen]);
 
   const goBackToSelection = useCallback(() => {
-    actions.setBattlePhase("selection");
-  }, [actions]);
+    useGameStore.getState().setBattlePhase("selection");
+  }, []);
 
   return (
     <>
@@ -71,7 +83,7 @@ function Home() {
           </p>
         </header>
 
-        {state.battlePhase === "selection" ? (
+        {battlePhase === "selection" ? (
           <>
             <div className="arena-grid" id="arenaGrid">
               <PokemonSlot index={0} label="Luchador 1" />
@@ -83,9 +95,16 @@ function Home() {
               <PokemonSlot index={1} label="Luchador 2" />
             </div>
             <div className="battle-section" id="battleSection">
-              <button className="battle-btn" id="battleBtn" disabled={!bothReady} type="button" onClick={startBattle}>
-                {"\u2694"} Comenzar batalla
-              </button>
+              {isLoadingMoves ? (
+                <div className="battle-loading">
+                  <div className="spinner" />
+                  <span className="battle-loading-msg">Analizando movimientos…</span>
+                </div>
+              ) : (
+                <button className="battle-btn" id="battleBtn" disabled={!bothReady} type="button" onClick={startBattle}>
+                  {"\u2694"} Comenzar batalla
+                </button>
+              )}
             </div>
           </>
         ) : (

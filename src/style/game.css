@@ -342,6 +342,33 @@ h1 em {
   box-shadow: none;
 }
 
+/* BATTLE LOADING (moves fetch) */
+.battle-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 1.2rem 2rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+}
+.battle-loading-msg {
+  color: var(--muted);
+  font-size: 14px;
+  font-style: italic;
+  animation: pulse-text 1.4s ease-in-out infinite;
+}
+@keyframes pulse-text {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 /* CINEMATIC STAGE */
 .stage-container {
   display: none;

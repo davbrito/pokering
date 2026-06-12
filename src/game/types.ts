@@ -24,7 +24,6 @@ export interface RealMoveInfo {
 
 export interface BattleStep {
   type: "start" | "action" | "faint" | "end";
-  text: string;
   attackerIdx?: number;
   moveName?: string;
   moveType?: string;
