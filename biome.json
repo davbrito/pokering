@@ -22,7 +22,6 @@
   },
   "linter": {
     "enabled": true,
-    "includes": ["!src/api/pokeapi/**"],
     "rules": {
       "recommended": true,
       "style": {
@@ -31,7 +30,7 @@
       "suspicious": { "noExplicitAny": "off" },
       "nursery": {
         "useSortedClasses": {
-          "level": "info",
+          "level": "error",
           "fix": "safe",
           "options": {
             "functions": ["clsx", "cn"]
@@ -66,5 +65,13 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/api/pokeapi/**"],
+      "linter": {
+        "enabled": false
+      }
+    }
+  ]
 }

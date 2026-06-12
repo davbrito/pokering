@@ -39,7 +39,7 @@ function SettingsPage() {
           </p>
 
           {isLoading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-neutral-500">
+            <div className="flex items-center gap-2 py-8 text-neutral-500 text-sm">
               <div className="spinner" />
               <span>Cargando idiomas…</span>
             </div>
@@ -54,42 +54,42 @@ function SettingsPage() {
                   localizedNameCache.clear();
                 }}
               >
-                <Select.Label className="text-xs font-semibold text-muted mb-1.5 block cursor-default">
+                <Select.Label className="mb-1.5 block cursor-default font-semibold text-muted text-xs">
                   Idioma
                 </Select.Label>
-                <Select.Trigger className="flex h-10 w-full items-center justify-between gap-3 pl-3 pr-2 text-sm leading-none whitespace-nowrap border border-border-2 bg-neutral-950 text-white rounded-lg select-none hover:not-data-disabled:bg-surface active:not-data-disabled:bg-surface data-popup-open:border-accent font-normal focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-1">
-                  <Select.Value className="data-placeholder:text-muted capitalize" placeholder="Seleccionar idioma" />
-                  <Select.Icon className="flex text-muted shrink-0">
+                <Select.Trigger className="flex h-10 w-full select-none items-center justify-between gap-3 whitespace-nowrap rounded-lg border border-border-2 bg-neutral-950 pr-2 pl-3 font-normal text-sm text-white leading-none hover:not-data-disabled:bg-surface focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-1 active:not-data-disabled:bg-surface data-popup-open:border-accent">
+                  <Select.Value className="capitalize data-placeholder:text-muted" placeholder="Seleccionar idioma" />
+                  <Select.Icon className="flex shrink-0 text-muted">
                     <ChevronsUpDown size={16} />
                   </Select.Icon>
                 </Select.Trigger>
                 <Select.Portal>
-                  <Select.Positioner className="outline-hidden z-50" sideOffset={4}>
-                    <Select.Popup className="group min-w-(--anchor-width) origin-(--transform-origin) border border-border-2 bg-surface text-white rounded-lg shadow-xl shadow-black/40 py-1 outline-hidden transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.95] data-ending-style:opacity-0 data-starting-style:scale-[0.95] data-starting-style:opacity-0 data-[side=none]:translate-y-px data-[side=none]:min-w-[calc(var(--anchor-width)+1.75rem)] data-[side=none]:transition-none data-[side=none]:scale-100 data-[side=none]:opacity-100">
-                      <Select.ScrollUpArrow className="flex h-4 w-full items-center justify-center text-muted z-1 relative">
+                  <Select.Positioner className="z-50 outline-hidden" sideOffset={4}>
+                    <Select.Popup className="group min-w-(--anchor-width) origin-(--transform-origin) rounded-lg border border-border-2 bg-surface py-1 text-white shadow-black/40 shadow-xl outline-hidden transition-[scale,opacity] duration-100 ease-out data-[side=none]:min-w-[calc(var(--anchor-width)+1.75rem)] data-[side=none]:translate-y-px data-[side=none]:scale-100 data-ending-style:scale-[0.95] data-starting-style:scale-[0.95] data-[side=none]:opacity-100 data-ending-style:opacity-0 data-starting-style:opacity-0 data-[side=none]:transition-none">
+                      <Select.ScrollUpArrow className="relative z-1 flex h-4 w-full items-center justify-center text-muted">
                         <ChevronUp size={14} />
                       </Select.ScrollUpArrow>
-                      <Select.List className="relative py-0.5 overflow-y-auto max-h-(--available-height) scroll-py-6">
+                      <Select.List className="relative max-h-(--available-height) scroll-py-6 overflow-y-auto py-0.5">
                         {data?.map((lang) => {
                           const displayName = displayNames.of(lang.name) || lang.name;
                           return (
                             <Select.Item
                               key={lang.name}
                               value={lang.name}
-                              className="grid cursor-default grid-cols-[1rem_1fr] items-center gap-2 py-1.5 pr-4 pl-2.5 text-sm outline-hidden select-none scroll-my-0.5 mx-1 rounded-md data-selected:bg-accent/15 [@media(hover:hover)]:data-highlighted:bg-surface-2"
+                              className="mx-1 grid cursor-default select-none scroll-my-0.5 grid-cols-[1rem_1fr] items-center gap-2 rounded-md py-1.5 pr-4 pl-2.5 text-sm outline-hidden data-selected:bg-accent/15 [@media(hover:hover)]:data-highlighted:bg-surface-2"
                             >
                               <Select.ItemIndicator className="col-start-1 flex items-center justify-center text-accent">
                                 <Check size={14} />
                               </Select.ItemIndicator>
                               <Select.ItemText className="col-start-2 flex items-center gap-2">
-                                <span className="font-mono text-[10px] uppercase text-muted min-w-14">{lang.name}</span>
-                                <span className="capitalize text-sm font-medium">{displayName}</span>
+                                <span className="min-w-14 font-mono text-[10px] text-muted uppercase">{lang.name}</span>
+                                <span className="font-medium text-sm capitalize">{displayName}</span>
                               </Select.ItemText>
                             </Select.Item>
                           );
                         })}
                       </Select.List>
-                      <Select.ScrollDownArrow className="flex h-4 w-full items-center justify-center text-muted z-1 relative">
+                      <Select.ScrollDownArrow className="relative z-1 flex h-4 w-full items-center justify-center text-muted">
                         <ChevronDown size={14} />
                       </Select.ScrollDownArrow>
                     </Select.Popup>

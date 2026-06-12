@@ -23,7 +23,7 @@ function Home() {
 
   const { queryClient } = Route.useRouteContext();
 
-  const startBattle = useCallback(async () => {
+  const startBattle = async () => {
     const poke1 = chosen[0];
     const poke2 = chosen[1];
     if (!poke1 || !poke2) return;
@@ -63,7 +63,7 @@ function Home() {
       const stage = document.getElementById("stageContainer");
       stage?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 100);
-  }, [chosen]);
+  };
 
   const goBackToSelection = useCallback(() => {
     useGameStore.getState().setBattlePhase("selection");

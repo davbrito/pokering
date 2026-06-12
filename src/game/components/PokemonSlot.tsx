@@ -4,7 +4,7 @@ import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { STAT_ABBR } from "../data";
 import { useChosenPokemon } from "../store";
-import { pickerDialogHandle } from "./PokemonModal";
+import { pickerDialogHandle } from "./pickerDialogHandle";
 
 function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
   const d = pokemon;

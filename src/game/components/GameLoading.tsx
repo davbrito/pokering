@@ -53,7 +53,7 @@ export function GameLoading() {
       </div>
       <div className="route-loading-msg-stack">
         {loadingMessages.map((msg, i) => (
-          <p key={i} className="route-loading-msg" style={{ animationDelay: `${i * 3}s` }}>
+          <p key={msg} className="route-loading-msg" style={{ animationDelay: `${i * 3}s` }}>
             {msg}
           </p>
         ))}
