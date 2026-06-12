@@ -1,8 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { random } from "es-toolkit/math";
 import type { PokemonDetail } from "../api/pokeapi";
 import { moveRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
 import { TYPE_CHART } from "./data";
 import type { BattleStep, MoveResult, PokemonStats, RealMoveInfo } from "./types";
+
+/** Nivel fijo al que combaten todos los Pokémon en esta simulación. */
+const COMBAT_LEVEL = 50;
 
 function moveIdFromUrl(url: string): string {
   const parts = url.replace(/\/$/, "").split("/");
@@ -57,6 +61,12 @@ export function getEffectiveness(attackerType: string, defenderTypes: string[]):
   return eff;
 }
 
+// STAB (Same Type Attack Bonus): si el tipo del movimiento coincide
+// con uno de los tipos del atacante, el daño se multiplica por 1.5.
+export function getStabMultiplier(moveType: string, attackerTypes: string[]): number {
+  return attackerTypes.includes(moveType) ? 1.5 : 1;
+}
+
 // Extrae las 6 estadísticas base (HP, Atk, Def, SpA, SpD, Spe) de la API.
 // atk/def → movimientos physical; spa/spd → movimientos special.
 // spe determina el orden de ataque en cada turno (ver determineFirstAttacker).
@@ -72,9 +82,11 @@ export function getStatsObject(p: PokemonDetail): PokemonStats {
   };
 }
 
-// Selecciona el mejor movimiento del array de movimientos reales del Pokémon
+// Selecciona el mejor movimiento del array de movimientos reales del Pokémon.
+// Recibe los tipos del atacante para aplicar STAB en la estimación de daño.
 export function selectBestMove(
   attackerStats: PokemonStats,
+  attackerTypes: string[],
   defenderTypes: string[],
   defenderStats: PokemonStats,
   moves: RealMoveInfo[],
@@ -91,8 +103,12 @@ export function selectBestMove(
     const defensiveStat = move.category === "physical" ? defenderStats.def : defenderStats.spd;
 
     const typeEff = getEffectiveness(move.type, defenderTypes);
-    // Estimación simple: (stat ofensivo / stat defensivo) * poder * efectividad
-    const expectedDmg = (offensiveStat / defensiveStat) * move.power * typeEff;
+    const stab = getStabMultiplier(move.type, attackerTypes);
+    // Estimación: (stat ofensivo / stat defensivo) * poder * STAB * efectividad
+    // Se añade un factor aleatorio (±10%) para que el "mejor" movimiento
+    // no sea siempre el mismo de forma determinista.
+    const randomness = random(0.9, 1.1);
+    const expectedDmg = (offensiveStat / defensiveStat) * move.power * stab * typeEff * randomness;
 
     if (expectedDmg > maxDamagePotential) {
       maxDamagePotential = expectedDmg;
@@ -138,6 +154,38 @@ function safeCoinFlip(): boolean {
   const array = new Uint32Array(1);
   window.crypto.getRandomValues(array);
   return (array[0] & 1) === 0; // Retorna true o false con igual probabilidad
+}
+
+/**
+ * Calcula el daño final de un ataque usando la fórmula oficial (Gen 3+).
+ *
+ * Fórmula:
+ *   base = (((2 * level / 5 + 2) * power * (offensiveStat / defensiveStat)) / 50 + 2)
+ *   final = floor(base * stab * typeEff * crit * random)
+ *
+ * - crit: 12% de probabilidad de crítico (×1.5)
+ * - random: factor uniforme entre 0.85 y 1.00
+ * - Si el daño es 0 pero hay efectividad (> 0), se fuerza a 1.
+ */
+export function calculateAttackDamage(
+  level: number,
+  power: number,
+  offensiveStat: number,
+  defensiveStat: number,
+  stab: number,
+  typeEff: number,
+): { damage: number; isCrit: boolean } {
+  const baseDamage = (((2 * level) / 5 + 2) * power * (offensiveStat / defensiveStat)) / 50 + 2;
+
+  const isCrit = Math.random() < 0.12;
+  const critMultiplier = isCrit ? 1.5 : 1;
+
+  const randomMultiplier = 0.85 + Math.random() * 0.15;
+
+  let damage = Math.floor(baseDamage * stab * typeEff * critMultiplier * randomMultiplier);
+  if (damage <= 0 && typeEff > 0) damage = 1;
+
+  return { damage, isCrit };
 }
 
 // GENERAR LA SECUENCIA DE PASOS DE COMBATE
@@ -215,22 +263,23 @@ export function generateBattleSteps(
       const act = order[i];
       if (hp1 <= 0 || hp2 <= 0) break;
 
-      const activeBestMove = selectBestMove(act.atkStats, act.defTypes, act.defStats, act.moves);
+      // Los tipos del atacante se pasan para calcular STAB
+      const attackerTypes = act.isAtkP1 ? pt1 : pt2;
+      const activeBestMove = selectBestMove(act.atkStats, attackerTypes, act.defTypes, act.defStats, act.moves);
       // Misma lógica de damage_class: physical → atk/def, special → spa/spd
       const isPhys = activeBestMove.category === "physical";
       const offVal = isPhys ? act.atkStats.atk : act.atkStats.spa;
       const defVal = isPhys ? act.defStats.def : act.defStats.spd;
 
-      // Fórmula de daño estándar de Pokémon (simplificada, nivel fijo 50)
-      const baseDamage = (((2 * 50) / 5 + 2) * activeBestMove.power * (offVal / defVal)) / 50 + 2;
-      const eff = activeBestMove.eff;
-
-      const isCrit = Math.random() < 0.12;
-      const critMultiplier = isCrit ? 1.5 : 1;
-
-      const randomMultiplier = 0.85 + Math.random() * 0.15;
-      let finalDamage = Math.floor(baseDamage * eff * critMultiplier * randomMultiplier);
-      if (finalDamage <= 0 && eff > 0) finalDamage = 1;
+      const stab = getStabMultiplier(activeBestMove.type, attackerTypes);
+      const { damage: finalDamage, isCrit } = calculateAttackDamage(
+        COMBAT_LEVEL,
+        activeBestMove.power,
+        offVal,
+        defVal,
+        stab,
+        activeBestMove.eff,
+      );
 
       const preHp: [number, number] = [hp1, hp2];
       if (act.isAtkP1) {
@@ -248,7 +297,7 @@ export function generateBattleSteps(
         category: activeBestMove.category,
         damage: finalDamage,
         isCrit,
-        eff,
+        eff: activeBestMove.eff,
         preHp,
         postHp,
       });
