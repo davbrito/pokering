@@ -9,10 +9,12 @@
     "ignoreUnknown": false,
     "includes": [
       "src/**",
+      "test/**",
       "!src/routeTree.gen.ts",
       ".vscode/*",
       "index.html",
-      "vite.config.ts"
+      "vite.config.ts",
+      "vitest.config.ts"
     ]
   },
   "formatter": {
