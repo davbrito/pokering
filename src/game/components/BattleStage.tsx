@@ -4,6 +4,7 @@ import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
 import type { BattleActionStep, BattleStep } from "../types";
+import { getPokemonName, PokemonName } from "./PokemonName";
 import { type Projectile, ProjectileFx } from "./ProjectileFx";
 import { renderStepContent } from "./renderStepContent";
 
@@ -54,6 +55,7 @@ export function BattleStage() {
   const isPaused = useGameStore((s) => s.battle.isPaused);
   const battleSteps = useGameStore((s) => s.battle.logs);
   const battlePhase = useGameStore((s) => s.battle.phase);
+  const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
   const { chosen } = useChosenPokemon();
 
   const [currentStep, setCurrentStep] = useState<BattleStep | null>(null);
@@ -272,8 +274,8 @@ export function BattleStage() {
 
   const p1Data = chosen[0];
   const p2Data = chosen[1];
-  const p1Name = p1Data?.name ?? "Luchador 1";
-  const p2Name = p2Data?.name ?? "Luchador 2";
+  const p1Name = p1Data ? getPokemonName(p1Data, pokemonLanguage) : "Luchador 1";
+  const p2Name = p2Data ? getPokemonName(p2Data, pokemonLanguage) : "Luchador 2";
   const p1Meta = p1Data
     ? `#${String(p1Data.id).padStart(3, "0")} · BST ${Object.values(getStatsObject(p1Data)).reduce((a, b) => a + b, 0)}`
     : "#000 · BST 0";
@@ -286,7 +288,7 @@ export function BattleStage() {
       <div className={`stage-viewport ${shakeScreen ? "screen-shake-anim" : ""}`} id="stageViewport" ref={viewportRef}>
         <div className="stage-huds">
           <div className="hud-box" id="hud-0">
-            <div className="hud-name">{p1Name}</div>
+            <div className="hud-name">{p1Data ? <PokemonName pokemon={p1Data} /> : "Luchador 1"}</div>
             <div className="hud-meta">{p1Meta}</div>
             <div className="hud-hp-wrap">
               <div className="hud-hp-fill" style={{ width: `${hpPct(0)}%`, backgroundColor: hpColor(0) }} />
@@ -296,7 +298,7 @@ export function BattleStage() {
             </div>
           </div>
           <div className="hud-box" id="hud-1">
-            <div className="hud-name">{p2Name}</div>
+            <div className="hud-name">{p2Data ? <PokemonName pokemon={p2Data} /> : "Luchador 2"}</div>
             <div className="hud-meta">{p2Meta}</div>
             <div className="hud-hp-wrap">
               <div className="hud-hp-fill" style={{ width: `${hpPct(1)}%`, backgroundColor: hpColor(1) }} />

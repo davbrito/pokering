@@ -4,24 +4,28 @@ import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { STAT_ABBR } from "../data";
-import { useChosenPokemon } from "../store";
+import { useChosenPokemon, useGameStore } from "../store";
+import { getPokemonName, PokemonName } from "./PokemonName";
 import { pickerDialogHandle } from "./pickerDialogHandle";
 
 function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
-  const d = pokemon;
-  const art = getArtworkUrl(d);
-  const types = d.types.map((t) => t.type.name);
-  const stats = getStatsObject(d);
+  const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
+  const art = getArtworkUrl(pokemon);
+  const types = pokemon.types.map((t) => t.type.name);
+  const stats = getStatsObject(pokemon);
   const total = Object.values(stats).reduce((a, b) => a + b, 0);
+  const localizedName = getPokemonName(pokemon, pokemonLanguage);
 
   return (
     <div className="poke-card show">
       <div className="poke-art-wrap">
-        <img className="poke-art" src={art} alt={d.name} />
+        <img className="poke-art" src={art} alt={localizedName} />
       </div>
-      <div className="poke-name">{d.name}</div>
+      <div className="poke-name">
+        <PokemonName pokemon={pokemon} />
+      </div>
       <div className="poke-sub">
-        #{String(d.id).padStart(3, "0")} · {d.height! / 10}m · {d.weight! / 10}
+        #{String(pokemon.id).padStart(3, "0")} · {pokemon.height! / 10}m · {pokemon.weight! / 10}
         kg · BST {total}
       </div>
       <div className="types">
@@ -32,7 +36,7 @@ function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
         ))}
       </div>
       <div className="stats">
-        {d.stats.map((s) => {
+        {pokemon.stats.map((s) => {
           const abbr = STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
           const pct = Math.round(Math.min((s.base_stat / 180) * 100, 100));
           const col =
@@ -54,9 +58,11 @@ function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
 
 export function PokemonSlot({ index, label }: { index: number; label: string }) {
   const { chosen, chosenLoading } = useChosenPokemon();
+  const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
 
   const pokemon = chosen[index];
   const loading = chosenLoading[index];
+  const displayName = pokemon ? getPokemonName(pokemon, pokemonLanguage) : "";
 
   return (
     <div className={`slot${pokemon ? "filled" : ""}`} id={`slot${index}`}>
@@ -64,7 +70,7 @@ export function PokemonSlot({ index, label }: { index: number; label: string }) 
       <Dialog.Trigger type="button" className="pick-btn" handle={pickerDialogHandle} payload={{ slot: index }}>
         {!loading && pokemon ? (
           <>
-            <span className="pb-icon">✔</span> {pokemon.name} — {m.home_change()}
+            <span className="pb-icon">✔</span> {displayName} — {m.home_change()}
           </>
         ) : loading ? (
           <div className="spinner" />

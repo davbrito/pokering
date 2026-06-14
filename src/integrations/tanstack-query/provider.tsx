@@ -8,6 +8,8 @@ export function getQueryContext() {
       queries: {
         staleTime: Infinity,
         gcTime: Infinity,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
       },
     },
   });

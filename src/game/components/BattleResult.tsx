@@ -4,6 +4,7 @@ import { getArtworkUrl } from "../api";
 import { getEffectiveness, getStatsObject } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
 import type { BattleStep, PokemonStats } from "../types";
+import { getPokemonName, PokemonName } from "./PokemonName";
 import { renderStepContent } from "./renderStepContent";
 
 interface WinnerInfo {
@@ -80,10 +81,12 @@ export function BattleResult() {
       <div id="result-inner">
         <div className="result-card">
           <div className="result-top">
-            <img className="win-art" src={wart} alt={w.wp.name} />
+            <img className="win-art" src={wart} alt={getPokemonName(w.wp, useGameStore.getState().pokemonLanguage)} />
             <div>
               <div className="win-eyebrow">{m.battle_winner_trophy()}</div>
-              <div className="win-name">{w.wp.name}</div>
+              <div className="win-name">
+                <PokemonName pokemon={w.wp} />
+              </div>
               <div className="win-reason">{w.razon}</div>
             </div>
             <div className="bst-box">

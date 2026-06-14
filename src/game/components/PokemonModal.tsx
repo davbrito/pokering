@@ -1,22 +1,21 @@
 import { Toggle, ToggleGroup } from "@base-ui/react";
 import { Dialog } from "@base-ui/react/dialog";
-import { useDebouncedCallback, useDebouncedValue } from "@tanstack/react-pacer";
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDebouncedValue } from "@tanstack/react-pacer";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useDeferredValue, useState } from "react";
 import { m } from "#/i18n/paraglide/messages.js";
 import {
   pokemonListInfiniteOptions,
-  pokemonRetrieveOptions,
-  pokemonSpeciesRetrieveOptions,
   typeListOptions,
   typeRetrieveOptions,
 } from "../../api/pokeapi/@tanstack/react-query.gen";
 import { cn } from "../../lib/utils";
-import { getSpriteUrl, localizedNameCache } from "../api";
+import { getSpriteUrl } from "../api";
 import { getTypeSpriteUrl, TYPE_TAB_COLORS } from "../data";
 import { useGameStore } from "../store";
+import { getPokemonNameById } from "./PokemonName";
 import { PokemonPreview } from "./PokemonPreview";
 import { pickerDialogHandle } from "./pickerDialogHandle";
 
@@ -74,8 +73,6 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
   const deferredHoveredId = useDeferredValue(hoveredId);
   const PAGE_SIZE = 120;
 
-  const queryClient = useQueryClient();
-
   // Debounced search for client-side filtering
   const [debouncedSearch] = useDebouncedValue(searchQuery, { wait: 300 });
   const isSearching = debouncedSearch.trim().length > 0;
@@ -104,9 +101,7 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
     if (!isSearching) return allAccumulatedItems;
     const q = debouncedSearch.toLowerCase().trim();
     return allAccumulatedItems.filter((p) => {
-      const cached = localizedNameCache.get(p.id);
-      const localized = cached?.get(pokemonLanguage);
-      const name = (localized || p.name).toLowerCase();
+      const name = getPokemonNameById(p.id, p.name, pokemonLanguage).toLowerCase();
       return name.includes(q) || String(p.id).padStart(3, "0").includes(q);
     });
   })();
@@ -125,9 +120,7 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
     if (!isSearching) return typeItemsRaw;
     const q = debouncedSearch.toLowerCase().trim();
     return typeItemsRaw.filter((p) => {
-      const cached = localizedNameCache.get(p.id);
-      const localized = cached?.get(pokemonLanguage);
-      const name = (localized || p.name).toLowerCase();
+      const name = getPokemonNameById(p.id, p.name, pokemonLanguage).toLowerCase();
       return name.includes(q) || String(p.id).padStart(3, "0").includes(q);
     });
   })();
@@ -144,23 +137,8 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
     pickerDialogHandle.close();
   };
 
-  const prefetchPokemon = useDebouncedCallback(
-    (id: number) => {
-      queryClient
-        .ensureQueryData(pokemonRetrieveOptions({ path: { id: String(id) } }))
-        .then((data) => {
-          queryClient.prefetchQuery(pokemonSpeciesRetrieveOptions({ path: { id: data.species.name } }));
-        })
-        .catch(() => {
-          /* ignore prefetch errors */
-        });
-    },
-    { wait: 150 },
-  );
-
   const handleHover = async (id: number) => {
     setHoveredId(id);
-    prefetchPokemon(id);
   };
 
   return (
@@ -201,7 +179,7 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
                     name={p.name}
                     onHover={() => handleHover(p.id)}
                     onClick={() => handleSelect(p.id)}
-                    translatedName={localizedNameCache.get(p.id)?.get(pokemonLanguage) || p.name}
+                    translatedName={getPokemonNameById(p.id, p.name, pokemonLanguage)}
                   />
                 ))}
               </div>
