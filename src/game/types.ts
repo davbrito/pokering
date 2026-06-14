@@ -30,17 +30,41 @@ export interface RealMoveInfo {
   accuracy: number | null;
 }
 
-export interface BattleStep {
-  type: "start" | "action" | "miss" | "faint" | "end";
-  attackerIdx?: number;
-  moveName?: string;
-  moveType?: string;
-  category?: "physical" | "special";
-  damage?: number;
-  isCrit?: boolean;
-  eff?: number;
-  preHp?: [number, number];
-  postHp?: [number, number];
-  faintedIdx?: number;
-  winnerIdx?: number;
+// ─── BattleStep: Discriminated Union ─────────────────────────────────────────
+// Cada variante tiene exactamente los campos que le corresponden,
+// sin propiedades opcionales. El discriminador es `type`.
+
+export interface BattleStartStep {
+  type: "start";
 }
+
+export interface BattleActionStep {
+  type: "action";
+  attackerIdx: number;
+  moveName: string;
+  moveType: string;
+  category: "physical" | "special";
+  damage: number;
+  isCrit: boolean;
+  eff: number;
+  preHp: [number, number];
+  postHp: [number, number];
+}
+
+export interface BattleMissStep {
+  type: "miss";
+  attackerIdx: number;
+  moveName: string;
+}
+
+export interface BattleFaintStep {
+  type: "faint";
+  faintedIdx: number;
+}
+
+export interface BattleEndStep {
+  type: "end";
+  winnerIdx: number;
+}
+
+export type BattleStep = BattleStartStep | BattleActionStep | BattleMissStep | BattleFaintStep | BattleEndStep;

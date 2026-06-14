@@ -8,21 +8,35 @@ import type { BattleStep } from "./types";
 // Action-Driven Logic: state and actions coexist in a single store.
 // Selectors give you fine-grained re-render control.
 
+type BattlePhase = "selection" | "battle" | "result";
+
+interface BattleState {
+  phase: BattlePhase;
+  logs: BattleStep[];
+  currentStepIdx: number;
+  playbackSpeed: number;
+  isPaused: boolean;
+  isLoadingMoves: boolean;
+}
+
+interface PlayerState {
+  chosenId: number | null;
+  maxHealth: number;
+  currentHp: number;
+}
+
+interface PlayersState {
+  player1: PlayerState;
+  player2: PlayerState;
+}
+
 interface GameState {
   searchQuery: string;
   activeTab: string;
   /** Idioma para nombres de Pokémon (código ISO, ej. "es", "ja", "fr") */
   pokemonLanguage: string;
-  /** Raw IDs; resolved via useChosenPokemon() + React Query */
-  chosenIds: [number | null, number | null];
-  battlePhase: "selection" | "battle" | "result";
-  battleSteps: BattleStep[];
-  currentStepIdx: number;
-  playbackSpeed: number;
-  isPaused: boolean;
-  isLoadingMoves: boolean;
-  maxHealths: [number, number];
-  currentHps: [number, number];
+  players: PlayersState;
+  battle: BattleState;
 }
 
 interface GameActions {
@@ -30,8 +44,8 @@ interface GameActions {
   setActiveTab: (tab: string) => void;
   setPokemonLanguage: (lang: string) => void;
   selectPokemon: (slot: number, id: number) => void;
-  setBattlePhase: (phase: "selection" | "battle" | "result") => void;
-  setBattleSteps: (steps: BattleStep[]) => void;
+  setBattlePhase: (phase: BattlePhase) => void;
+  setBattleLogs: (logs: BattleStep[]) => void;
   setCurrentStepIdx: (idx: number) => void;
   setPlaybackSpeed: (speed: number) => void;
   setIsPaused: (paused: boolean) => void;
@@ -46,15 +60,18 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
   searchQuery: "",
   activeTab: "all",
   pokemonLanguage: "es",
-  chosenIds: [null, null],
-  battlePhase: "selection",
-  battleSteps: [],
-  currentStepIdx: 0,
-  playbackSpeed: 1,
-  isPaused: false,
-  isLoadingMoves: false,
-  maxHealths: [100, 100],
-  currentHps: [100, 100],
+  players: {
+    player1: { chosenId: null, maxHealth: 100, currentHp: 100 },
+    player2: { chosenId: null, maxHealth: 100, currentHp: 100 },
+  },
+  battle: {
+    phase: "selection",
+    logs: [],
+    currentStepIdx: 0,
+    playbackSpeed: 1,
+    isPaused: false,
+    isLoadingMoves: false,
+  },
 
   // ── Actions ──
   setSearchQuery: (q) => set({ searchQuery: q }),
@@ -64,38 +81,57 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
   setPokemonLanguage: (lang) => set({ pokemonLanguage: lang }),
 
   selectPokemon: (slot, id) =>
-    set((state) => {
-      const next: [number | null, number | null] = [...state.chosenIds];
-      next[slot] = id;
-      return { chosenIds: next };
+    set((s) => {
+      const key = slot === 0 ? ("player1" as const) : ("player2" as const);
+      return { players: { ...s.players, [key]: { ...s.players[key], chosenId: id } } };
     }),
 
-  setBattlePhase: (phase) => set({ battlePhase: phase }),
+  setBattlePhase: (phase) => set((s) => ({ battle: { ...s.battle, phase } })),
 
-  setBattleSteps: (steps) => set({ battleSteps: steps }),
+  setBattleLogs: (logs) => set((s) => ({ battle: { ...s.battle, logs } })),
 
-  setCurrentStepIdx: (idx) => set({ currentStepIdx: idx }),
+  setCurrentStepIdx: (idx) => set((s) => ({ battle: { ...s.battle, currentStepIdx: idx } })),
 
-  setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+  setPlaybackSpeed: (speed) => set((s) => ({ battle: { ...s.battle, playbackSpeed: speed } })),
 
-  setIsPaused: (paused) => set({ isPaused: paused }),
+  setIsPaused: (paused) => set((s) => ({ battle: { ...s.battle, isPaused: paused } })),
 
-  setIsLoadingMoves: (loading) => set({ isLoadingMoves: loading }),
+  setIsLoadingMoves: (loading) => set((s) => ({ battle: { ...s.battle, isLoadingMoves: loading } })),
 
-  setMaxHealths: (hps) => set({ maxHealths: hps }),
+  setMaxHealths: (hps) =>
+    set((s) => ({
+      players: {
+        ...s.players,
+        player1: { ...s.players.player1, maxHealth: hps[0] },
+        player2: { ...s.players.player2, maxHealth: hps[1] },
+      },
+    })),
 
-  setCurrentHps: (hps) => set({ currentHps: hps }),
+  setCurrentHps: (hps) =>
+    set((s) => ({
+      players: {
+        ...s.players,
+        player1: { ...s.players.player1, currentHp: hps[0] },
+        player2: { ...s.players.player2, currentHp: hps[1] },
+      },
+    })),
 
   resetBattle: () =>
-    set({
-      battlePhase: "selection",
-      battleSteps: [],
-      currentStepIdx: 0,
-      playbackSpeed: 1,
-      isPaused: false,
-      maxHealths: [100, 100],
-      currentHps: [100, 100],
-    }),
+    set((s) => ({
+      players: {
+        ...s.players,
+        player1: { ...s.players.player1, maxHealth: 100, currentHp: 100 },
+        player2: { ...s.players.player2, maxHealth: 100, currentHp: 100 },
+      },
+      battle: {
+        phase: "selection",
+        logs: [],
+        currentStepIdx: 0,
+        playbackSpeed: 1,
+        isPaused: false,
+        isLoadingMoves: false,
+      },
+    })),
 }));
 
 // ─── React Query bridge ──────────────────────────────────────────────────────
@@ -105,7 +141,8 @@ export function useChosenPokemon(): {
   chosen: [PokemonDetail | null, PokemonDetail | null];
   chosenLoading: [boolean, boolean];
 } {
-  const [idA, idB] = useGameStore((s) => s.chosenIds);
+  const idA = useGameStore((s) => s.players.player1.chosenId);
+  const idB = useGameStore((s) => s.players.player2.chosenId);
 
   const qA = useQuery({
     ...pokemonRetrieveOptions({ path: { id: String(idA) } }),
@@ -124,6 +161,7 @@ export function useChosenPokemon(): {
 
 /** True when both fighters have been selected and loaded. */
 export function useBothReady(): boolean {
-  const ids = useGameStore((s) => s.chosenIds);
-  return ids[0] !== null && ids[1] !== null;
+  const p1 = useGameStore((s) => s.players.player1.chosenId);
+  const p2 = useGameStore((s) => s.players.player2.chosenId);
+  return p1 !== null && p2 !== null;
 }

@@ -3,7 +3,7 @@ import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { getEffectiveness, getStatsObject } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
-import type { PokemonStats } from "../types";
+import type { BattleStep, PokemonStats } from "../types";
 import { renderStepContent } from "./renderStepContent";
 
 interface WinnerInfo {
@@ -18,20 +18,10 @@ interface WinnerInfo {
   winnerIdx: number;
 }
 
-function computeWinner(
-  poke1: PokemonDetail,
-  poke2: PokemonDetail,
-  steps: { type: string; winnerIdx?: number; faintedIdx?: number }[],
-): WinnerInfo {
+function computeWinner(poke1: PokemonDetail, poke2: PokemonDetail, steps: BattleStep[]): WinnerInfo {
   const lastStep = steps[steps.length - 1];
   const winnerIdx =
-    lastStep.winnerIdx !== undefined
-      ? lastStep.winnerIdx
-      : lastStep.type === "faint"
-        ? lastStep.faintedIdx === 0
-          ? 1
-          : 0
-        : 0;
+    lastStep.type === "end" ? lastStep.winnerIdx : lastStep.type === "faint" ? (lastStep.faintedIdx === 0 ? 1 : 0) : 0;
   const wp = winnerIdx === 0 ? poke1 : poke2;
   const lp = winnerIdx === 0 ? poke2 : poke1;
   const ws = winnerIdx === 0 ? getStatsObject(poke1) : getStatsObject(poke2);
@@ -71,8 +61,8 @@ const statKeys = ["hp", "atk", "def", "spa", "spd", "spe"] as const;
 const statLabels = ["HP", "ATK", "DEF", "SpA", "SpD", "VEL"];
 
 export function BattleResult() {
-  const battlePhase = useGameStore((s) => s.battlePhase);
-  const battleSteps = useGameStore((s) => s.battleSteps);
+  const battlePhase = useGameStore((s) => s.battle.phase);
+  const battleSteps = useGameStore((s) => s.battle.logs);
   const { chosen } = useChosenPokemon();
 
   if (battlePhase !== "result") return null;

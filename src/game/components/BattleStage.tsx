@@ -3,7 +3,7 @@ import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
-import type { BattleStep } from "../types";
+import type { BattleActionStep, BattleStep } from "../types";
 import { type Projectile, ProjectileFx } from "./ProjectileFx";
 import { renderStepContent } from "./renderStepContent";
 
@@ -47,12 +47,13 @@ function DamagePopup({ pop }: { pop: DamagePopupData }) {
 }
 
 export function BattleStage() {
-  const playbackSpeed = useGameStore((s) => s.playbackSpeed);
-  const maxHealths = useGameStore((s) => s.maxHealths);
-  const currentHps = useGameStore((s) => s.currentHps);
-  const isPaused = useGameStore((s) => s.isPaused);
-  const battleSteps = useGameStore((s) => s.battleSteps);
-  const battlePhase = useGameStore((s) => s.battlePhase);
+  const playbackSpeed = useGameStore((s) => s.battle.playbackSpeed);
+  const players = useGameStore((s) => s.players);
+  const maxHealths = [players.player1.maxHealth, players.player2.maxHealth] as const;
+  const currentHps = [players.player1.currentHp, players.player2.currentHp] as const;
+  const isPaused = useGameStore((s) => s.battle.isPaused);
+  const battleSteps = useGameStore((s) => s.battle.logs);
+  const battlePhase = useGameStore((s) => s.battle.phase);
   const { chosen } = useChosenPokemon();
 
   const [currentStep, setCurrentStep] = useState<BattleStep | null>(null);
@@ -87,17 +88,17 @@ export function BattleStage() {
     setAnimClass1("");
   }, []);
 
-  const applyImpact = useCallback((defIdx: number, step: BattleStep) => {
+  const applyImpact = useCallback((defIdx: number, step: BattleActionStep) => {
     if (defIdx === 0) setAnimClass0("hit-shake");
     else setAnimClass1("hit-shake");
 
-    if (step.isCrit || (step.eff != null && step.eff > 1.5)) {
+    if (step.isCrit || step.eff > 1.5) {
       setShakeScreen(true);
       setTimeout(() => setShakeScreen(false), 350);
     }
 
     const popId = ++popupCounter.current;
-    const popDamage = step.eff === 0 ? undefined : (step.damage ?? 0);
+    const popDamage = step.eff === 0 ? undefined : step.damage;
     let popSubtitle: string | undefined;
     let popSubColor: string | undefined;
     const isImmune = step.eff === 0;
@@ -105,10 +106,10 @@ export function BattleStage() {
     if (step.isCrit) {
       popSubtitle = "¡CRÍTICO!";
       popSubColor = "var(--gold)";
-    } else if (step.eff != null && step.eff > 1.5) {
+    } else if (step.eff > 1.5) {
       popSubtitle = "¡SÚPER EFICAZ!";
       popSubColor = "var(--green)";
-    } else if (step.eff != null && step.eff < 0.6 && step.eff > 0) {
+    } else if (step.eff < 0.6 && step.eff > 0) {
       popSubtitle = "POCO EFICAZ";
       popSubColor = "var(--muted)";
     }
@@ -121,7 +122,7 @@ export function BattleStage() {
         damage: popDamage,
         subtitle: popSubtitle,
         subtitleColor: popSubColor,
-        isCrit: !!step.isCrit,
+        isCrit: step.isCrit,
         isImmune,
       },
     ]);
@@ -157,7 +158,7 @@ export function BattleStage() {
 
     const pid = ++projCounter.current;
     setProjectiles((prev) => [...prev, { id: pid, sx, sy, tx, ty, moveType }]);
-    const animTime = 380 / useGameStore.getState().playbackSpeed;
+    const animTime = 380 / useGameStore.getState().battle.playbackSpeed;
     setTimeout(() => {
       setProjectiles((prev) => prev.filter((p) => p.id !== pid));
       onComplete();
@@ -167,29 +168,32 @@ export function BattleStage() {
   const executeStepVisuals = useCallback(
     (step: BattleStep) => {
       setCurrentStep(step);
-      if (step.type === "start") useGameStore.getState().setCurrentHps([...useGameStore.getState().maxHealths]);
+      if (step.type === "start") {
+        const p = useGameStore.getState().players;
+        useGameStore.getState().setCurrentHps([p.player1.maxHealth, p.player2.maxHealth]);
+      }
       if (step.type === "action") {
-        const atkIdx = step.attackerIdx ?? 0;
+        const atkIdx = step.attackerIdx;
         const defIdx = atkIdx === 0 ? 1 : 0;
         if (step.category === "physical") {
           setAnimClass0("");
           setAnimClass1("");
           if (atkIdx === 0) setAnimClass0("lunge-right");
           else setAnimClass1("lunge-left");
-          const spd = useGameStore.getState().playbackSpeed;
+          const spd = useGameStore.getState().battle.playbackSpeed;
           setTimeout(() => applyImpact(defIdx, step), 200 / spd);
           setTimeout(() => {
             if (atkIdx === 0) setAnimClass0("");
             else setAnimClass1("");
           }, 450 / spd);
         } else {
-          triggerProjectile(atkIdx, defIdx, step.moveType || "normal", () => applyImpact(defIdx, step));
+          triggerProjectile(atkIdx, defIdx, step.moveType, () => applyImpact(defIdx, step));
         }
       }
       if (step.type === "miss") {
         // El movimiento falló: sin animación de daño, solo mostrar el texto
       }
-      if (step.type === "faint" && step.faintedIdx !== undefined) {
+      if (step.type === "faint") {
         if (step.faintedIdx === 0) setAnimClass0("faint-slide");
         else setAnimClass1("faint-slide");
       }
@@ -204,8 +208,8 @@ export function BattleStage() {
   const playStep = useCallback(
     (idx: number) => {
       const store = useGameStore.getState();
-      if (store.isPaused) return;
-      const steps = store.battleSteps;
+      if (store.battle.isPaused) return;
+      const steps = store.battle.logs;
       if (idx >= steps.length) {
         finishBattle();
         return;
@@ -213,7 +217,7 @@ export function BattleStage() {
       const step = steps[idx];
       store.setCurrentStepIdx(idx);
       executeStepVisuals(step);
-      const duration = getStepDuration(step, store.playbackSpeed);
+      const duration = getStepDuration(step, store.battle.playbackSpeed);
       playbackTimer.current = setTimeout(() => playStep(idx + 1), duration);
     },
     [executeStepVisuals, finishBattle],
@@ -244,9 +248,9 @@ export function BattleStage() {
 
   const togglePause = () => {
     const store = useGameStore.getState();
-    if (store.isPaused) {
+    if (store.battle.isPaused) {
       store.setIsPaused(false);
-      playStep(store.currentStepIdx);
+      playStep(store.battle.currentStepIdx);
     } else {
       store.setIsPaused(true);
       if (playbackTimer.current) clearTimeout(playbackTimer.current);
@@ -255,7 +259,8 @@ export function BattleStage() {
 
   const toggleSpeed = () => {
     const store = useGameStore.getState();
-    store.setPlaybackSpeed(store.playbackSpeed === 4 ? 1 : ((store.playbackSpeed * 2) as 1 | 2 | 4));
+    const b = useGameStore.getState().battle;
+    store.setPlaybackSpeed(b.playbackSpeed === 4 ? 1 : ((b.playbackSpeed * 2) as 1 | 2 | 4));
   };
   const skipCinematics = () => {
     if (playbackTimer.current) clearTimeout(playbackTimer.current);

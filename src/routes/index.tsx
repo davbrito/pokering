@@ -18,8 +18,8 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const battlePhase = useGameStore((s) => s.battlePhase);
-  const isLoadingMoves = useGameStore((s) => s.isLoadingMoves);
+  const battlePhase = useGameStore((s) => s.battle.phase);
+  const isLoadingMoves = useGameStore((s) => s.battle.isLoadingMoves);
   const bothReady = useBothReady();
   const { chosen } = useChosenPokemon();
 
@@ -45,7 +45,7 @@ function Home() {
     const {
       setMaxHealths,
       setCurrentHps,
-      setBattleSteps,
+      setBattleLogs,
       setCurrentStepIdx,
       setIsPaused,
       setBattlePhase,
@@ -55,7 +55,7 @@ function Home() {
     setCurrentHps([mh1, mh2]);
 
     const steps = generateBattleSteps(poke1, poke2, s1, s2, mh1, mh2, p1Moves, p2Moves);
-    setBattleSteps(steps);
+    setBattleLogs(steps);
     setCurrentStepIdx(0);
     setIsPaused(false);
     setIsLoadingMoves(false);

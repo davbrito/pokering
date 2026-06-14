@@ -3,15 +3,11 @@ import { random } from "es-toolkit/math";
 import type { PokemonDetail } from "../api/pokeapi";
 import { moveRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
 import { TYPE_CHART } from "./data";
+import { coinFlip, randomProbability } from "./random";
 import type { BattleStep, MoveResult, PokemonStats, RealMoveInfo } from "./types";
 
 /** Nivel fijo al que combaten todos los Pokémon en esta simulación. */
 const COMBAT_LEVEL = 50;
-
-function moveIdFromUrl(url: string): string {
-  const parts = url.replace(/\/$/, "").split("/");
-  return parts[parts.length - 1];
-}
 
 async function fetchSingleMove(queryClient: QueryClient, idOrName: string): Promise<RealMoveInfo | null> {
   try {
@@ -40,8 +36,8 @@ async function fetchSingleMove(queryClient: QueryClient, idOrName: string): Prom
 // Obtiene los movimientos reales de un Pokémon desde la API,
 // usando queryClient para cachear los resultados
 export async function fetchPokemonMoves(queryClient: QueryClient, pokemon: PokemonDetail): Promise<RealMoveInfo[]> {
-  const uniqueIds = [...new Set(pokemon.moves.map((m) => moveIdFromUrl(m.move.url)))];
-  const results = await Promise.all(uniqueIds.map((id) => fetchSingleMove(queryClient, id)));
+  const movesNames = [...new Set(pokemon.moves.map((m) => m.move.name))];
+  const results = await Promise.all(movesNames.map((name) => fetchSingleMove(queryClient, name)));
   const valid = results.filter((r): r is RealMoveInfo => r !== null);
   // Ordenados por poder descendente, top 20.
   // Esto garantiza que selectBestMove tenga los movimientos más fuertes
@@ -147,13 +143,7 @@ export function determineFirstAttacker(speP1: number, speP2: number): boolean {
   if (speP1 > speP2) return true;
   if (speP2 > speP1) return false;
   // Empate de velocidad: coin flip aleatorio
-  return safeCoinFlip();
-}
-
-function safeCoinFlip(): boolean {
-  const array = new Uint32Array(1);
-  window.crypto.getRandomValues(array);
-  return (array[0] & 1) === 0; // Retorna true o false con igual probabilidad
+  return coinFlip();
 }
 
 /**
@@ -177,15 +167,138 @@ export function calculateAttackDamage(
 ): { damage: number; isCrit: boolean } {
   const baseDamage = (((2 * level) / 5 + 2) * power * (offensiveStat / defensiveStat)) / 50 + 2;
 
-  const isCrit = Math.random() < 0.12;
+  const isCrit = randomProbability(0.12);
   const critMultiplier = isCrit ? 1.5 : 1;
-
-  const randomMultiplier = 0.85 + Math.random() * 0.15;
+  const randomMultiplier = random(0.85, 1.0);
 
   let damage = Math.floor(baseDamage * stab * typeEff * critMultiplier * randomMultiplier);
   if (damage <= 0 && typeEff > 0) damage = 1;
 
   return { damage, isCrit };
+}
+
+/**
+ * Resuelve una ronda de combate Pokémon.
+ *
+ * Cada ronda sigue el flujo canónico:
+ * 1. Ambos Pokémon seleccionan su movimiento simultáneamente (PC vs PC: automático).
+ * 2. Se determina quién ataca primero según velocidad (Speed).
+ * 3. Los movimientos se ejecutan en orden; si el defensor se debilita antes de
+ *    ejecutar su movimiento, ese movimiento se pierde (no se emite step).
+ *
+ * Retorna los BattleStep generados en esta ronda y los HP actualizados.
+ */
+function resolveRound(
+  p1s: PokemonStats,
+  p2s: PokemonStats,
+  pt1: string[],
+  pt2: string[],
+  p1Moves: RealMoveInfo[],
+  p2Moves: RealMoveInfo[],
+  hp1: number,
+  hp2: number,
+): { steps: BattleStep[]; hp1: number; hp2: number } {
+  const steps: BattleStep[] = [];
+
+  // ── Fase 1: selección simultánea de movimientos ──
+  const p1Move = selectBestMove(p1s, pt1, pt2, p2s, p1Moves);
+  const p2Move = selectBestMove(p2s, pt2, pt1, p1s, p2Moves);
+
+  // ── Fase 2: determinar orden de ataque por velocidad ──
+  const p1First = determineFirstAttacker(p1s.spe, p2s.spe);
+
+  // ── Fase 3: ejecutar en orden ──
+  // Construimos la cola de ataques en orden: [primero, segundo]
+  interface QueuedAttack {
+    move: MoveResult;
+    attackerIdx: number;
+    offStat: number;
+    defStat: number;
+    stab: number;
+  }
+
+  const queue: QueuedAttack[] = [];
+
+  const q1: QueuedAttack = {
+    move: p1Move,
+    attackerIdx: 0,
+    offStat: p1Move.category === "physical" ? p1s.atk : p1s.spa,
+    defStat: p1Move.category === "physical" ? p2s.def : p2s.spd,
+    stab: getStabMultiplier(p1Move.type, pt1),
+  };
+
+  const q2: QueuedAttack = {
+    move: p2Move,
+    attackerIdx: 1,
+    offStat: p2Move.category === "physical" ? p2s.atk : p2s.spa,
+    defStat: p2Move.category === "physical" ? p1s.def : p1s.spd,
+    stab: getStabMultiplier(p2Move.type, pt2),
+  };
+
+  if (p1First) {
+    queue.push(q1, q2);
+  } else {
+    queue.push(q2, q1);
+  }
+
+  for (const attack of queue) {
+    if (hp1 <= 0 || hp2 <= 0) break;
+
+    // Chequeo de precisión (accuracy)
+    const acc = attack.move.accuracy;
+    if (acc !== null && acc < 100 && random(1, 100) > acc) {
+      steps.push({
+        type: "miss",
+        attackerIdx: attack.attackerIdx,
+        moveName: attack.move.name,
+      });
+      continue;
+    }
+
+    const { damage: finalDamage, isCrit } = calculateAttackDamage(
+      COMBAT_LEVEL,
+      attack.move.power,
+      attack.offStat,
+      attack.defStat,
+      attack.stab,
+      attack.move.eff,
+    );
+
+    const preHp: [number, number] = [hp1, hp2];
+
+    if (attack.attackerIdx === 0) {
+      hp2 = Math.max(0, hp2 - finalDamage);
+    } else {
+      hp1 = Math.max(0, hp1 - finalDamage);
+    }
+
+    const postHp: [number, number] = [hp1, hp2];
+
+    steps.push({
+      type: "action",
+      attackerIdx: attack.attackerIdx,
+      moveName: attack.move.name,
+      moveType: attack.move.type,
+      category: attack.move.category,
+      damage: finalDamage,
+      isCrit,
+      eff: attack.move.eff,
+      preHp,
+      postHp,
+    });
+
+    // Si el defensor se debilita, registrar faint y cortar la ronda
+    if (attack.attackerIdx === 0 && hp2 <= 0) {
+      steps.push({ type: "faint", faintedIdx: 1 });
+      break;
+    }
+    if (attack.attackerIdx === 1 && hp1 <= 0) {
+      steps.push({ type: "faint", faintedIdx: 0 });
+      break;
+    }
+  }
+
+  return { steps, hp1, hp2 };
 }
 
 // GENERAR LA SECUENCIA DE PASOS DE COMBATE
@@ -206,136 +319,19 @@ export function generateBattleSteps(
   let hp1 = maxHp1;
   let hp2 = maxHp2;
 
-  steps.push({
-    type: "start",
-  });
+  steps.push({ type: "start" });
 
   let turn = 1;
-
   while (hp1 > 0 && hp2 > 0 && turn <= 15) {
-    const firstAttackerP1 = determineFirstAttacker(p1s.spe, p2s.spe);
-
-    const order: Array<{
-      atkStats: PokemonStats;
-      defTypes: string[];
-      defStats: PokemonStats;
-      moves: RealMoveInfo[];
-      isAtkP1: boolean;
-    }> = firstAttackerP1
-      ? [
-          {
-            atkStats: p1s,
-            defTypes: pt2,
-            defStats: p2s,
-            moves: p1Moves,
-            isAtkP1: true,
-          },
-        ]
-      : [
-          {
-            atkStats: p2s,
-            defTypes: pt1,
-            defStats: p1s,
-            moves: p2Moves,
-            isAtkP1: false,
-          },
-        ];
-
-    order.push(
-      firstAttackerP1
-        ? {
-            atkStats: p2s,
-            defTypes: pt1,
-            defStats: p1s,
-            moves: p2Moves,
-            isAtkP1: false,
-          }
-        : {
-            atkStats: p1s,
-            defTypes: pt2,
-            defStats: p2s,
-            moves: p1Moves,
-            isAtkP1: true,
-          },
-    );
-
-    for (let i = 0; i < order.length; i++) {
-      const act = order[i];
-      if (hp1 <= 0 || hp2 <= 0) break;
-
-      // Los tipos del atacante se pasan para calcular STAB
-      const attackerTypes = act.isAtkP1 ? pt1 : pt2;
-      const activeBestMove = selectBestMove(act.atkStats, attackerTypes, act.defTypes, act.defStats, act.moves);
-
-      // Chequeo de precisión (accuracy): si el movimiento tiene accuracy
-      // definido y el random(1,100) > accuracy, el ataque falla.
-      // accuracy null = nunca falla (ej. Swift).
-      const acc = activeBestMove.accuracy;
-      if (acc !== null && acc < 100 && random(1, 100) > acc) {
-        steps.push({
-          type: "miss",
-          attackerIdx: act.isAtkP1 ? 0 : 1,
-          moveName: activeBestMove.name,
-        });
-        continue;
-      }
-
-      // Misma lógica de damage_class: physical → atk/def, special → spa/spd
-      const isPhys = activeBestMove.category === "physical";
-      const offVal = isPhys ? act.atkStats.atk : act.atkStats.spa;
-      const defVal = isPhys ? act.defStats.def : act.defStats.spd;
-
-      const stab = getStabMultiplier(activeBestMove.type, attackerTypes);
-      const { damage: finalDamage, isCrit } = calculateAttackDamage(
-        COMBAT_LEVEL,
-        activeBestMove.power,
-        offVal,
-        defVal,
-        stab,
-        activeBestMove.eff,
-      );
-
-      const preHp: [number, number] = [hp1, hp2];
-      if (act.isAtkP1) {
-        hp2 = Math.max(0, hp2 - finalDamage);
-      } else {
-        hp1 = Math.max(0, hp1 - finalDamage);
-      }
-      const postHp: [number, number] = [hp1, hp2];
-
-      steps.push({
-        type: "action",
-        attackerIdx: act.isAtkP1 ? 0 : 1,
-        moveName: activeBestMove.name,
-        moveType: activeBestMove.type,
-        category: activeBestMove.category,
-        damage: finalDamage,
-        isCrit,
-        eff: activeBestMove.eff,
-        preHp,
-        postHp,
-      });
-
-      if (act.isAtkP1 && hp2 <= 0) {
-        steps.push({
-          type: "faint",
-          faintedIdx: 1,
-        });
-      } else if (!act.isAtkP1 && hp1 <= 0) {
-        steps.push({
-          type: "faint",
-          faintedIdx: 0,
-        });
-      }
-    }
+    const round = resolveRound(p1s, p2s, pt1, pt2, p1Moves, p2Moves, hp1, hp2);
+    steps.push(...round.steps);
+    hp1 = round.hp1;
+    hp2 = round.hp2;
     turn++;
   }
 
   const winnerIdx = hp1 > 0 ? 0 : 1;
-  steps.push({
-    type: "end",
-    winnerIdx,
-  });
+  steps.push({ type: "end", winnerIdx });
 
   return steps;
 }
