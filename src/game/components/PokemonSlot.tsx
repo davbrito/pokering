@@ -1,25 +1,43 @@
 import { Dialog } from "@base-ui/react";
+import { sumBy } from "es-toolkit/math";
+import { CheckIcon, TargetIcon, Volume2 } from "lucide-react";
+import { motion } from "motion/react";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
-import { getStatsObject } from "../combat";
+import { playPokemonCry } from "../audio";
+import { scaleStatsArrayByLevel } from "../combat";
 import { STAT_ABBR } from "../data";
 import { useChosenPokemon, useGameStore } from "../store";
 import { getPokemonName, PokemonName } from "./PokemonName";
 import { pickerDialogHandle } from "./pickerDialogHandle";
 
-function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
+function PokemonCard({ pokemon, slotIndex }: { pokemon: PokemonDetail; slotIndex: number }) {
   const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
+  const level = useGameStore((s) => (slotIndex === 0 ? s.players.player1.level : s.players.player2.level));
   const art = getArtworkUrl(pokemon);
   const types = pokemon.types.map((t) => t.type.name);
-  const stats = getStatsObject(pokemon);
-  const total = Object.values(stats).reduce((a, b) => a + b, 0);
+  const total = sumBy(pokemon.stats, (s) => s.base_stat);
   const localizedName = getPokemonName(pokemon, pokemonLanguage);
+
+  // Escalar stats base por nivel y aplicar multiplicadores de stages
+  const effectiveStats = scaleStatsArrayByLevel(pokemon.stats, level);
 
   return (
     <div className="poke-card show">
-      <div className="poke-art-wrap">
+      <div className="poke-art-wrap relative">
         <img className="poke-art" src={art} alt={localizedName} />
+        <button
+          type="button"
+          className="poke-cry-btn"
+          title="Reproducir grito"
+          onClick={(e) => {
+            e.stopPropagation();
+            playPokemonCry(pokemon);
+          }}
+        >
+          <Volume2 size={14} />
+        </button>
       </div>
       <div className="poke-name">
         <PokemonName pokemon={pokemon} />
@@ -36,18 +54,19 @@ function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
         ))}
       </div>
       <div className="stats">
-        {pokemon.stats.map((s) => {
+        {effectiveStats.map((s, i) => {
+          const effectiveValue = s.base_stat;
+          const rawValue = pokemon.stats[i].base_stat;
           const abbr = STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
-          const pct = Math.round(Math.min((s.base_stat / 180) * 100, 100));
-          const col =
-            s.base_stat >= 100 ? "#4ade80" : s.base_stat >= 70 ? "#60d8a0" : s.base_stat >= 45 ? "#f5c842" : "#e63e3e";
+          const pct = Math.round(Math.min((rawValue / 180) * 100, 100));
+          const col = pct >= 55 ? "#4ade80" : pct >= 38 ? "#60d8a0" : pct >= 25 ? "#f5c842" : "#e63e3e";
           return (
             <div key={s.stat.name} className="srow">
               <span className="sname">{abbr}</span>
               <div className="strack">
-                <div className="sfill" style={{ width: `${pct}%`, background: col }} />
+                <motion.div className="sfill" animate={{ width: `${pct}%`, background: col }} />
               </div>
-              <span className="sval">{s.base_stat}</span>
+              <span className="sval">{effectiveValue}</span>
             </div>
           );
         })}
@@ -58,11 +77,9 @@ function PokemonCard({ pokemon }: { pokemon: PokemonDetail }) {
 
 export function PokemonSlot({ index, label }: { index: number; label: string }) {
   const { chosen, chosenLoading } = useChosenPokemon();
-  const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
 
   const pokemon = chosen[index];
   const loading = chosenLoading[index];
-  const displayName = pokemon ? getPokemonName(pokemon, pokemonLanguage) : "";
   const level = useGameStore((s) => (index === 0 ? s.players.player1.level : s.players.player2.level));
 
   return (
@@ -71,17 +88,23 @@ export function PokemonSlot({ index, label }: { index: number; label: string }) 
       <Dialog.Trigger type="button" className="pick-btn" handle={pickerDialogHandle} payload={{ slot: index }}>
         {!loading && pokemon ? (
           <>
-            <span className="pb-icon">✔</span> {displayName} — {m.home_change()}
+            <span className="pb-icon">
+              <CheckIcon size={16} />
+            </span>{" "}
+            <PokemonName pokemon={pokemon} /> — {m.home_change()}
           </>
         ) : loading ? (
           <div className="spinner" />
         ) : (
           <>
-            <span className="pb-icon">⊕</span> {m.home_select_pokemon()}
+            <span className="pb-icon">
+              <TargetIcon size={16} />
+            </span>{" "}
+            {m.home_select_pokemon()}
           </>
         )}
       </Dialog.Trigger>
-      {pokemon && <PokemonCard pokemon={pokemon} />}
+      {pokemon && <PokemonCard pokemon={pokemon} slotIndex={index} />}
       {pokemon && (
         <div className="level-row">
           <label className="level-lbl" htmlFor={`level-slider-${index}`}>

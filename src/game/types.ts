@@ -66,9 +66,7 @@ export interface BattleStartStep {
 export interface BattleUseMoveStep {
   type: "use-move";
   attackerIdx: number;
-  moveName: string;
-  moveType: string;
-  category: "physical" | "special";
+  move: MoveInfo;
 }
 
 export interface BattleDamageStep {

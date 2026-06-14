@@ -6,7 +6,8 @@ import { m } from "#/i18n/paraglide/messages.js";
 import { getLocale } from "#/i18n/paraglide/runtime.js";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 
-import styleCss from "../styles.css?url";
+// import styleCss from "../styles.css?url";
+import "../styles.css";
 
 interface RootRouteContext {
   queryClient: QueryClient;
@@ -24,7 +25,7 @@ export const Route = createRootRouteWithContext<RootRouteContext>()({
         href: "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&family=Space+Mono:wght@700&display=swap",
         rel: "stylesheet",
       },
-      { rel: "stylesheet", href: styleCss },
+      // { rel: "stylesheet", href: styleCss },
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
     ],
   }),

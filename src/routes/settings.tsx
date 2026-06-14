@@ -3,7 +3,7 @@ import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, Check, ChevronDown, ChevronsUpDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ChevronsUpDown, ChevronUp, Volume2, VolumeX } from "lucide-react";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
 import { languageListOptions } from "../api/pokeapi/@tanstack/react-query.gen";
@@ -23,6 +23,11 @@ function SettingsPage() {
     staleTime: 10 * 60 * 1000,
     select: (d) => d.results.toSorted((a, b) => a.name.localeCompare(b.name)),
   });
+
+  const audioEnabled = useGameStore((s) => s.audio.enabled);
+  const audioVolume = useGameStore((s) => s.audio.volume);
+  const setAudioEnabled = useGameStore((s) => s.setAudioEnabled);
+  const setAudioVolume = useGameStore((s) => s.setAudioVolume);
 
   const displayNames = new Intl.DisplayNames(["es"], { type: "language" });
 
@@ -131,6 +136,36 @@ function SettingsPage() {
                   </Select.Positioner>
                 </Select.Portal>
               </Select.Root>
+            </div>
+          )}
+        </section>
+
+        <section className="settings-section">
+          <h2 className="settings-section-title">{m.settings_audio_title()}</h2>
+          <p className="settings-desc">{m.settings_audio_desc()}</p>
+
+          <div className="flex items-center gap-3">
+            <button type="button" className="audio-toggle-btn" onClick={() => setAudioEnabled(!audioEnabled)}>
+              {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+              <span>{audioEnabled ? m.settings_audio_on() : m.settings_audio_off()}</span>
+            </button>
+          </div>
+
+          {audioEnabled && (
+            <div className="mt-4 max-w-xs">
+              <label htmlFor="audio-volume" className="mb-1.5 block font-semibold text-muted text-xs">
+                {m.settings_audio_volume()}
+              </label>
+              <input
+                id="audio-volume"
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(audioVolume * 100)}
+                onChange={(e) => setAudioVolume(Number(e.target.value) / 100)}
+                className="audio-slider w-full"
+              />
+              <span className="mt-1 block font-mono text-[11px] text-muted">{Math.round(audioVolume * 100)}%</span>
             </div>
           )}
         </section>

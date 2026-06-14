@@ -8,7 +8,7 @@ export interface DamagePopupData {
   step: BattleDamageStep;
 }
 
-export function DamagePopup({ pop }: { pop: DamagePopupData }) {
+export function DamagePopup({ pop, positionAnchor }: { pop: DamagePopupData; positionAnchor: string }) {
   const { step } = pop;
   const isImmune = step.eff === 0;
   const isCrit = step.isCrit;
@@ -30,7 +30,14 @@ export function DamagePopup({ pop }: { pop: DamagePopupData }) {
   const popDamage = isImmune ? undefined : step.damage;
 
   return (
-    <div className={cn("damage-popup z-10", isCrit && "crit")}>
+    <div
+      className={cn("damage-popup absolute z-10", isCrit && "crit")}
+      style={{
+        positionAnchor,
+        top: "anchor(top)",
+        justifySelf: "anchor-center",
+      }}
+    >
       {isImmune ? (
         <span style={{ fontSize: 24 }}>{m.battle_immune()}</span>
       ) : (

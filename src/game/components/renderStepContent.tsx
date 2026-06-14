@@ -3,20 +3,33 @@ import type { ReactNode } from "react";
 import { m } from "#/i18n/paraglide/messages.js";
 import type { BattleStatusStep, BattleStep } from "../types";
 
+function renderAttackClassLabel(damageClass: "physical" | "special" | "status") {
+  switch (damageClass) {
+    case "physical":
+      return m.battle_cat_physical();
+    case "special":
+      return m.battle_cat_special();
+    case "status":
+      return m.battle_cat_status();
+    default:
+      return `${damageClass}?`;
+  }
+}
+
 export function renderStepContent(step: BattleStep | null, p1Name: string, p2Name: string): ReactNode {
   if (!step) return m.battle_preparing_arena();
 
   switch (step.type) {
     case "use-move": {
       const attackerName = formatName(step.attackerIdx, p1Name, p2Name);
-      const catLabel = step.category === "physical" ? m.battle_cat_physical() : m.battle_cat_special();
+      const catLabel = renderAttackClassLabel(step.move.damageClass);
       return (
         <>
           <ParaglideMessage
             message={m.battle_use_move}
-            inputs={{ attacker: attackerName, move: step.moveName.toUpperCase() }}
+            inputs={{ attacker: attackerName, move: step.move.name.toUpperCase() }}
             markup={{ strong: ({ children }) => <strong>{children}</strong> }}
-          />
+          />{" "}
           <small className="cat-tag">{catLabel}</small>
         </>
       );
@@ -59,22 +72,11 @@ export function renderStepContent(step: BattleStep | null, p1Name: string, p2Nam
       return <>{m.battle_start({ p1: formatName(0, p1Name, p2Name), p2: formatName(1, p1Name, p2Name) })}</>;
     case "end": {
       const winnerName = formatName(step.winnerIdx, p1Name, p2Name);
-      return <>{m.battle_end({ winner: winnerName })}</>;
+      return m.battle_end({ winner: winnerName });
     }
     case "status": {
-      const attackerName = formatName(step.attackerIdx, p1Name, p2Name);
       const targetName = formatName(step.targetIdx, p1Name, p2Name);
-      const moveUpper = step.moveName.toUpperCase();
-      return (
-        <>
-          <ParaglideMessage
-            message={m.battle_use_move}
-            inputs={{ attacker: attackerName, move: moveUpper }}
-            markup={{ strong: ({ children }) => <strong>{children}</strong> }}
-          />{" "}
-          <small className="cat-tag">{m.battle_cat_status()}</small> {renderStatusContent(step, targetName)}
-        </>
-      );
+      return renderStatusContent(step, targetName);
     }
     case "passive": {
       const targetName = formatName(step.targetIdx, p1Name, p2Name);
@@ -105,10 +107,10 @@ export function renderStepContent(step: BattleStep | null, p1Name: string, p2Nam
   }
 }
 
-function renderStatusContent(step: BattleStatusStep, targetName: string): ReactNode {
-  const p = step.payload;
+export function renderStatusContent(step: BattleStatusStep, targetName: string): ReactNode {
+  const payload = step.payload;
 
-  switch (p.subType) {
+  switch (payload.subType) {
     case "stat-change": {
       const statNames: Record<string, string> = {
         atk: "Ataque",
@@ -117,9 +119,9 @@ function renderStatusContent(step: BattleStatusStep, targetName: string): ReactN
         spd: "Def. Esp.",
         spe: "Velocidad",
       };
-      const statName = statNames[p.stat] || p.stat;
-      const dir = p.change > 0 ? "subió" : "bajó";
-      const intensity = Math.abs(p.change) >= 2 ? " mucho" : "";
+      const statName = statNames[payload.stat] || payload.stat;
+      const dir = payload.change > 0 ? "subió" : "bajó";
+      const intensity = Math.abs(payload.change) >= 2 ? " mucho" : "";
       return (
         <span>
           <ParaglideMessage
@@ -134,7 +136,7 @@ function renderStatusContent(step: BattleStatusStep, targetName: string): ReactN
       return (
         <ParaglideMessage
           message={m.battle_heal}
-          inputs={{ target: targetName, amount: String(p.amount) }}
+          inputs={{ target: targetName, amount: String(payload.amount) }}
           markup={{ strong: ({ children }) => <strong>{children}</strong> }}
         />
       );
@@ -143,7 +145,7 @@ function renderStatusContent(step: BattleStatusStep, targetName: string): ReactN
       return (
         <ParaglideMessage
           message={m.battle_ailment}
-          inputs={{ target: targetName, ailment: nameMap[p.name] || p.name }}
+          inputs={{ target: targetName, ailment: nameMap[payload.name] || payload.name }}
           markup={{ strong: ({ children }) => <strong>{children}</strong> }}
         />
       );

@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { PokemonDetail } from "../../api/pokeapi";
 import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
+import { playPokemonCries, playPokemonCry } from "../audio";
 import { getStatsObject } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
-import type { BattleDamageStep, BattleStep } from "../types";
+import type { BattleDamageStep, BattleStatusStep, BattleStep } from "../types";
 import { DamagePopup, type DamagePopupData } from "./DamagePopup";
-import { getPokemonName, PokemonName } from "./PokemonName";
+import { usePokemonName } from "./PokemonName";
 import { type Projectile, ProjectileFx } from "./ProjectileFx";
-import { renderStepContent } from "./renderStepContent";
+import { renderStatusContent, renderStepContent } from "./renderStepContent";
 
 function getStepDuration(step: BattleStep, speed: number): number {
   let base = 1800;
@@ -17,7 +19,7 @@ function getStepDuration(step: BattleStep, speed: number): number {
   if (step.type === "end") base = 2500;
   if (step.type === "status") base = 1700;
   if (step.type === "passive") base = 1500;
-  if (step.type === "use-move") base = step.category === "special" ? 2000 : 1800;
+  if (step.type === "use-move") base = step.move.damageClass === "special" ? 2000 : 1800;
   if (step.type === "damage") base = 600;
   return base / speed;
 }
@@ -30,34 +32,29 @@ export function BattleStage() {
   const isPaused = useGameStore((s) => s.battle.isPaused);
   const battleSteps = useGameStore((s) => s.battle.logs);
   const battlePhase = useGameStore((s) => s.battle.phase);
-  const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
+  const p1Level = useGameStore((s) => s.players.player1.level);
+  const p2Level = useGameStore((s) => s.players.player2.level);
   const { chosen } = useChosenPokemon();
+  const [p1Data, p2Data] = chosen;
+  const p1Name = usePokemonName(p1Data, "Luchador 1");
+  const p2Name = usePokemonName(p2Data, "Luchador 2");
 
   const [currentStep, setCurrentStep] = useState<BattleStep | null>(null);
   const [animClass0, setAnimClass0] = useState("");
   const [animClass1, setAnimClass1] = useState("");
   const [shakeScreen, setShakeScreen] = useState(false);
   const [damagePopups, setDamagePopups] = useState<DamagePopupData[]>([]);
+  const [statusPopups, setStatusPopups] = useState<{ id: number; targetIdx: number; step: BattleStatusStep }[]>([]);
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
+  const [playingCryIdx, setPlayingCryIdx] = useState<number | null>(null);
 
   const viewportRef = useRef<HTMLDivElement>(null);
-  const imgRef0 = useRef<HTMLImageElement>(null);
-  const imgRef1 = useRef<HTMLImageElement>(null);
+  const imgRef0 = useRef<HTMLImageElement | null>(null);
+  const imgRef1 = useRef<HTMLImageElement | null>(null);
   const playbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const popupCounter = useRef(0);
   const projCounter = useRef(0);
   const startedRef = useRef(false);
-
-  const hpPct = (idx: number) => {
-    return Math.max(0, Math.min(100, (currentHps[idx] / maxHealths[idx]) * 100));
-  };
-
-  const hpColor = (idx: number) => {
-    const pct = hpPct(idx);
-    if (pct >= 50) return "var(--green)";
-    if (pct >= 20) return "var(--gold)";
-    return "var(--accent)";
-  };
 
   const finishBattle = useCallback(() => {
     useGameStore.getState().setBattlePhase("result");
@@ -124,11 +121,21 @@ export function BattleStage() {
       if (step.type === "start") {
         const p = useGameStore.getState().players;
         useGameStore.getState().setCurrentHps([p.player1.maxHealth, p.player2.maxHealth]);
+        playPokemonCries(p1Data, p2Data, 1200, {
+          onP1Play: {
+            onPlay: () => setPlayingCryIdx(0),
+            onEnd: () => setPlayingCryIdx(null),
+          },
+          onP2Play: {
+            onPlay: () => setPlayingCryIdx(1),
+            onEnd: () => setPlayingCryIdx(null),
+          },
+        });
       }
       if (step.type === "use-move") {
         const atkIdx = step.attackerIdx;
         const defIdx = atkIdx === 0 ? 1 : 0;
-        if (step.category === "physical") {
+        if (step.move.damageClass === "physical") {
           setAnimClass0("");
           setAnimClass1("");
           if (atkIdx === 0) setAnimClass0("lunge-right");
@@ -139,7 +146,7 @@ export function BattleStage() {
             else setAnimClass1("");
           }, 450 / spd);
         } else {
-          triggerProjectile(atkIdx, defIdx, step.moveType, () => {});
+          triggerProjectile(atkIdx, defIdx, step.move.type, () => {});
         }
       }
       if (step.type === "damage") {
@@ -149,16 +156,30 @@ export function BattleStage() {
       if (step.type === "miss") {
         // El movimiento falló: sin animación de daño, solo mostrar el texto
       }
+      if (step.type === "status") {
+        const id = ++popupCounter.current;
+        setStatusPopups((prev) => [...prev, { id, targetIdx: step.targetIdx, step }]);
+        setTimeout(() => {
+          setStatusPopups((prev) => prev.filter((p) => p.id !== id));
+        }, 1200);
+      }
       if (step.type === "faint") {
         if (step.faintedIdx === 0) setAnimClass0("faint-slide");
         else setAnimClass1("faint-slide");
+        const faintedPoke = step.faintedIdx === 0 ? p1Data : p2Data;
+        if (faintedPoke) {
+          playPokemonCry(faintedPoke, {
+            onPlay: () => setPlayingCryIdx(step.faintedIdx),
+            onEnd: () => setPlayingCryIdx(null),
+          });
+        }
       }
       if (step.type === "end") {
         setAnimClass0("");
         setAnimClass1("");
       }
     },
-    [applyImpact, triggerProjectile],
+    [applyImpact, triggerProjectile, p1Data, p2Data],
   );
 
   const playStep = useCallback(
@@ -187,6 +208,7 @@ export function BattleStage() {
       setAnimClass0("");
       setAnimClass1("");
       setDamagePopups([]);
+      setStatusPopups([]);
       setProjectiles([]);
       const timer = setTimeout(() => playStep(0), 400);
       return () => clearTimeout(timer);
@@ -226,80 +248,46 @@ export function BattleStage() {
 
   if (battlePhase !== "battle" && battlePhase !== "result") return null;
 
-  const p1Data = chosen[0];
-  const p2Data = chosen[1];
-  const p1Name = p1Data ? getPokemonName(p1Data, pokemonLanguage) : "Luchador 1";
-  const p2Name = p2Data ? getPokemonName(p2Data, pokemonLanguage) : "Luchador 2";
   const p1Meta = p1Data
-    ? `#${String(p1Data.id).padStart(3, "0")} · BST ${Object.values(getStatsObject(p1Data)).reduce((a, b) => a + b, 0)}`
-    : "#000 · BST 0";
+    ? `#${String(p1Data.id).padStart(3, "0")} · Nv.${p1Level} · BST ${Object.values(getStatsObject(p1Data)).reduce((a, b) => a + b, 0)}`
+    : "#000 · Nv.? · BST 0";
   const p2Meta = p2Data
-    ? `#${String(p2Data.id).padStart(3, "0")} · BST ${Object.values(getStatsObject(p2Data)).reduce((a, b) => a + b, 0)}`
-    : "#000 · BST 0";
+    ? `#${String(p2Data.id).padStart(3, "0")} · Nv.${p2Level} · BST ${Object.values(getStatsObject(p2Data)).reduce((a, b) => a + b, 0)}`
+    : "#000 · Nv.? · BST 0";
 
   return (
-    <div className={`stage-container ${battlePhase === "battle" ? "show" : ""}`} id="stageContainer">
+    <div className={cn("stage-container isolate", battlePhase === "battle" && "show")} id="stageContainer">
       <div
         className={cn("stage-viewport isolate", shakeScreen && "screen-shake-anim")}
         id="stageViewport"
         ref={viewportRef}
       >
         <div className="stage-huds">
-          <div className="hud-box" id="hud-0">
-            <div className="hud-name">{p1Data ? <PokemonName pokemon={p1Data} /> : "Luchador 1"}</div>
-            <div className="hud-meta">{p1Meta}</div>
-            <div className="hud-hp-wrap">
-              <div className="hud-hp-fill" style={{ width: `${hpPct(0)}%`, backgroundColor: hpColor(0) }} />
-            </div>
-            <div className="hud-hp-text">
-              {currentHps[0]} / {maxHealths[0]} PS
-            </div>
-          </div>
-          <div className="hud-box" id="hud-1">
-            <div className="hud-name">{p2Data ? <PokemonName pokemon={p2Data} /> : "Luchador 2"}</div>
-            <div className="hud-meta">{p2Meta}</div>
-            <div className="hud-hp-wrap">
-              <div className="hud-hp-fill" style={{ width: `${hpPct(1)}%`, backgroundColor: hpColor(1) }} />
-            </div>
-            <div className="hud-hp-text">
-              {currentHps[1]} / {maxHealths[1]} PS
-            </div>
-          </div>
+          <PlayerHud name={p1Name} currentHp={currentHps[0]} maxHp={maxHealths[0]} meta={p1Meta} />
+          <PlayerHud name={p2Name} currentHp={currentHps[1]} maxHp={maxHealths[1]} meta={p2Meta} />
         </div>
 
         <div className="stage-grid" id="stageGrid">
-          <div className="fighter-wrapper p1" id="fighter-wrapper-0">
-            <div className="fighter-platform" />
-            {p1Data && (
-              <img
-                className={cn("fighter-sprite", animClass0)}
-                src={getArtworkUrl(p1Data)}
-                alt="Fighter 1"
-                ref={imgRef0}
-              />
-            )}
-            {damagePopups
-              .filter((p) => p.defIdx === 0)
-              .map((pop) => (
-                <DamagePopup key={pop.id} pop={pop} />
-              ))}
-          </div>
-          <div className="fighter-wrapper p2" id="fighter-wrapper-1">
-            <div className="fighter-platform" />
-            {p2Data && (
-              <img
-                className={cn("fighter-sprite", animClass1)}
-                src={getArtworkUrl(p2Data)}
-                alt="Fighter 2"
-                ref={imgRef1}
-              />
-            )}
-            {damagePopups
-              .filter((p) => p.defIdx === 1)
-              .map((pop) => (
-                <DamagePopup key={pop.id} pop={pop} />
-              ))}
-          </div>
+          <Figter
+            index={0}
+            name={p1Name}
+            imgRef={imgRef0}
+            animClass={animClass0}
+            pokemon={p1Data}
+            damagePopups={damagePopups}
+            statusPopups={statusPopups}
+            playingCry={playingCryIdx === 0}
+          />
+          <Figter
+            index={1}
+            name={p2Name}
+            imgRef={imgRef1}
+            animClass={animClass1}
+            pokemon={p2Data}
+            damagePopups={damagePopups}
+            statusPopups={statusPopups}
+            playingCry={playingCryIdx === 1}
+          />
         </div>
 
         {projectiles.map((proj) => (
@@ -321,6 +309,92 @@ export function BattleStage() {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PlayerHud({ name, currentHp, maxHp, meta }: { name: string; currentHp: number; maxHp: number; meta: string }) {
+  const pct = Math.max(0, Math.min(100, (currentHp / maxHp) * 100));
+
+  const hpColor = () => {
+    if (pct >= 50) return "var(--green)";
+    if (pct >= 20) return "var(--gold)";
+    return "var(--accent)";
+  };
+  return (
+    <div className="hud-box">
+      <div className="hud-name">{name}</div>
+      <div className="hud-meta">{meta}</div>
+      <div className="hud-hp-wrap">
+        <div className="hud-hp-fill" style={{ width: `${pct}%`, backgroundColor: hpColor() }} />
+      </div>
+      <div className="hud-hp-text">
+        {currentHp} / {maxHp} PS
+      </div>
+    </div>
+  );
+}
+
+function Figter({
+  index,
+  name,
+  imgRef,
+  animClass,
+  pokemon,
+  damagePopups,
+  statusPopups,
+  playingCry,
+}: {
+  index: number;
+  name: string;
+  imgRef: React.RefObject<HTMLImageElement | null>;
+  animClass: string;
+  pokemon: PokemonDetail | null;
+  damagePopups: DamagePopupData[];
+  statusPopups: { id: number; targetIdx: number; step: BattleStatusStep }[];
+  playingCry: boolean;
+}) {
+  const anchorName = `--fighter-${index + 1}`;
+  return (
+    <div>
+      <div className={cn("fighter-wrapper", index === 0 ? "p1" : "p2")} style={{ anchorName }}>
+        <div className="fighter-platform" />
+        {pokemon && (
+          <img
+            className={cn("fighter-sprite", animClass)}
+            src={getArtworkUrl(pokemon)}
+            alt={`Fighter ${index + 1}`}
+            ref={imgRef}
+          />
+        )}
+        {pokemon && playingCry && (
+          <div className="cry-indicator">
+            <span className="cry-wave" />
+            <span className="cry-wave" />
+            <span className="cry-wave" />
+          </div>
+        )}
+      </div>
+      {damagePopups
+        .filter((p) => p.defIdx === index)
+        .map((pop) => (
+          <DamagePopup key={pop.id} pop={pop} positionAnchor={anchorName} />
+        ))}
+      {statusPopups
+        .filter((p) => p.targetIdx === index)
+        .map((pop) => (
+          <div
+            key={pop.id}
+            className="status-popup absolute z-10"
+            style={{
+              positionAnchor: anchorName,
+              top: "anchor(bottom)",
+              justifySelf: "anchor-center",
+            }}
+          >
+            {renderStatusContent(pop.step, name)}
+          </div>
+        ))}
     </div>
   );
 }

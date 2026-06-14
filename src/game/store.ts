@@ -31,6 +31,11 @@ interface PlayersState {
   player2: PlayerState;
 }
 
+interface AudioSettings {
+  enabled: boolean;
+  volume: number; // 0.0 — 1.0
+}
+
 interface GameState {
   searchQuery: string;
   activeTab: string;
@@ -38,6 +43,7 @@ interface GameState {
   pokemonLanguage: string;
   players: PlayersState;
   battle: BattleState;
+  audio: AudioSettings;
 }
 
 interface GameActions {
@@ -55,6 +61,8 @@ interface GameActions {
   setMaxHealths: (hps: [number, number]) => void;
   setCurrentHps: (hps: [number, number]) => void;
   resetBattle: () => void;
+  setAudioEnabled: (enabled: boolean) => void;
+  setAudioVolume: (volume: number) => void;
 }
 
 export const useGameStore = create<GameState & GameActions>()((set) => ({
@@ -73,6 +81,10 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
     playbackSpeed: 1,
     isPaused: false,
     isLoadingMoves: false,
+  },
+  audio: {
+    enabled: true,
+    volume: 0.5,
   },
 
   // ── Actions ──
@@ -140,6 +152,10 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
         isLoadingMoves: false,
       },
     })),
+
+  setAudioEnabled: (enabled) => set((s) => ({ audio: { ...s.audio, enabled } })),
+
+  setAudioVolume: (volume) => set((s) => ({ audio: { ...s.audio, volume } })),
 }));
 
 // ─── React Query bridge ──────────────────────────────────────────────────────

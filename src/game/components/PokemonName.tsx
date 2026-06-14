@@ -1,4 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
+import { pokemonSpeciesRetrieveOptions } from "../../api/pokeapi/@tanstack/react-query.gen";
 import { localizedNameCache } from "../api";
 import { useGameStore } from "../store";
 
@@ -30,7 +32,19 @@ export function PokemonName({
   /** Texto alternativo si no hay datos de Pokémon (ej. "Luchador 1"). */
   fallback?: string;
 }) {
+  const name = usePokemonName(pokemon, fallback);
+  return <span>{name}</span>;
+}
+
+export function usePokemonName(pokemon: PokemonDetail | null, fallback?: string): string {
+  const speciesName = pokemon?.species.name;
   const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
-  const name = getPokemonName(pokemon, pokemonLanguage);
-  return <span>{fallback && !pokemon ? fallback : name}</span>;
+
+  const species = useQuery({
+    ...pokemonSpeciesRetrieveOptions({ path: { id: speciesName || "" } }),
+    enabled: !!speciesName,
+  });
+
+  if (!pokemon) return fallback || "";
+  return species.data?.names.find((n) => n.language.name === pokemonLanguage)?.name || pokemon.name;
 }

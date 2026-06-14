@@ -2,7 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { random } from "es-toolkit/math";
 import type { PokemonDetail } from "../api/pokeapi";
 import { moveRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
-import type { MoveDetail } from "../api/pokeapi/types.gen";
+import type { MoveDetail, PokemonStat } from "../api/pokeapi/types.gen";
 import { TYPE_CHART } from "./data";
 import { coinFlip, randomProbability } from "./random";
 import type { AilmentState, BattleStep, MoveInfo, PokemonStats, StatStages, StatusEffect } from "./types";
@@ -162,6 +162,10 @@ export function calcHpStat(baseHp: number): number {
   return baseHp * 2 + 110;
 }
 
+function scaleStat(base: number, level: number, extra: number): number {
+  return Math.floor((2 * base * level) / 100) + extra;
+}
+
 /**
  * Escala las estadísticas base de un Pokémon según su nivel,
  * usando las fórmulas oficiales (asumiendo 0 EVs/IVs).
@@ -170,15 +174,26 @@ export function calcHpStat(baseHp: number): number {
  *   Stat: floor((2 × base × level) / 100) + 5
  */
 export function scaleStatsByLevel(base: PokemonStats, level: number): PokemonStats {
-  const scale = (b: number) => Math.floor((2 * b * level) / 100);
   return {
-    hp: scale(base.hp) + level + 10,
-    atk: scale(base.atk) + 5,
-    def: scale(base.def) + 5,
-    spa: scale(base.spa) + 5,
-    spd: scale(base.spd) + 5,
-    spe: scale(base.spe) + 5,
+    hp: scaleStat(base.hp, level, level + 10),
+    atk: scaleStat(base.atk, level, 5),
+    def: scaleStat(base.def, level, 5),
+    spa: scaleStat(base.spa, level, 5),
+    spd: scaleStat(base.spd, level, 5),
+    spe: scaleStat(base.spe, level, 5),
   };
+}
+
+export function scaleStatByLevel(base: PokemonStat, level: number): PokemonStat {
+  return {
+    ...base,
+    base_stat:
+      base.stat.name === "hp" ? scaleStat(base.base_stat, level, level + 10) : scaleStat(base.base_stat, level, 5),
+  };
+}
+
+export function scaleStatsArrayByLevel(stats: PokemonStat[], level: number): PokemonStat[] {
+  return stats.map((s) => scaleStatByLevel(s, level));
 }
 
 /**
@@ -638,9 +653,7 @@ function resolveRound(
       steps.push({
         type: "use-move",
         attackerIdx: attack.attackerIdx,
-        moveName: attack.move.name,
-        moveType: attack.move.type,
-        category: attack.move.damageClass,
+        move: attack.move,
       });
 
       if (attack.attackerIdx === 0) {
@@ -675,9 +688,7 @@ function resolveRound(
       steps.push({
         type: "use-move",
         attackerIdx: attack.attackerIdx,
-        moveName: attack.move.name,
-        moveType: attack.move.type,
-        category: "special", // status moves don't have a physical/special category; mark as special
+        move: attack.move,
       });
       const targetHp = targetIdx === 0 ? currentHp1 : currentHp2;
       const targetMaxHp = targetIdx === 0 ? maxHp1 : maxHp2;

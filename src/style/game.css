@@ -28,7 +28,6 @@ body::before {
   margin: 0 auto;
   padding: 0 1.5rem;
   position: relative;
-  z-index: 1;
 }
 
 /* HEADER */
@@ -177,6 +176,34 @@ h1 em {
 .poke-art:hover {
   transform: scale(1.06) translateY(-4px);
 }
+.poke-cry-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
+  backdrop-filter: blur(4px);
+  z-index: 2;
+}
+.poke-cry-btn:hover {
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+}
+.poke-art-wrap:hover .poke-cry-btn {
+  opacity: 1;
+}
 .poke-name {
   font-family: var(--font-d);
   font-size: 30px;
@@ -258,7 +285,6 @@ h1 em {
 .sfill {
   height: 100%;
   border-radius: 10px;
-  transition: width 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .sval {
   font-size: 10px;
@@ -353,6 +379,30 @@ h1 em {
   opacity: 0.3;
   cursor: default;
   box-shadow: none;
+}
+.battle-btns {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+}
+.battle-btn.random {
+  background: none;
+  box-shadow: none;
+  border: none;
+  padding: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition:
+    color 0.2s,
+    background 0.2s;
+  line-height: 1;
+}
+.battle-btn.random:hover {
+  color: var(--accent);
+  background: rgba(230, 62, 62, 0.08);
 }
 
 /* BATTLE LOADING (moves fetch) */
@@ -477,13 +527,10 @@ h1 em {
 
 /* STAGE BATTLEGROUND */
 .stage-grid {
-  position: absolute;
-  inset: 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   padding: 0 5rem 3.5rem;
-  z-index: 1;
 }
 .fighter-wrapper {
   position: relative;
@@ -510,7 +557,6 @@ h1 em {
   border-radius: 50%;
   position: absolute;
   bottom: -10px;
-  z-index: 0;
 }
 .fighter-wrapper.p2 .fighter-platform {
   background: radial-gradient(
@@ -531,6 +577,53 @@ h1 em {
     transform 0.2s cubic-bezier(0.25, 1, 0.5, 1),
     filter 0.15s;
   transform-origin: bottom center;
+}
+
+/* CRY INDICATOR — animación de ondas de sonido */
+.cry-indicator {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+}
+.cry-wave {
+  display: block;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  animation: cryWave 0.5s ease-in-out infinite alternate;
+}
+.cry-wave:nth-child(1) {
+  height: 8px;
+  animation-delay: 0s;
+}
+.cry-wave:nth-child(2) {
+  height: 14px;
+  animation-delay: 0.15s;
+}
+.cry-wave:nth-child(3) {
+  height: 10px;
+  animation-delay: 0.3s;
+}
+
+@keyframes cryWave {
+  0% {
+    transform: scaleY(0.4);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scaleY(1.1);
+    opacity: 1;
+  }
 }
 
 /* ANIMACIONES CINEMÁTICAS */
@@ -642,6 +735,20 @@ h1 em {
   letter-spacing: 0.5px;
   margin-top: -2px;
   text-align: center;
+}
+.status-popup {
+  background: rgba(180, 50, 50, 0.9);
+  color: #fff;
+  font-family: var(--font-d);
+  font-size: 14px;
+  letter-spacing: 1px;
+  padding: 5px 14px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: fadeUp 0.3s ease-out;
+  width: fit-content;
+  margin-bottom: 8px;
 }
 
 @keyframes popupFloat {
@@ -778,12 +885,60 @@ h1 em {
   margin-bottom: 4px;
 }
 .win-name {
+  .win-level {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-m);
+    margin-bottom: 0.5rem;
+  }
   font-family: var(--font-d);
+  .win-level {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-m);
+    margin-bottom: 0.5rem;
+  }
   font-size: 44px;
+  .win-level {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-m);
+    margin-bottom: 0.5rem;
+  }
   line-height: 1;
+  .win-level {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-m);
+    margin-bottom: 0.5rem;
+  }
   letter-spacing: 1px;
+  .win-level {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-m);
+    margin-bottom: 0.5rem;
+  }
   text-transform: capitalize;
+  .win-level {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-m);
+    margin-bottom: 0.5rem;
+  }
   margin-bottom: 4px;
+  .win-level {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-m);
+    margin-bottom: 0.5rem;
+  }
+}
+.win-level {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--font-m);
+  margin-bottom: 0.5rem;
 }
 .win-reason {
   font-size: 13px;
@@ -888,7 +1043,6 @@ h1 em {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.8);
-  z-index: 100;
   backdrop-filter: blur(6px);
 }
 .modal {
@@ -906,7 +1060,6 @@ h1 em {
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7);
-  z-index: 101;
 }
 .modal-head {
   padding: 1.2rem 1.5rem;
@@ -1147,6 +1300,33 @@ h1 em {
 
 .prev-art:hover {
   transform: scale(1.06);
+}
+.prev-cry-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
+  backdrop-filter: blur(4px);
+}
+.prev-cry-btn:hover {
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+}
+.relative:hover .prev-cry-btn {
+  opacity: 1;
 }
 .prev-name {
   font-family: var(--font-d);
@@ -1558,7 +1738,25 @@ footer {
     height: 60px;
   }
   .win-name {
+    .win-level {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--font-m);
+      margin-bottom: 0.5rem;
+    }
     font-size: 28px;
+    .win-level {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--font-m);
+      margin-bottom: 0.5rem;
+    }
+  }
+  .win-level {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--font-m);
+    margin-bottom: 0.5rem;
   }
   .bst-box {
     margin-left: 0;
@@ -1663,6 +1861,36 @@ footer {
   color: var(--text);
   transform: rotate(60deg);
 }
+
+/* Audio toggle button */
+.audio-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-2);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.audio-toggle-btn:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
+}
+
+/* Volume slider */
+.audio-slider {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+  cursor: pointer;
+}
+
 .t-fire {
   background: rgba(214, 90, 48, 0.2);
   color: #ff8c5a;

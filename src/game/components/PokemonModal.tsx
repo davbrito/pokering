@@ -268,18 +268,24 @@ function TypesTabs({ value, onValueChange }: { value: string; onValueChange: (v:
         return (
           <Toggle
             key={t.name}
-            className={cn(
-              "tab-btn inline-flex items-center gap-2 rounded-full p-1 pr-4",
-              "outline-accent outline-offset-3 focus-visible:outline-3",
-              value === t.name && "active",
-              t.name === "all" && "px-4",
-            )}
-            style={{
-              background: c.bg,
-              color: c.color,
-              borderColor: c.border,
-              outlineColor: c.border,
-            }}
+            className={(state) =>
+              cn(
+                "tab-btn inline-flex items-center gap-2 rounded-full p-1 pr-4",
+                "outline-accent outline-offset-3 focus-visible:outline-3",
+                state.pressed && "active",
+                t.name === "all" && "px-4",
+              )
+            }
+            style={(state) =>
+              state.pressed
+                ? {
+                    background: c.bg,
+                    color: c.color,
+                    borderColor: c.border,
+                    outlineColor: c.border,
+                  }
+                : undefined
+            }
             value={t.name}
           >
             {spriteUrl && (

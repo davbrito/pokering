@@ -12,6 +12,8 @@ interface WinnerInfo {
   lp: PokemonDetail;
   ws: PokemonStats;
   ls: PokemonStats;
+  wl: number;
+  ll: number;
   wt: number;
   lt: number;
   razon: string;
@@ -19,7 +21,13 @@ interface WinnerInfo {
   winnerIdx: number;
 }
 
-function computeWinner(poke1: PokemonDetail, poke2: PokemonDetail, steps: BattleStep[]): WinnerInfo {
+function computeWinner(
+  poke1: PokemonDetail,
+  poke2: PokemonDetail,
+  steps: BattleStep[],
+  level1: number,
+  level2: number,
+): WinnerInfo {
   const lastStep = steps[steps.length - 1];
   const winnerIdx =
     lastStep.type === "end" ? lastStep.winnerIdx : lastStep.type === "faint" ? (lastStep.faintedIdx === 0 ? 1 : 0) : 0;
@@ -27,6 +35,8 @@ function computeWinner(poke1: PokemonDetail, poke2: PokemonDetail, steps: Battle
   const lp = winnerIdx === 0 ? poke2 : poke1;
   const ws = winnerIdx === 0 ? getStatsObject(poke1) : getStatsObject(poke2);
   const ls = winnerIdx === 0 ? getStatsObject(poke2) : getStatsObject(poke1);
+  const wl = winnerIdx === 0 ? level1 : level2;
+  const ll = winnerIdx === 0 ? level2 : level1;
   const wt = Object.values(ws).reduce((a, b) => a + b, 0);
   const lt = Object.values(ls).reduce((a, b) => a + b, 0);
   const wpTypes = wp.types.map((t) => t.type.name);
@@ -55,7 +65,7 @@ function computeWinner(poke1: PokemonDetail, poke2: PokemonDetail, steps: Battle
     ? m.result_analysis_advantage({ p1: p1Upper, p2: p2Upper })
     : m.result_analysis_no_advantage({ p1: p1Upper, p2: p2Upper, winner: wpUpper });
 
-  return { wp, lp, ws, ls, wt, lt, razon, analisis, winnerIdx };
+  return { wp, lp, ws, ls, wl, ll, wt, lt, razon, analisis, winnerIdx };
 }
 
 const statKeys = ["hp", "atk", "def", "spa", "spd", "spe"] as const;
@@ -65,6 +75,8 @@ export function BattleResult() {
   const battlePhase = useGameStore((s) => s.battle.phase);
   const battleSteps = useGameStore((s) => s.battle.logs);
   const { chosen } = useChosenPokemon();
+  const level1 = useGameStore((s) => s.players.player1.level);
+  const level2 = useGameStore((s) => s.players.player2.level);
 
   if (battlePhase !== "result") return null;
 
@@ -72,7 +84,7 @@ export function BattleResult() {
   const p2 = chosen[1];
   if (!p1 || !p2 || battleSteps.length === 0) return null;
 
-  const w = computeWinner(p1, p2, battleSteps);
+  const w = computeWinner(p1, p2, battleSteps, level1, level2);
   const actionSteps = battleSteps.filter((s) => s.type !== "start");
   const wart = getArtworkUrl(w.wp);
 
@@ -87,10 +99,13 @@ export function BattleResult() {
               <div className="win-name">
                 <PokemonName pokemon={w.wp} />
               </div>
+              <div className="win-level">Nv. {w.wl}</div>
               <div className="win-reason">{w.razon}</div>
             </div>
             <div className="bst-box">
-              <div className="bst-lbl">{m.battle_bst()}</div>
+              <div className="bst-lbl">
+                {m.battle_bst()} · Nv.{w.wl}
+              </div>
               <div className="bst-num">{w.wt}</div>
               <div className="bst-vs">{m.battle_vs({ total: String(w.lt) })}</div>
             </div>

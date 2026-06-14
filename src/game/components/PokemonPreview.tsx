@@ -1,41 +1,22 @@
 import { Progress } from "@base-ui/react";
 import { useQuery } from "@tanstack/react-query";
+import { sumBy } from "es-toolkit/math";
+import { Volume2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { m } from "#/i18n/paraglide/messages.js";
-import { pokemonRetrieveOptions, pokemonSpeciesRetrieveOptions } from "../../api/pokeapi/@tanstack/react-query.gen";
-import { getArtworkUrl, getLocalizedName, localizedNameCache } from "../api";
+import { pokemonRetrieveOptions } from "../../api/pokeapi/@tanstack/react-query.gen";
+import { getArtworkUrl } from "../api";
+import { playPokemonCry } from "../audio";
 import { STAT_ABBR } from "../data";
-import { useGameStore } from "../store";
+import { PokemonName } from "./PokemonName";
 
 export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | null; onSelect: (id: number) => void }) {
-  const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
-  const { data: previewData, isLoading: loading } = useQuery({
+  const { data: pokemon, isLoading: loading } = useQuery({
     ...pokemonRetrieveOptions({ path: { id: String(pokemonId) } }),
     enabled: pokemonId !== null,
   });
 
-  const speciesName = previewData?.species.name;
-
-  const species = useQuery({
-    ...pokemonSpeciesRetrieveOptions({ path: { id: speciesName || "" } }),
-    enabled: !!speciesName,
-  });
-
-  // Cache localized name when species data loads
-  const langCode = pokemonLanguage;
-  if (species.data && previewData) {
-    const localized = getLocalizedName(species.data.names, langCode, previewData.name);
-    let byLang = localizedNameCache.get(previewData.id);
-    if (!byLang) {
-      byLang = new Map();
-      localizedNameCache.set(previewData.id, byLang);
-    }
-    byLang.set(langCode, localized);
-  }
-
-  const localizedName = species.data ? getLocalizedName(species.data.names, langCode, previewData?.name ?? "") : null;
-
-  if (loading || !previewData) {
+  if (loading || !pokemon) {
     return (
       <div className="preview-panel" id="preview-panel">
         {loading ? (
@@ -52,37 +33,50 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
     );
   }
 
-  const d = previewData;
-  const art = getArtworkUrl(d);
-  const types = d.types.map((t) => t.type.name);
-  const total = d.stats.reduce((a, s) => a + s.base_stat, 0);
+  const art = getArtworkUrl(pokemon);
+  const types = pokemon.types.map((t) => t.type.name);
+  const total = sumBy(pokemon.stats, (s) => s.base_stat);
+
   return (
     <div className="preview-panel" id="preview-panel">
       <AnimatePresence mode="popLayout" initial={false}>
-        <motion.img
-          className="prev-art"
-          src={art}
-          alt={d.name}
-          key={art}
-          initial={{ opacity: 0, scale: 0.95, x: -40 }}
-          animate={{ opacity: 1, scale: 1, x: 0 }}
-          exit={{ opacity: 0, scale: 0.95, x: 40 }}
-          transition={{ ease: "easeInOut", duration: 0.3 }}
-        />
+        <div className="relative">
+          <motion.img
+            className="prev-art"
+            src={art}
+            alt={pokemon.name}
+            key={art}
+            initial={{ opacity: 0, scale: 0.95, x: -40 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.95, x: 40 }}
+            transition={{ ease: "easeInOut", duration: 0.3 }}
+          />
+          <button
+            type="button"
+            className="prev-cry-btn"
+            title="Reproducir grito"
+            onClick={(e) => {
+              e.stopPropagation();
+              playPokemonCry(pokemon);
+            }}
+          >
+            <Volume2 size={14} />
+          </button>
+        </div>
         <motion.div
           className="prev-name origin-[bottom_center] leading-none"
-          key={localizedName || d.name}
+          key={pokemon.name}
           initial={{ rotateX: 90, opacity: 0, scale: 1 }}
           animate={{ rotateX: 0, opacity: 1, scale: 1 }}
           exit={{ rotateX: -90, opacity: 0, scale: 1 }}
           transition={{ type: "spring", stiffness: 200, damping: 25 }}
         >
-          {localizedName || d.name}
+          <PokemonName pokemon={pokemon} />
         </motion.div>
       </AnimatePresence>
-      <div className="prev-subname">{d.name}</div>
+      <div className="prev-subname">{pokemon.name}</div>
       <div className="prev-meta">
-        #{String(d.id).padStart(3, "0")} · BST {total}
+        #{String(pokemon.id).padStart(3, "0")} · BST {total}
       </div>
       <div className="prev-types">
         {types.map((t) => (
@@ -92,7 +86,7 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
         ))}
       </div>
       <div className="prev-stats">
-        {d.stats.map((s) => {
+        {pokemon.stats.map((s) => {
           const abbr = STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
           const pct = Math.round(Math.min((s.base_stat / 180) * 100, 100));
           const col =
@@ -103,8 +97,7 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
               <Progress.Track className="strack">
                 <Progress.Indicator
                   className="sfill"
-                  style={{ width: `${pct}%`, background: col, transition: "initial" }}
-                  render={<motion.div />}
+                  render={<motion.div animate={{ width: `${pct}%`, background: col }} />}
                 />
               </Progress.Track>
               <Progress.Value
@@ -119,7 +112,7 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
           );
         })}
       </div>
-      <button type="button" className="prev-select-btn" onClick={() => onSelect(d.id)}>
+      <button type="button" className="prev-select-btn" onClick={() => onSelect(pokemon.id)}>
         Elegir este ▶
       </button>
     </div>

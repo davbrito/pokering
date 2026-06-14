@@ -2,11 +2,12 @@ import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { ParaglideMessage } from "@inlang/paraglide-js-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Settings } from "lucide-react";
+import { clamp, randomInt } from "es-toolkit/math";
+import { Settings, Shuffle } from "lucide-react";
 import { useCallback } from "react";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
-import { fetchPokemonMoves, generateBattleSteps, getStatsObject, scaleStatsByLevel } from "../game/combat";
+import { fetchPokemonMoves, generateBattleSteps, getStatsObject, scaleStatsArrayByLevel } from "../game/combat";
 import { BattleResult } from "../game/components/BattleResult";
 import { BattleStage } from "../game/components/BattleStage";
 import { PokemonModal } from "../game/components/PokemonModal";
@@ -42,10 +43,10 @@ function Home() {
     const { players } = useGameStore.getState();
     const level1 = players.player1.level;
     const level2 = players.player2.level;
-    const scaled1 = scaleStatsByLevel(s1, level1);
-    const scaled2 = scaleStatsByLevel(s2, level2);
-    const mh1 = scaled1.hp;
-    const mh2 = scaled2.hp;
+    const scaled1 = scaleStatsArrayByLevel(poke1.stats, level1);
+    const scaled2 = scaleStatsArrayByLevel(poke2.stats, level2);
+    const mh1 = scaled1.find((s) => s.stat.name === "hp")?.base_stat ?? 100;
+    const mh2 = scaled2.find((s) => s.stat.name === "hp")?.base_stat ?? 100;
 
     const {
       setMaxHealths,
@@ -85,13 +86,34 @@ function Home() {
     }, 100);
   };
 
+  const randomBattle = () => {
+    const store = useGameStore.getState();
+    // Pick random levels
+    const baseLevel = randomInt(20, 80);
+    const level1 = baseLevel + randomInt(-10, 10);
+    const level2 = baseLevel + randomInt(-10, 10);
+    store.setLevel(0, clamp(level1, 1, 100));
+    store.setLevel(1, clamp(level2, 1, 100));
+
+    // Pick random Pokémon if not both selected
+    const id1 = randomInt(1, 151);
+    let id2 = randomInt(1, 151);
+    // Avoid same Pokémon
+    while (id2 === id1) id2 = randomInt(1, 151);
+    store.selectPokemon(0, id1);
+    store.selectPokemon(1, id2);
+
+    // Small delay to let React Query fetch the Pokémon, then start
+    setTimeout(() => startBattle(), 100);
+  };
+
   const goBackToSelection = useCallback(() => {
     useGameStore.getState().setBattlePhase("selection");
   }, []);
 
   return (
     <>
-      <div className="wrap">
+      <div className="wrap isolate">
         <Header />
 
         {battlePhase === "selection" ? (
@@ -112,9 +134,25 @@ function Home() {
                   <span className="battle-loading-msg">{m.home_analyzing_moves()}</span>
                 </div>
               ) : (
-                <button className="battle-btn" id="battleBtn" disabled={!bothReady} type="button" onClick={startBattle}>
-                  {m.home_start_battle()}
-                </button>
+                <div className="battle-btns">
+                  <button
+                    className="battle-btn"
+                    id="battleBtn"
+                    disabled={!bothReady}
+                    type="button"
+                    onClick={startBattle}
+                  >
+                    {m.home_start_battle()}
+                  </button>
+                  <button
+                    className="battle-btn random aspect-square size-12 shrink-0 justify-center self-center"
+                    type="button"
+                    onClick={randomBattle}
+                    title={m.home_random_battle()}
+                  >
+                    <Shuffle size={20} />
+                  </button>
+                </div>
               )}
             </div>
           </>
