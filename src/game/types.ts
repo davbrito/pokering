@@ -10,26 +10,6 @@ export interface PokemonStats {
   spe: number;
 }
 
-export interface MoveResult {
-  name: string;
-  type: string;
-  category: "physical" | "special";
-  power: number;
-  accuracy: number | null;
-  eff: number;
-}
-
-// Movimiento listo para combate. Solo existen physical y special;
-// los movimientos Status (sin power) se filtran en fetchSingleMove.
-// accuracy: null = nunca falla (ej. Swift, Aerial Ace).
-export interface RealMoveInfo {
-  name: string;
-  type: string;
-  category: "physical" | "special";
-  power: number;
-  accuracy: number | null;
-}
-
 // ─── MoveInfo: Discriminated Union (V2) ──────────────────────────────────────
 // Cada variante tiene los campos exactos que necesita.
 // El discriminador es `damageClass`.
@@ -83,17 +63,21 @@ export interface BattleStartStep {
   type: "start";
 }
 
-export interface BattleActionStep {
-  type: "action";
+export interface BattleUseMoveStep {
+  type: "use-move";
   attackerIdx: number;
   moveName: string;
   moveType: string;
   category: "physical" | "special";
+}
+
+export interface BattleDamageStep {
+  type: "damage";
+  targetIdx: number;
   damage: number;
   isCrit: boolean;
   eff: number;
-  preHp: [number, number];
-  postHp: [number, number];
+  currentHp: number;
 }
 
 export interface BattleMissStep {
@@ -121,6 +105,7 @@ export type StatusPayload =
 
 export interface BattleStatusStep {
   type: "status";
+  attackerIdx: number;
   targetIdx: number;
   moveName: string;
   payload: StatusPayload;
@@ -154,7 +139,8 @@ export interface StatStages {
 
 export type BattleStep =
   | BattleStartStep
-  | BattleActionStep
+  | BattleUseMoveStep
+  | BattleDamageStep
   | BattleMissStep
   | BattleFaintStep
   | BattleEndStep

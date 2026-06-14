@@ -111,9 +111,8 @@ describe("generateBattleSteps applies speed stages to turn order", () => {
     expect(steps[0].type).toBe("start");
 
     // Every action from P1 (attackerIdx 0) should come before P2 in each round
-    const actionSteps = steps.filter((s) => s.type === "action");
+    const actionSteps = steps.filter((s) => s.type === "use-move");
     expect(actionSteps.length).toBeGreaterThan(0);
-    // First action step of each round pair should be P1 (idx 0)
     for (let i = 0; i < actionSteps.length; i += 2) {
       expect(actionSteps[i].attackerIdx).toBe(0);
     }

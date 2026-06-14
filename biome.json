@@ -38,6 +38,9 @@
             "functions": ["clsx", "cn"]
           }
         }
+      },
+      "a11y": {
+        "noAutofocus": "off"
       }
     }
   },

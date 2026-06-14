@@ -151,6 +151,8 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
           placeholder={m.home_search_placeholder()}
           value={searchQuery}
           onChange={(e) => useGameStore.getState().setSearchQuery(e.currentTarget.value)}
+          autoComplete="off"
+          autoFocus
         />
         <Dialog.Close className="modal-close">
           <XIcon />

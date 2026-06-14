@@ -3,7 +3,7 @@ import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
-import type { BattleActionStep, BattleStep } from "../types";
+import type { BattleDamageStep, BattleStep } from "../types";
 import { DamagePopup, type DamagePopupData } from "./DamagePopup";
 import { getPokemonName, PokemonName } from "./PokemonName";
 import { type Projectile, ProjectileFx } from "./ProjectileFx";
@@ -17,7 +17,8 @@ function getStepDuration(step: BattleStep, speed: number): number {
   if (step.type === "end") base = 2500;
   if (step.type === "status") base = 1700;
   if (step.type === "passive") base = 1500;
-  if (step.type === "action") base = step.category === "special" ? 2000 : 1800;
+  if (step.type === "use-move") base = step.category === "special" ? 2000 : 1800;
+  if (step.type === "damage") base = 600;
   return base / speed;
 }
 
@@ -64,7 +65,7 @@ export function BattleStage() {
     setAnimClass1("");
   }, []);
 
-  const applyImpact = useCallback((defIdx: number, step: BattleActionStep) => {
+  const applyImpact = useCallback((defIdx: number, step: BattleDamageStep) => {
     if (defIdx === 0) setAnimClass0("hit-shake");
     else setAnimClass1("hit-shake");
 
@@ -79,7 +80,10 @@ export function BattleStage() {
       setDamagePopups((prev) => prev.filter((p) => p.id !== popId));
     }, 900);
 
-    if (step.postHp) useGameStore.getState().setCurrentHps(step.postHp);
+    const store = useGameStore.getState();
+    const hps: [number, number] = [store.players.player1.currentHp, store.players.player2.currentHp];
+    hps[defIdx] = step.currentHp;
+    store.setCurrentHps(hps);
 
     setTimeout(() => {
       if (defIdx === 0) setAnimClass0("");
@@ -121,7 +125,7 @@ export function BattleStage() {
         const p = useGameStore.getState().players;
         useGameStore.getState().setCurrentHps([p.player1.maxHealth, p.player2.maxHealth]);
       }
-      if (step.type === "action") {
+      if (step.type === "use-move") {
         const atkIdx = step.attackerIdx;
         const defIdx = atkIdx === 0 ? 1 : 0;
         if (step.category === "physical") {
@@ -130,14 +134,17 @@ export function BattleStage() {
           if (atkIdx === 0) setAnimClass0("lunge-right");
           else setAnimClass1("lunge-left");
           const spd = useGameStore.getState().battle.playbackSpeed;
-          setTimeout(() => applyImpact(defIdx, step), 200 / spd);
           setTimeout(() => {
             if (atkIdx === 0) setAnimClass0("");
             else setAnimClass1("");
           }, 450 / spd);
         } else {
-          triggerProjectile(atkIdx, defIdx, step.moveType, () => applyImpact(defIdx, step));
+          triggerProjectile(atkIdx, defIdx, step.moveType, () => {});
         }
+      }
+      if (step.type === "damage") {
+        const defIdx = step.targetIdx;
+        applyImpact(defIdx, step);
       }
       if (step.type === "miss") {
         // El movimiento falló: sin animación de daño, solo mostrar el texto

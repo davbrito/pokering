@@ -12,7 +12,8 @@ describe("applyStatusEffect", () => {
 
     const result = applyStatusEffect(
       { kind: "heal", percentage: 50 },
-      0, // attackerIdx
+      0,
+      0,
       "recover",
       currentHp,
       maxHp,
@@ -41,6 +42,7 @@ describe("applyStatusEffect", () => {
     const result = applyStatusEffect(
       { kind: "heal", percentage: 50 },
       0,
+      0,
       "recover",
       currentHp,
       maxHp,
@@ -60,6 +62,7 @@ describe("applyStatusEffect", () => {
 
     const result = applyStatusEffect(
       { kind: "stat-change", changes: [{ stat: "atk", change: -1 }] },
+      1,
       1,
       "growl",
       200,
@@ -83,6 +86,7 @@ describe("applyStatusEffect", () => {
     const result = applyStatusEffect(
       { kind: "ailment", ailment: "paralysis" },
       1,
+      1,
       "thunder-wave",
       200,
       200,
@@ -104,6 +108,7 @@ describe("applyStatusEffect", () => {
 
     const result = applyStatusEffect(
       { kind: "ailment", ailment: "paralysis" },
+      1,
       1,
       "thunder-wave",
       200,

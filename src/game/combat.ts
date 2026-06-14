@@ -5,16 +5,7 @@ import { moveRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
 import type { MoveDetail } from "../api/pokeapi/types.gen";
 import { TYPE_CHART } from "./data";
 import { coinFlip, randomProbability } from "./random";
-import type {
-  AilmentState,
-  BattleStep,
-  MoveInfo,
-  MoveResult,
-  PokemonStats,
-  RealMoveInfo,
-  StatStages,
-  StatusEffect,
-} from "./types";
+import type { AilmentState, BattleStep, MoveInfo, PokemonStats, StatStages, StatusEffect } from "./types";
 
 /**
  * Transforma un MoveDetail crudo de la PokéAPI en un MoveInfo limpio
@@ -167,57 +158,6 @@ export function getStatsObject(p: PokemonDetail): PokemonStats {
 
 // Selecciona el mejor movimiento del array de movimientos reales del Pokémon.
 // Recibe los tipos del atacante para aplicar STAB en la estimación de daño.
-export function selectBestMove(
-  attackerStats: PokemonStats,
-  attackerTypes: string[],
-  defenderTypes: string[],
-  defenderStats: PokemonStats,
-  moves: RealMoveInfo[],
-): MoveResult {
-  let bestMove: MoveResult | null = null;
-  let maxDamagePotential = -1;
-
-  for (const move of moves) {
-    // Según la damage_class del movimiento se eligen las stats correctas:
-    // - Physical: Atk del atacante vs Def del defensor
-    // - Special:  SpA del atacante vs SpD del defensor
-    // (Los movimientos Status ya fueron filtrados en fetchSingleMove)
-    const offensiveStat = move.category === "physical" ? attackerStats.atk : attackerStats.spa;
-    const defensiveStat = move.category === "physical" ? defenderStats.def : defenderStats.spd;
-
-    const typeEff = getEffectiveness(move.type, defenderTypes);
-    const stab = getStabMultiplier(move.type, attackerTypes);
-    // Estimación: (stat ofensivo / stat defensivo) * poder * STAB * efectividad
-    // Se añade un factor aleatorio (±10%) para que el "mejor" movimiento
-    // no sea siempre el mismo de forma determinista.
-    const randomness = random(0.9, 1.1);
-    const expectedDmg = (offensiveStat / defensiveStat) * move.power * stab * typeEff * randomness;
-
-    if (expectedDmg > maxDamagePotential) {
-      maxDamagePotential = expectedDmg;
-      bestMove = {
-        name: move.name,
-        type: move.type,
-        category: move.category,
-        power: move.power,
-        accuracy: move.accuracy,
-        eff: typeEff,
-      };
-    }
-  }
-
-  return (
-    bestMove || {
-      name: "struggle",
-      type: "normal",
-      category: "physical",
-      power: 50,
-      accuracy: null,
-      eff: 1,
-    }
-  );
-}
-
 export function calcHpStat(baseHp: number): number {
   return baseHp * 2 + 110;
 }
@@ -273,6 +213,7 @@ export interface StatusEffectResult {
  */
 export function applyStatusEffect(
   effect: StatusEffect,
+  attackerIdx: number,
   targetIdx: number,
   moveName: string,
   currentHp: number,
@@ -290,6 +231,7 @@ export function applyStatusEffect(
 
       steps.push({
         type: "status",
+        attackerIdx,
         targetIdx,
         moveName,
         payload: { subType: "heal", amount: actualHeal, currentHp: newHp },
@@ -309,6 +251,7 @@ export function applyStatusEffect(
         if (clamped !== oldStage) {
           steps.push({
             type: "status",
+            attackerIdx,
             targetIdx,
             moveName,
             payload: { subType: "stat-change", stat: ch.stat, change: ch.change, currentStage: clamped },
@@ -325,6 +268,7 @@ export function applyStatusEffect(
 
         steps.push({
           type: "status",
+          attackerIdx,
           targetIdx,
           moveName,
           payload: { subType: "ailment", name: effect.ailment },
@@ -580,9 +524,12 @@ function resolveRound(
   const p1Move = selectMove(p1Moves, p1s, pt1, pt2, p2s, hp1, maxHp1, p2Ailment, p1Stages);
   const p2Move = selectMove(p2Moves, p2s, pt2, pt1, p1s, hp2, maxHp2, p1Ailment, p2Stages);
 
-  // ── Fase 2: determinar orden de ataque por velocidad (con stages) ──
-  const effectiveSpe1 = p1s.spe * getStageMultiplier(p1Stages.spe);
-  const effectiveSpe2 = p2s.spe * getStageMultiplier(p2Stages.spe);
+  // ── Fase 2: determinar orden de ataque por velocidad (con stages y parálisis) ──
+  const paraMod1 = p1Ailment.type === "paralysis" ? 0.5 : 1;
+  const paraMod2 = p2Ailment.type === "paralysis" ? 0.5 : 1;
+
+  const effectiveSpe1 = p1s.spe * getStageMultiplier(p1Stages.spe) * paraMod1;
+  const effectiveSpe2 = p2s.spe * getStageMultiplier(p2Stages.spe) * paraMod2;
   const p1First = determineFirstAttacker(effectiveSpe1, effectiveSpe2);
 
   // ── Fase 3: ejecutar en orden ──
@@ -647,6 +594,17 @@ function resolveRound(
   for (const attack of queue) {
     if (currentHp1 <= 0 || currentHp2 <= 0) break;
 
+    // Chequeo de Parálisis Total (25% de no poder moverse)
+    const attackerAilment = attack.attackerIdx === 0 ? currentAilment1 : currentAilment2;
+    if (attackerAilment.type === "paralysis" && randomProbability(0.25)) {
+      steps.push({
+        type: "passive",
+        targetIdx: attack.attackerIdx,
+        payload: { subType: "restriction", reason: "paralysis" },
+      });
+      continue;
+    }
+
     // Chequeo de precisión (accuracy)
     const acc = attack.move.accuracy;
     if (acc !== null && acc < 100 && random(1, 100) > acc) {
@@ -660,10 +618,10 @@ function resolveRound(
 
     if (attack.move.damageClass === "physical" || attack.move.damageClass === "special") {
       // ── Daño físico/especial (V1) ──
-      // Calculate temp eff for MoveInfo without MoveResult
+      // Calculate temp eff
       const eff = getEffectiveness(attack.move.type, attack.attackerIdx === 0 ? pt2 : pt1);
       const atkLevel = attack.attackerIdx === 0 ? level1 : level2;
-      const { damage: finalDamage, isCrit } = calculateAttackDamage(
+      let { damage: finalDamage, isCrit } = calculateAttackDamage(
         atkLevel,
         attack.move.power,
         attack.offStat,
@@ -672,26 +630,32 @@ function resolveRound(
         eff,
       );
 
-      const preHp: [number, number] = [currentHp1, currentHp2];
+      // La quemadura corta el daño físico a la mitad
+      if (attack.move.damageClass === "physical" && attackerAilment.type === "burn") {
+        finalDamage = Math.max(1, Math.floor(finalDamage / 2));
+      }
+
+      steps.push({
+        type: "use-move",
+        attackerIdx: attack.attackerIdx,
+        moveName: attack.move.name,
+        moveType: attack.move.type,
+        category: attack.move.damageClass,
+      });
 
       if (attack.attackerIdx === 0) {
         currentHp2 = Math.max(0, currentHp2 - finalDamage);
       } else {
         currentHp1 = Math.max(0, currentHp1 - finalDamage);
       }
-      const postHp: [number, number] = [currentHp1, currentHp2];
 
       steps.push({
-        type: "action",
-        attackerIdx: attack.attackerIdx,
-        moveName: attack.move.name,
-        moveType: attack.move.type,
-        category: attack.move.damageClass,
+        type: "damage",
+        targetIdx: attack.attackerIdx === 0 ? 1 : 0,
         damage: finalDamage,
         isCrit,
         eff,
-        preHp,
-        postHp,
+        currentHp: attack.attackerIdx === 0 ? currentHp2 : currentHp1,
       });
 
       if (attack.attackerIdx === 0 && currentHp2 <= 0) {
@@ -704,14 +668,25 @@ function resolveRound(
       }
     } else {
       // ── Movimiento de estado (V2) ──
-      const targetIdx = attack.attackerIdx === 0 ? 1 : 0;
+      // heal y stat-change van al usuario; ailment va al rival
+      const effect = attack.move.effect;
+      const isSelfTarget = effect.kind === "heal" || effect.kind === "stat-change";
+      const targetIdx = isSelfTarget ? attack.attackerIdx : attack.attackerIdx === 0 ? 1 : 0;
+      steps.push({
+        type: "use-move",
+        attackerIdx: attack.attackerIdx,
+        moveName: attack.move.name,
+        moveType: attack.move.type,
+        category: "special", // status moves don't have a physical/special category; mark as special
+      });
       const targetHp = targetIdx === 0 ? currentHp1 : currentHp2;
       const targetMaxHp = targetIdx === 0 ? maxHp1 : maxHp2;
       const targetStages = targetIdx === 0 ? currentStages1 : currentStages2;
       const targetAilment = targetIdx === 0 ? currentAilment1 : currentAilment2;
 
       const statusResult = applyStatusEffect(
-        attack.move.effect,
+        effect,
+        attack.attackerIdx,
         targetIdx,
         attack.move.name,
         targetHp,

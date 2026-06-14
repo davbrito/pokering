@@ -592,9 +592,9 @@ h1 em {
 }
 
 .faint-slide {
-  transform: translateY(60px) rotate(12deg) !important;
+  transform: translateY(60px) rotate(12deg);
   opacity: 0;
-  filter: grayscale(1) brightness(0.2) !important;
+  filter: grayscale(1) brightness(0.2);
   transition:
     transform 0.8s ease,
     opacity 0.8s ease;
@@ -983,14 +983,14 @@ h1 em {
   flex-shrink: 0;
 }
 .tab-btn.active {
-  opacity: 1 !important;
-  transform: none !important;
+  opacity: 1;
+  transform: none;
 }
 .tab-btn:not(.active) {
   opacity: 0.55;
-  background: transparent !important;
-  color: var(--muted) !important;
-  border-color: transparent !important;
+  background: transparent;
+  color: var(--muted);
+  border-color: transparent;
 }
 .tab-btn:hover:not(.active) {
   opacity: 0.8;

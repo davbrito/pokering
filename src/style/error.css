@@ -29,10 +29,19 @@
   animation: fly-buzz 3s ease-in-out infinite;
 }
 @keyframes fly-buzz {
-  0%, 100% { transform: translate(0, 0); }
-  25% { transform: translate(6px, -4px); }
-  50% { transform: translate(-3px, -8px); }
-  75% { transform: translate(-6px, -2px); }
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(6px, -4px);
+  }
+  50% {
+    transform: translate(-3px, -8px);
+  }
+  75% {
+    transform: translate(-6px, -2px);
+  }
 }
 .error-icon {
   color: var(--muted);
@@ -48,13 +57,15 @@
   color: rgba(255, 255, 255, 0.4);
   line-height: 1;
   margin: 0 0 0.5rem;
-}.error-code-svg {
+}
+.error-code-svg {
   font-family: var(--font-d);
   font-size: 38px;
   letter-spacing: 3px;
   fill: rgba(255, 255, 255, 0.18);
   dominant-baseline: middle;
-}.error-code--small {
+}
+.error-code--small {
   font-size: 36px;
   color: var(--accent);
 }

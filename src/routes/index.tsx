@@ -59,7 +59,20 @@ function Home() {
     setMaxHealths([mh1, mh2]);
     setCurrentHps([mh1, mh2]);
 
-    const steps = generateBattleSteps(poke1, poke2, s1, s2, mh1, mh2, p1Moves, p2Moves, undefined, undefined, level1, level2);
+    const steps = generateBattleSteps(
+      poke1,
+      poke2,
+      s1,
+      s2,
+      mh1,
+      mh2,
+      p1Moves,
+      p2Moves,
+      undefined,
+      undefined,
+      level1,
+      level2,
+    );
     setBattleLogs(steps);
     setCurrentStepIdx(0);
     setIsPaused(false);

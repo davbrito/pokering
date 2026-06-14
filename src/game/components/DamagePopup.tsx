@@ -1,11 +1,11 @@
 import { m } from "#/i18n/paraglide/messages.js";
 import { cn } from "#/lib/utils.ts";
-import type { BattleActionStep } from "../types";
+import type { BattleDamageStep } from "../types";
 
 export interface DamagePopupData {
   id: number;
   defIdx: number;
-  step: BattleActionStep;
+  step: BattleDamageStep;
 }
 
 export function DamagePopup({ pop }: { pop: DamagePopupData }) {
