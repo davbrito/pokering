@@ -673,6 +673,17 @@ h1 em {
 .stage-dialog span.super-eff {
   color: var(--green);
 }
+.cat-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+}
 .stage-controls {
   display: flex;
   gap: 6px;

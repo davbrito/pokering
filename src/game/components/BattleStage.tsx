@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
 import type { BattleActionStep, BattleStep } from "../types";
+import { DamagePopup, type DamagePopupData } from "./DamagePopup";
 import { getPokemonName, PokemonName } from "./PokemonName";
 import { type Projectile, ProjectileFx } from "./ProjectileFx";
 import { renderStepContent } from "./renderStepContent";
@@ -14,37 +14,10 @@ function getStepDuration(step: BattleStep, speed: number): number {
   if (step.type === "miss") base = 1500;
   if (step.type === "faint") base = 2000;
   if (step.type === "end") base = 2500;
+  if (step.type === "status") base = 1700;
+  if (step.type === "passive") base = 1500;
   if (step.type === "action") base = step.category === "special" ? 2000 : 1800;
   return base / speed;
-}
-
-interface DamagePopupData {
-  id: number;
-  idx: number;
-  damage?: number;
-  subtitle?: string;
-  subtitleColor?: string;
-  isCrit: boolean;
-  isImmune: boolean;
-}
-
-function DamagePopup({ pop }: { pop: DamagePopupData }) {
-  return (
-    <div className={`damage-popup${pop.isCrit ? "crit" : ""}`}>
-      {pop.isImmune ? (
-        <span style={{ fontSize: 24 }}>{m.battle_immune()}</span>
-      ) : (
-        <>
-          <span className="popup-dmg">-{pop.damage}</span>
-          {pop.subtitle && (
-            <span className="popup-sub" style={{ color: pop.subtitleColor }}>
-              {pop.subtitle}
-            </span>
-          )}
-        </>
-      )}
-    </div>
-  );
 }
 
 export function BattleStage() {
@@ -100,34 +73,7 @@ export function BattleStage() {
     }
 
     const popId = ++popupCounter.current;
-    const popDamage = step.eff === 0 ? undefined : step.damage;
-    let popSubtitle: string | undefined;
-    let popSubColor: string | undefined;
-    const isImmune = step.eff === 0;
-
-    if (step.isCrit) {
-      popSubtitle = "¡CRÍTICO!";
-      popSubColor = "var(--gold)";
-    } else if (step.eff > 1.5) {
-      popSubtitle = "¡SÚPER EFICAZ!";
-      popSubColor = "var(--green)";
-    } else if (step.eff < 0.6 && step.eff > 0) {
-      popSubtitle = "POCO EFICAZ";
-      popSubColor = "var(--muted)";
-    }
-
-    setDamagePopups((prev) => [
-      ...prev,
-      {
-        id: popId,
-        idx: defIdx,
-        damage: popDamage,
-        subtitle: popSubtitle,
-        subtitleColor: popSubColor,
-        isCrit: step.isCrit,
-        isImmune,
-      },
-    ]);
+    setDamagePopups((prev) => [...prev, { id: popId, defIdx, step }]);
     setTimeout(() => {
       setDamagePopups((prev) => prev.filter((p) => p.id !== popId));
     }, 900);
@@ -321,7 +267,7 @@ export function BattleStage() {
               />
             )}
             {damagePopups
-              .filter((p) => p.idx === 0)
+              .filter((p) => p.defIdx === 0)
               .map((pop) => (
                 <DamagePopup key={pop.id} pop={pop} />
               ))}
@@ -337,7 +283,7 @@ export function BattleStage() {
               />
             )}
             {damagePopups
-              .filter((p) => p.idx === 1)
+              .filter((p) => p.defIdx === 1)
               .map((pop) => (
                 <DamagePopup key={pop.id} pop={pop} />
               ))}

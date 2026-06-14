@@ -5,13 +5,13 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useDeferredValue, useState } from "react";
-import { m } from "#/i18n/paraglide/messages.js";
 import {
   pokemonListInfiniteOptions,
   typeListOptions,
   typeRetrieveOptions,
-} from "../../api/pokeapi/@tanstack/react-query.gen";
-import { cn } from "../../lib/utils";
+} from "#/api/pokeapi/@tanstack/react-query.gen.ts";
+import { m } from "#/i18n/paraglide/messages.js";
+import { cn } from "#/lib/utils.ts";
 import { getSpriteUrl } from "../api";
 import { getTypeSpriteUrl, TYPE_TAB_COLORS } from "../data";
 import { useGameStore } from "../store";

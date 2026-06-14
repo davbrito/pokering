@@ -73,7 +73,7 @@ export function BattleResult() {
   if (!p1 || !p2 || battleSteps.length === 0) return null;
 
   const w = computeWinner(p1, p2, battleSteps);
-  const actionSteps = battleSteps.filter((s) => s.type === "action" || s.type === "faint");
+  const actionSteps = battleSteps.filter((s) => s.type !== "start");
   const wart = getArtworkUrl(w.wp);
 
   return (
