@@ -63,6 +63,7 @@ export function PokemonSlot({ index, label }: { index: number; label: string }) 
   const pokemon = chosen[index];
   const loading = chosenLoading[index];
   const displayName = pokemon ? getPokemonName(pokemon, pokemonLanguage) : "";
+  const level = useGameStore((s) => (index === 0 ? s.players.player1.level : s.players.player2.level));
 
   return (
     <div className={`slot${pokemon ? "filled" : ""}`} id={`slot${index}`}>
@@ -81,6 +82,23 @@ export function PokemonSlot({ index, label }: { index: number; label: string }) 
         )}
       </Dialog.Trigger>
       {pokemon && <PokemonCard pokemon={pokemon} />}
+      {pokemon && (
+        <div className="level-row">
+          <label className="level-lbl" htmlFor={`level-slider-${index}`}>
+            Nv.
+          </label>
+          <input
+            id={`level-slider-${index}`}
+            type="range"
+            min={1}
+            max={100}
+            value={level}
+            onChange={(e) => useGameStore.getState().setLevel(index, Number(e.target.value))}
+            className="level-slider"
+          />
+          <span className="level-val">{level}</span>
+        </div>
+      )}
     </div>
   );
 }

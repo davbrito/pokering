@@ -190,6 +190,35 @@ h1 em {
   font-family: var(--font-m);
   margin-bottom: 0.65rem;
 }
+.level-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 0.5px solid var(--border);
+}
+.level-lbl {
+  font-family: var(--font-m);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+.level-slider {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+  cursor: pointer;
+}
+.level-val {
+  font-family: var(--font-m);
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 700;
+  min-width: 24px;
+  text-align: right;
+}
 .types {
   display: flex;
   gap: 5px;
@@ -598,7 +627,6 @@ h1 em {
   font-family: var(--font-d);
   font-size: 38px;
   font-weight: bold;
-  z-index: 10;
   pointer-events: none;
   animation: popupFloat 0.9s ease-out forwards;
   text-shadow: 0 4px 12px rgba(0, 0, 0, 0.9);

@@ -40,7 +40,7 @@ export function ProjectileFx({ proj, playbackSpeed }: ProjectileFxProps) {
   const style = getProjectileStyle(proj.moveType);
   return (
     <motion.div
-      className="fx-projectile"
+      className="fx-projectile z-10"
       style={style}
       initial={{
         left: proj.sx,

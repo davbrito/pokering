@@ -6,7 +6,7 @@ import { Settings } from "lucide-react";
 import { useCallback } from "react";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
-import { calcHpStat, fetchPokemonMoves, generateBattleSteps, getStatsObject } from "../game/combat";
+import { fetchPokemonMoves, generateBattleSteps, getStatsObject, scaleStatsByLevel } from "../game/combat";
 import { BattleResult } from "../game/components/BattleResult";
 import { BattleStage } from "../game/components/BattleStage";
 import { PokemonModal } from "../game/components/PokemonModal";
@@ -39,8 +39,13 @@ function Home() {
 
     const s1 = getStatsObject(poke1);
     const s2 = getStatsObject(poke2);
-    const mh1 = calcHpStat(s1.hp);
-    const mh2 = calcHpStat(s2.hp);
+    const { players } = useGameStore.getState();
+    const level1 = players.player1.level;
+    const level2 = players.player2.level;
+    const scaled1 = scaleStatsByLevel(s1, level1);
+    const scaled2 = scaleStatsByLevel(s2, level2);
+    const mh1 = scaled1.hp;
+    const mh2 = scaled2.hp;
 
     const {
       setMaxHealths,
@@ -54,7 +59,7 @@ function Home() {
     setMaxHealths([mh1, mh2]);
     setCurrentHps([mh1, mh2]);
 
-    const steps = generateBattleSteps(poke1, poke2, s1, s2, mh1, mh2, p1Moves, p2Moves);
+    const steps = generateBattleSteps(poke1, poke2, s1, s2, mh1, mh2, p1Moves, p2Moves, undefined, undefined, level1, level2);
     setBattleLogs(steps);
     setCurrentStepIdx(0);
     setIsPaused(false);

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
@@ -231,7 +232,11 @@ export function BattleStage() {
 
   return (
     <div className={`stage-container ${battlePhase === "battle" ? "show" : ""}`} id="stageContainer">
-      <div className={`stage-viewport ${shakeScreen ? "screen-shake-anim" : ""}`} id="stageViewport" ref={viewportRef}>
+      <div
+        className={cn("stage-viewport isolate", shakeScreen && "screen-shake-anim")}
+        id="stageViewport"
+        ref={viewportRef}
+      >
         <div className="stage-huds">
           <div className="hud-box" id="hud-0">
             <div className="hud-name">{p1Data ? <PokemonName pokemon={p1Data} /> : "Luchador 1"}</div>
@@ -260,7 +265,7 @@ export function BattleStage() {
             <div className="fighter-platform" />
             {p1Data && (
               <img
-                className={`fighter-sprite ${animClass0 ? ` ${animClass0}` : ""}`}
+                className={cn("fighter-sprite", animClass0)}
                 src={getArtworkUrl(p1Data)}
                 alt="Fighter 1"
                 ref={imgRef0}
@@ -276,7 +281,7 @@ export function BattleStage() {
             <div className="fighter-platform" />
             {p2Data && (
               <img
-                className={`fighter-sprite${animClass1 ? ` ${animClass1}` : ""}`}
+                className={cn("fighter-sprite", animClass1)}
                 src={getArtworkUrl(p2Data)}
                 alt="Fighter 2"
                 ref={imgRef1}

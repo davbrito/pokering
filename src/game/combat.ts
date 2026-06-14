@@ -16,9 +16,6 @@ import type {
   StatusEffect,
 } from "./types";
 
-/** Nivel fijo al que combaten todos los Pokémon en esta simulación. */
-const COMBAT_LEVEL = 50;
-
 /**
  * Transforma un MoveDetail crudo de la PokéAPI en un MoveInfo limpio
  * con discriminación por damageClass. Puro, sin efectos secundarios,
@@ -223,6 +220,25 @@ export function selectBestMove(
 
 export function calcHpStat(baseHp: number): number {
   return baseHp * 2 + 110;
+}
+
+/**
+ * Escala las estadísticas base de un Pokémon según su nivel,
+ * usando las fórmulas oficiales (asumiendo 0 EVs/IVs).
+ *
+ *   HP:   floor((2 × base × level) / 100) + level + 10
+ *   Stat: floor((2 × base × level) / 100) + 5
+ */
+export function scaleStatsByLevel(base: PokemonStats, level: number): PokemonStats {
+  const scale = (b: number) => Math.floor((2 * b * level) / 100);
+  return {
+    hp: scale(base.hp) + level + 10,
+    atk: scale(base.atk) + 5,
+    def: scale(base.def) + 5,
+    spa: scale(base.spa) + 5,
+    spd: scale(base.spd) + 5,
+    spe: scale(base.spe) + 5,
+  };
 }
 
 /**
@@ -547,6 +563,8 @@ function resolveRound(
   hp2: number,
   maxHp1: number,
   maxHp2: number,
+  level1: number,
+  level2: number,
 ): {
   steps: BattleStep[];
   hp1: number;
@@ -644,8 +662,9 @@ function resolveRound(
       // ── Daño físico/especial (V1) ──
       // Calculate temp eff for MoveInfo without MoveResult
       const eff = getEffectiveness(attack.move.type, attack.attackerIdx === 0 ? pt2 : pt1);
+      const atkLevel = attack.attackerIdx === 0 ? level1 : level2;
       const { damage: finalDamage, isCrit } = calculateAttackDamage(
-        COMBAT_LEVEL,
+        atkLevel,
         attack.move.power,
         attack.offStat,
         attack.defStat,
@@ -763,13 +782,23 @@ export function generateBattleSteps(
   p2Moves: MoveInfo[],
   initialStages1?: StatStages,
   initialStages2?: StatStages,
+  level1?: number,
+  level2?: number,
 ): BattleStep[] {
   const steps: BattleStep[] = [];
   const pt1 = p1.types.map((t) => t.type.name);
   const pt2 = p2.types.map((t) => t.type.name);
 
-  let hp1 = maxHp1;
-  let hp2 = maxHp2;
+  // Escalar stats según nivel
+  const lv1 = level1 ?? 50;
+  const lv2 = level2 ?? 50;
+  const scaled1 = scaleStatsByLevel(p1s, lv1);
+  const scaled2 = scaleStatsByLevel(p2s, lv2);
+  const effectiveMaxHp1 = maxHp1 > 0 ? maxHp1 : scaled1.hp;
+  const effectiveMaxHp2 = maxHp2 > 0 ? maxHp2 : scaled2.hp;
+
+  let hp1 = effectiveMaxHp1;
+  let hp2 = effectiveMaxHp2;
 
   // Stat stages: empiezan en 0, o usan los iniciales para testing
   let p1Stages = initialStages1 ?? { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
@@ -784,8 +813,8 @@ export function generateBattleSteps(
   let turn = 1;
   while (hp1 > 0 && hp2 > 0 && turn <= 15) {
     const round = resolveRound(
-      p1s,
-      p2s,
+      scaled1,
+      scaled2,
       pt1,
       pt2,
       p1Moves,
@@ -796,8 +825,10 @@ export function generateBattleSteps(
       p2Ailment,
       hp1,
       hp2,
-      maxHp1,
-      maxHp2,
+      effectiveMaxHp1,
+      effectiveMaxHp2,
+      lv1,
+      lv2,
     );
     steps.push(...round.steps);
     hp1 = round.hp1;

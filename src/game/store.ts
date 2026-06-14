@@ -21,6 +21,7 @@ interface BattleState {
 
 interface PlayerState {
   chosenId: number | null;
+  level: number;
   maxHealth: number;
   currentHp: number;
 }
@@ -44,6 +45,7 @@ interface GameActions {
   setActiveTab: (tab: string) => void;
   setPokemonLanguage: (lang: string) => void;
   selectPokemon: (slot: number, id: number) => void;
+  setLevel: (slot: number, level: number) => void;
   setBattlePhase: (phase: BattlePhase) => void;
   setBattleLogs: (logs: BattleStep[]) => void;
   setCurrentStepIdx: (idx: number) => void;
@@ -61,8 +63,8 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
   activeTab: "all",
   pokemonLanguage: "es",
   players: {
-    player1: { chosenId: null, maxHealth: 100, currentHp: 100 },
-    player2: { chosenId: null, maxHealth: 100, currentHp: 100 },
+    player1: { chosenId: null, level: 50, maxHealth: 100, currentHp: 100 },
+    player2: { chosenId: null, level: 50, maxHealth: 100, currentHp: 100 },
   },
   battle: {
     phase: "selection",
@@ -84,6 +86,12 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
     set((s) => {
       const key = slot === 0 ? ("player1" as const) : ("player2" as const);
       return { players: { ...s.players, [key]: { ...s.players[key], chosenId: id } } };
+    }),
+
+  setLevel: (slot, level) =>
+    set((s) => {
+      const key = slot === 0 ? ("player1" as const) : ("player2" as const);
+      return { players: { ...s.players, [key]: { ...s.players[key], level } } };
     }),
 
   setBattlePhase: (phase) => set((s) => ({ battle: { ...s.battle, phase } })),

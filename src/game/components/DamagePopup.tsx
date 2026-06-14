@@ -30,7 +30,7 @@ export function DamagePopup({ pop }: { pop: DamagePopupData }) {
   const popDamage = isImmune ? undefined : step.damage;
 
   return (
-    <div className={cn("damage-popup", isCrit && "crit")}>
+    <div className={cn("damage-popup z-10", isCrit && "crit")}>
       {isImmune ? (
         <span style={{ fontSize: 24 }}>{m.battle_immune()}</span>
       ) : (
