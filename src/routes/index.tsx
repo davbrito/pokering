@@ -136,7 +136,7 @@ function Header() {
     <header>
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <ToggleGroup
-          className="flex gap-0.5 overflow-hidden rounded-lg"
+          className="flex overflow-hidden rounded-lg"
           value={[locale]}
           onValueChange={(v) => {
             const next = v[0];
