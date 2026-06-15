@@ -30,7 +30,27 @@
   "battle_preparing_arena": "Preparando la arena de combate…",
   "battle_use_move": "¡{#strong}{attacker}{/strong} usó {#strong}{move}{/strong}!",
   "battle_damage": "{#strong}{target}{/strong} recibió -{#strong}{damage}{/strong} PS {crit}{eff}",
-  "battle_stat_change": "¡{stat} de {#strong}{target}{/strong} {direction}!",
+  "battle_stat_name": [
+    {
+      "match": {
+        "stat=atk": "Ataque",
+        "stat=def": "Defensa",
+        "stat=spa": "Atq. Esp.",
+        "stat=spd": "Def. Esp.",
+        "stat=spe": "Velocidad"
+      }
+    }
+  ],
+  "battle_stat_change": [
+    {
+      "match": {
+        "direction=up": "¡{stat} de {#strong}{target}{/strong} subió!",
+        "direction=sharply_up": "¡{stat} de {#strong}{target}{/strong} subió mucho!",
+        "direction=down": "¡{stat} de {#strong}{target}{/strong} bajó!",
+        "direction=sharply_down": "¡{stat} de {#strong}{target}{/strong} bajó mucho!"
+      }
+    }
+  ],
   "battle_heal": "¡{#strong}{target}{/strong} recuperó +{#strong}{amount}{/strong} PS!",
   "battle_ailment": "¡{#strong}{target}{/strong} fue afectadx por {#strong}{ailment}{/strong}!",
   "battle_burn_damage": "{#strong}{target}{/strong} sufre daño por su quemadura: -{#strong}{damage}{/strong} PS",

@@ -2,7 +2,7 @@ import { Toggle, ToggleGroup } from "@base-ui/react";
 import { Dialog } from "@base-ui/react/dialog";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { XIcon } from "lucide-react";
+import { EyeIcon, XIcon } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useDeferredValue, useState } from "react";
 import {
@@ -245,7 +245,20 @@ function PokeThumb({
 }) {
   return (
     <button type="button" className="poke-thumb" onClick={onClick} onMouseEnter={onHover}>
-      <img src={getSpriteUrl(id)} alt={name} loading="lazy" className="select-none" />
+      <div className="pt-img-wrap">
+        <img src={getSpriteUrl(id)} alt={name} loading="lazy" className="select-none" />
+        <button
+          type="button"
+          className="pt-eye-btn"
+          title="Vista previa"
+          onClick={(e) => {
+            e.stopPropagation();
+            onHover();
+          }}
+        >
+          <EyeIcon size={14} />
+        </button>
+      </div>
       <div className="pt-name">{translatedName}</div>
       <div className="pt-num">#{String(id).padStart(3, "0")}</div>
     </button>

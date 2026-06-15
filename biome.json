@@ -14,7 +14,8 @@
       ".vscode/*",
       "index.html",
       "vite.config.ts",
-      "vitest.config.ts"
+      "vitest.config.ts",
+      "messages/**"
     ]
   },
   "formatter": {

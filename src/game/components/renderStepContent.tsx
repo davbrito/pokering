@@ -140,21 +140,20 @@ export function RenderStatusContent({ step, targetName }: { step: BattleStatusSt
 
   switch (payload.subType) {
     case "stat-change": {
-      const statNames: Record<string, string> = {
-        atk: "Ataque",
-        def: "Defensa",
-        spa: "Atq. Esp.",
-        spd: "Def. Esp.",
-        spe: "Velocidad",
-      };
-      const statName = statNames[payload.stat] || payload.stat;
-      const dir = payload.change > 0 ? "subió" : "bajó";
-      const intensity = Math.abs(payload.change) >= 2 ? " mucho" : "";
+      const statName = m.battle_stat_name({ stat: payload.stat });
+      const direction =
+        payload.change > 0
+          ? Math.abs(payload.change) >= 2
+            ? "sharply_up"
+            : "up"
+          : Math.abs(payload.change) >= 2
+            ? "sharply_down"
+            : "down";
       return (
         <span>
           <ParaglideMessage
             message={m.battle_stat_change}
-            inputs={{ stat: statName, target: targetName, direction: dir + intensity }}
+            inputs={{ stat: statName, target: targetName, direction }}
             markup={{ strong: ({ children }) => <strong>{children}</strong> }}
           />
         </span>

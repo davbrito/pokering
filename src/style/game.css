@@ -1303,7 +1303,14 @@ h1 em {
   background: rgba(230, 62, 62, 0.08);
   transform: translateY(-2px);
 }
-.poke-thumb img {
+.poke-thumb {
+  position: relative;
+}
+.pt-img-wrap {
+  position: relative;
+  display: inline-block;
+}
+.pt-img-wrap img {
   display: block;
   width: 96px;
   height: 96px;
@@ -1311,6 +1318,30 @@ h1 em {
   image-rendering: pixelated;
   aspect-ratio: 1 / 1;
   object-fit: contain;
+}
+.pt-eye-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 24px;
+  height: 24px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
+  backdrop-filter: blur(4px);
+  z-index: 2;
+}
+.pt-eye-btn:hover {
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
 }
 .poke-thumb .pt-name {
   font-size: 11px;
@@ -1792,6 +1823,9 @@ footer {
   }
   .poke-grid {
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  }
+  .pt-eye-btn {
+    display: flex;
   }
   .stage-viewport {
     height: 290px;

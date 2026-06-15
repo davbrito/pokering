@@ -30,7 +30,27 @@
   "battle_preparing_arena": "Preparing the arena…",
   "battle_use_move": "¡{#strong}{attacker}{/strong} used {#strong}{move}{/strong}!",
   "battle_damage": "{#strong}{target}{/strong} took -{#strong}{damage}{/strong} PS {crit}{eff}",
-  "battle_stat_change": "¡{stat} of {#strong}{target}{/strong} {direction}!",
+  "battle_stat_name": [
+    {
+      "match": {
+        "stat=atk": "Attack",
+        "stat=def": "Defense",
+        "stat=spa": "Sp. Atk",
+        "stat=spd": "Sp. Def",
+        "stat=spe": "Speed"
+      }
+    }
+  ],
+  "battle_stat_change": [
+    {
+      "match": {
+        "direction=up": "{stat} of {#strong}{target}{/strong} rose!",
+        "direction=sharply_up": "{stat} of {#strong}{target}{/strong} rose sharply!",
+        "direction=down": "{stat} of {#strong}{target}{/strong} fell!",
+        "direction=sharply_down": "{stat} of {#strong}{target}{/strong} fell sharply!"
+      }
+    }
+  ],
   "battle_heal": "¡{#strong}{target}{/strong} recovered +{#strong}{amount}{/strong} HP!",
   "battle_ailment": "¡{#strong}{target}{/strong} was afflicted by {#strong}{ailment}{/strong}!",
   "battle_burn_damage": "{#strong}{target}{/strong} suffers burn damage: -{#strong}{damage}{/strong} PS",
