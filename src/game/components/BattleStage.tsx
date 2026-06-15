@@ -363,7 +363,7 @@ function Figter({
         <div className="fighter-platform" />
         {pokemon && (
           <img
-            className={cn("fighter-sprite", animClass)}
+            className={cn("fighter-sprite", animClass, playingCry && "cry-shake")}
             src={getArtworkUrl(pokemon)}
             alt={`Fighter ${index + 1}`}
             ref={imgRef}

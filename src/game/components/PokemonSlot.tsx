@@ -2,10 +2,11 @@ import { Dialog } from "@base-ui/react";
 import { sumBy } from "es-toolkit/math";
 import { CheckIcon, TargetIcon, Volume2 } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect, useState } from "react";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
-import { playPokemonCry } from "../audio";
+import { audioManager, playPokemonCry } from "../audio";
 import { scaleStatsArrayByLevel } from "../combat";
 import { STAT_ABBR } from "../data";
 import { useSettingsStore } from "../settings-store";
@@ -20,21 +21,30 @@ function PokemonCard({ pokemon, slotIndex }: { pokemon: PokemonDetail; slotIndex
   const types = pokemon.types.map((t) => t.type.name);
   const total = sumBy(pokemon.stats, (s) => s.base_stat);
   const localizedName = getPokemonName(pokemon, pokemonLanguage);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // Escalar stats base por nivel y aplicar multiplicadores de stages
   const effectiveStats = scaleStatsArrayByLevel(pokemon.stats, level);
 
+  // Precargar el cry en el AudioManager en cuanto se tenga el PokemonDetail
+  useEffect(() => {
+    audioManager.preload(pokemon);
+  }, [pokemon]);
+
   return (
     <div className="poke-card show">
       <div className="poke-art-wrap relative">
-        <img className="poke-art" src={art} alt={localizedName} />
+        <img className={`poke-art ${isPlaying ? "cry-shake" : ""}`} src={art} alt={localizedName} />
         <button
           type="button"
           className="poke-cry-btn"
           title="Reproducir grito"
           onClick={(e) => {
             e.stopPropagation();
-            playPokemonCry(pokemon);
+            playPokemonCry(pokemon, {
+              onPlay: () => setIsPlaying(true),
+              onEnd: () => setIsPlaying(false),
+            });
           }}
         >
           <Volume2 size={14} />

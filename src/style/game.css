@@ -626,6 +626,30 @@ h1 em {
   }
 }
 
+/* CRY SHAKE — el Pokémon se agita mientras suena el grito */
+.cry-shake {
+  animation: cryShake 0.42s ease-in-out infinite;
+}
+
+@keyframes cryShake {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  20% {
+    transform: translateX(-2px) rotate(-1deg);
+  }
+  40% {
+    transform: translateX(2px) rotate(1deg);
+  }
+  60% {
+    transform: translateX(-1px) rotate(-0.5deg);
+  }
+  80% {
+    transform: translateX(1px) rotate(0.5deg);
+  }
+}
+
 /* ANIMACIONES CINEMÁTICAS */
 @keyframes idleBob {
   0% {

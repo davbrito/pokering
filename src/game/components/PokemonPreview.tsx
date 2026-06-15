@@ -3,10 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import { sumBy } from "es-toolkit/math";
 import { Volume2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useState } from "react";
 import { m } from "#/i18n/paraglide/messages.js";
 import { pokemonRetrieveOptions } from "../../api/pokeapi/@tanstack/react-query.gen";
 import { getArtworkUrl } from "../api";
-import { playPokemonCry } from "../audio";
+import { audioManager, playPokemonCry } from "../audio";
 import { STAT_ABBR } from "../data";
 import { PokemonName } from "./PokemonName";
 
@@ -15,6 +16,13 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
     ...pokemonRetrieveOptions({ path: { id: String(pokemonId) } }),
     enabled: pokemonId !== null,
   });
+
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  // Precargar el cry en el AudioManager en cuanto se tenga el PokemonDetail
+  useEffect(() => {
+    if (pokemon) audioManager.preload(pokemon);
+  }, [pokemon]);
 
   if (loading || !pokemon) {
     return (
@@ -42,7 +50,7 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
       <AnimatePresence mode="popLayout" initial={false}>
         <div className="relative">
           <motion.img
-            className="prev-art"
+            className={`prev-art ${isPlaying ? "cry-shake" : ""}`}
             src={art}
             alt={pokemon.name}
             key={art}
@@ -57,7 +65,10 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
             title="Reproducir grito"
             onClick={(e) => {
               e.stopPropagation();
-              playPokemonCry(pokemon);
+              setIsPlaying(true);
+              playPokemonCry(pokemon, {
+                onEnd: () => setIsPlaying(false),
+              });
             }}
           >
             <Volume2 size={14} />
