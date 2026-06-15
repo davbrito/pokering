@@ -167,25 +167,31 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
               <div className="spinner" />
               <span>{m.preview_loading()}</span>
             </div>
-          ) : currentList && currentList.length > 0 ? (
+          ) : (
             <div className="poke-grid-container">
               {isFetching && !isFetchingNextPage && (
                 <div className="poke-grid-overlay">
                   <div className="spinner" />
                 </div>
               )}
-              <div className="poke-grid" id="poke-grid">
-                {currentList.map((p) => (
-                  <PokeThumb
-                    key={p.id}
-                    id={p.id}
-                    name={p.name}
-                    onHover={() => handleHover(p.id)}
-                    onClick={() => handleSelect(p.id)}
-                    translatedName={getPokemonNameById(p.id, p.name, pokemonLanguage)}
-                  />
-                ))}
-              </div>
+              {currentList && currentList.length > 0 ? (
+                <div className="poke-grid" id="poke-grid">
+                  {currentList.map((p) => (
+                    <PokeThumb
+                      key={p.id}
+                      id={p.id}
+                      name={p.name}
+                      onHover={() => handleHover(p.id)}
+                      onClick={() => handleSelect(p.id)}
+                      translatedName={getPokemonNameById(p.id, p.name, pokemonLanguage)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="no-results">
+                  {m.modal_no_results()}
+                </div>
+              )}
               {hasNextPage && (
                 <div className="pagination" style={{ justifyContent: "center", gap: 12 }}>
                   <span className="page-info">
@@ -217,10 +223,6 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
                   </button>
                 </div>
               )}
-            </div>
-          ) : (
-            <div className="no-results" style={{ gridColumn: "1/-1" }}>
-              {m.modal_no_results()}
             </div>
           )}
         </div>
@@ -273,7 +275,7 @@ function TypesTabs({ value, onValueChange }: { value: string; onValueChange: (v:
       className="tabs-bar"
       id="tabs-bar"
       value={[value]}
-      onValueChange={(v) => onValueChange(v[0])}
+      onValueChange={(v) => onValueChange(v[0] || "all")}
       multiple={false}
     >
       {[{ name: "all" }, ...(typeListQuery.data?.results ?? [])].map((t) => {
@@ -293,11 +295,11 @@ function TypesTabs({ value, onValueChange }: { value: string; onValueChange: (v:
             style={(state) =>
               state.pressed
                 ? {
-                    background: c.bg,
-                    color: c.color,
-                    borderColor: c.border,
-                    outlineColor: c.border,
-                  }
+                  background: c.bg,
+                  color: c.color,
+                  borderColor: c.border,
+                  outlineColor: c.border,
+                }
                 : undefined
             }
             value={t.name}
