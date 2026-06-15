@@ -65,8 +65,8 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
             title="Reproducir grito"
             onClick={(e) => {
               e.stopPropagation();
-              setIsPlaying(true);
               playPokemonCry(pokemon, {
+                onPlay: () => setIsPlaying(true),
                 onEnd: () => setIsPlaying(false),
               });
             }}
