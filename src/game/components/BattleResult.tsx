@@ -88,6 +88,8 @@ export function BattleResult() {
   const w = computeWinner(p1, p2, battleSteps, level1, level2);
   const actionSteps = battleSteps.filter((s) => s.type !== "start");
   const wart = getArtworkUrl(w.wp);
+  const wpTypes = w.wp.types.map((t) => t.type.name);
+  const lpTypes = w.lp.types.map((t) => t.type.name);
 
   return (
     <div id="result-wrap" className="show">
@@ -105,6 +107,13 @@ export function BattleResult() {
                 <PokemonName pokemon={w.wp} />
               </div>
               <div className="win-level">Nv. {w.wl}</div>
+              <div className="types" style={{ marginTop: ".25rem", marginBottom: ".5rem" }}>
+                {wpTypes.map((t) => (
+                  <span key={t} className={`tbadge t-${t}`}>
+                    {t}
+                  </span>
+                ))}
+              </div>
               <div className="win-reason">{w.razon}</div>
             </div>
             <div className="bst-box">
@@ -132,6 +141,23 @@ export function BattleResult() {
             <div className="cmp-wrap">
               <div className="section-lbl" style={{ color: "var(--blue)", marginBottom: ".8rem" }}>
                 {m.battle_comparison({ name1: w.wp.name, name2: w.lp.name })}
+              </div>
+              <div className="cmp-types-row">
+                <div className="cmp-types-left">
+                  {wpTypes.map((t) => (
+                    <span key={t} className={`tbadge t-${t}`}>
+                      {t}
+                    </span>
+                  ))}
+                </div>
+                <div className="cmp-lbl">TIPO</div>
+                <div className="cmp-types-right">
+                  {lpTypes.map((t) => (
+                    <span key={t} className={`tbadge t-${t}`}>
+                      {t}
+                    </span>
+                  ))}
+                </div>
               </div>
               {statKeys.map((key, i) => {
                 const v1 = w.winnerIdx === 0 ? w.ws[key] : w.ls[key];

@@ -1,6 +1,7 @@
 import { ParaglideMessage } from "@inlang/paraglide-js-react";
 import type { ReactNode } from "react";
 import { m } from "#/i18n/paraglide/messages.js";
+import { TYPE_TAB_COLORS } from "../data";
 import type { BattleStatusStep, BattleStep } from "../types";
 
 function renderAttackClassLabel(damageClass: "physical" | "special" | "status") {
@@ -31,6 +32,7 @@ export function RenderStepContent({
     case "use-move": {
       const attackerName = formatName(step.attackerIdx, p1Name, p2Name);
       const catLabel = renderAttackClassLabel(step.move.damageClass);
+      const typeColors = TYPE_TAB_COLORS[step.move.type as keyof typeof TYPE_TAB_COLORS];
       return (
         <>
           <ParaglideMessage
@@ -38,7 +40,17 @@ export function RenderStepContent({
             inputs={{ attacker: attackerName, move: step.move.name.toUpperCase() }}
             markup={{ strong: ({ children }) => <strong>{children}</strong> }}
           />{" "}
-          <small className="cat-tag">{catLabel}</small>
+          <small className="cat-tag">{catLabel}</small>{" "}
+          <small
+            className="rounded-xl px-2 py-0.5 capitalize"
+            style={{
+              backgroundColor: typeColors.bg,
+              color: typeColors.color,
+              border: `1px solid ${typeColors.border}`,
+            }}
+          >
+            {step.move.type}
+          </small>
         </>
       );
     }
