@@ -4,10 +4,8 @@ import { ParaglideMessage } from "@inlang/paraglide-js-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { clamp, randomInt } from "es-toolkit/math";
 import { Settings, Shuffle } from "lucide-react";
-import { useCallback } from "react";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
-import { fetchPokemonMoves, generateBattleSteps, getStatsObject, scaleStatsArrayByLevel } from "../game/combat";
 import { BattleResult } from "../game/components/BattleResult";
 import { BattleStage } from "../game/components/BattleStage";
 import { PokemonModal } from "../game/components/PokemonModal";
@@ -26,63 +24,11 @@ function Home() {
 
   const { queryClient } = Route.useRouteContext();
 
-  const startBattle = async () => {
+  const handleStartBattle = async () => {
     const poke1 = chosen[0];
     const poke2 = chosen[1];
     if (!poke1 || !poke2) return;
-
-    useGameStore.getState().setIsLoadingMoves(true);
-
-    const [p1Moves, p2Moves] = await Promise.all([
-      fetchPokemonMoves(queryClient, poke1),
-      fetchPokemonMoves(queryClient, poke2),
-    ]);
-
-    const s1 = getStatsObject(poke1);
-    const s2 = getStatsObject(poke2);
-    const { players } = useGameStore.getState();
-    const level1 = players.player1.level;
-    const level2 = players.player2.level;
-    const scaled1 = scaleStatsArrayByLevel(poke1.stats, level1);
-    const scaled2 = scaleStatsArrayByLevel(poke2.stats, level2);
-    const mh1 = scaled1.find((s) => s.stat.name === "hp")?.base_stat ?? 100;
-    const mh2 = scaled2.find((s) => s.stat.name === "hp")?.base_stat ?? 100;
-
-    const {
-      setMaxHealths,
-      setCurrentHps,
-      setBattleLogs,
-      setPlayerMoves,
-      setCurrentStepIdx,
-      setIsPaused,
-      setBattlePhase,
-      setIsLoadingMoves,
-    } = useGameStore.getState();
-    setMaxHealths([mh1, mh2]);
-    setCurrentHps([mh1, mh2]);
-    setPlayerMoves(0, p1Moves);
-    setPlayerMoves(1, p2Moves);
-
-    const steps = generateBattleSteps(
-      poke1,
-      poke2,
-      s1,
-      s2,
-      mh1,
-      mh2,
-      p1Moves,
-      p2Moves,
-      undefined,
-      undefined,
-      level1,
-      level2,
-    );
-    setBattleLogs(steps);
-    setCurrentStepIdx(0);
-    setIsPaused(false);
-    setIsLoadingMoves(false);
-    setBattlePhase("battle");
-
+    await useGameStore.getState().startBattle(queryClient);
     setTimeout(() => {
       const stage = document.getElementById("stageContainer");
       stage?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -107,12 +53,12 @@ function Home() {
     store.selectPokemon(1, id2);
 
     // Small delay to let React Query fetch the Pokémon, then start
-    setTimeout(() => startBattle(), 100);
+    setTimeout(() => handleStartBattle(), 100);
   };
 
-  const goBackToSelection = useCallback(() => {
+  const goBackToSelection = () => {
     useGameStore.getState().setBattlePhase("selection");
-  }, []);
+  };
 
   return (
     <>
@@ -143,7 +89,7 @@ function Home() {
                     id="battleBtn"
                     disabled={!bothReady}
                     type="button"
-                    onClick={startBattle}
+                    onClick={handleStartBattle}
                   >
                     {m.home_start_battle()}
                   </button>
@@ -160,9 +106,17 @@ function Home() {
             </div>
           </>
         ) : (
-          <div className="battle-section" id="battleSection">
+          <div className="battle-section flex items-center justify-center gap-3">
             <button className="battle-btn" type="button" onClick={goBackToSelection}>
               {m.home_new_battle()}
+            </button>
+            <button
+              className="battle-btn random aspect-square size-12 shrink-0 justify-center self-center"
+              type="button"
+              onClick={randomBattle}
+              title={m.home_random_battle()}
+            >
+              <Shuffle size={20} />
             </button>
           </div>
         )}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { PokemonDetail } from "../../api/pokeapi";
 import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
@@ -26,6 +26,7 @@ function getStepDuration(step: BattleStep, speed: number): number {
 
 export function BattleStage() {
   const playbackSpeed = useGameStore((s) => s.battle.playbackSpeed);
+  const currentStep = useGameStore((s) => s.battle.logs[s.battle.currentStepIdx] ?? null);
   const players = useGameStore((s) => s.players);
   const maxHealths = [players.player1.maxHealth, players.player2.maxHealth] as const;
   const currentHps = [players.player1.currentHp, players.player2.currentHp] as const;
@@ -43,7 +44,6 @@ export function BattleStage() {
   const p1Name = usePokemonName(p1Data, "Luchador 1");
   const p2Name = usePokemonName(p2Data, "Luchador 2");
 
-  const [currentStep, setCurrentStep] = useState<BattleStep | null>(null);
   const [animClass0, setAnimClass0] = useState("");
   const [animClass1, setAnimClass1] = useState("");
   const [shakeScreen, setShakeScreen] = useState(false);
@@ -60,13 +60,13 @@ export function BattleStage() {
   const projCounter = useRef(0);
   const startedRef = useRef(false);
 
-  const finishBattle = useCallback(() => {
+  const finishBattle = () => {
     useGameStore.getState().setBattlePhase("result");
     setAnimClass0("");
     setAnimClass1("");
-  }, []);
+  };
 
-  const applyImpact = useCallback((defIdx: number, step: BattleDamageStep) => {
+  const applyImpact = (defIdx: number, step: BattleDamageStep) => {
     if (defIdx === 0) setAnimClass0("hit-shake");
     else setAnimClass1("hit-shake");
 
@@ -90,7 +90,7 @@ export function BattleStage() {
       if (defIdx === 0) setAnimClass0("");
       else setAnimClass1("");
     }, 400);
-  }, []);
+  };
 
   const triggerProjectile = useCallback((atkIdx: number, defIdx: number, moveType: string, onComplete: () => void) => {
     const atkImg = atkIdx === 0 ? imgRef0.current : imgRef1.current;
@@ -119,109 +119,101 @@ export function BattleStage() {
     }, animTime);
   }, []);
 
-  const executeStepVisuals = useCallback(
-    (step: BattleStep) => {
-      setCurrentStep(step);
-      if (step.type === "start") {
-        const p = useGameStore.getState().players;
-        useGameStore.getState().setCurrentHps([p.player1.maxHealth, p.player2.maxHealth]);
-        playPokemonCries(p1Data, p2Data, 1200, {
-          onP1Play: {
-            onPlay: () => setPlayingCryIdx(0),
-            onEnd: () => setPlayingCryIdx(null),
-          },
-          onP2Play: {
-            onPlay: () => setPlayingCryIdx(1),
-            onEnd: () => setPlayingCryIdx(null),
-          },
-        });
-      }
-      if (step.type === "use-move") {
-        const atkIdx = step.attackerIdx;
-        const defIdx = atkIdx === 0 ? 1 : 0;
+  const executeStepVisuals = (step: BattleStep) => {
+    if (step.type === "start") {
+      const p = useGameStore.getState().players;
+      useGameStore.getState().setCurrentHps([p.player1.maxHealth, p.player2.maxHealth]);
+      playPokemonCries(p1Data, p2Data, 1200, {
+        onP1Play: {
+          onPlay: () => setPlayingCryIdx(0),
+          onEnd: () => setPlayingCryIdx(null),
+        },
+        onP2Play: {
+          onPlay: () => setPlayingCryIdx(1),
+          onEnd: () => setPlayingCryIdx(null),
+        },
+      });
+    }
+    if (step.type === "use-move") {
+      const atkIdx = step.attackerIdx;
+      const defIdx = atkIdx === 0 ? 1 : 0;
 
-        // Descontar PP en el store
-        if (step.move.pp > 0) {
-          const store = useGameStore.getState();
-          const playerKey = atkIdx === 0 ? "player1" : "player2";
-          const pp = [...store.players[playerKey].pp];
-          const moveIdx = store.players[playerKey].moves.findIndex((m) => m.name === step.move.name);
-          if (moveIdx !== -1 && pp[moveIdx] > 0) {
-            pp[moveIdx]--;
-            store.setPlayerPp(atkIdx, pp);
-          }
+      // Descontar PP en el store
+      if (step.move.pp > 0) {
+        const store = useGameStore.getState();
+        const playerKey = atkIdx === 0 ? "player1" : "player2";
+        const pp = [...store.players[playerKey].pp];
+        const moveIdx = store.players[playerKey].moves.findIndex((m) => m.name === step.move.name);
+        if (moveIdx !== -1 && pp[moveIdx] > 0) {
+          pp[moveIdx]--;
+          store.setPlayerPp(atkIdx, pp);
         }
+      }
 
-        if (step.move.damageClass === "physical") {
-          setAnimClass0("");
-          setAnimClass1("");
-          if (atkIdx === 0) setAnimClass0("lunge-right");
-          else setAnimClass1("lunge-left");
-          const spd = useGameStore.getState().battle.playbackSpeed;
-          setTimeout(() => {
-            if (atkIdx === 0) setAnimClass0("");
-            else setAnimClass1("");
-          }, 450 / spd);
-        } else {
-          triggerProjectile(atkIdx, defIdx, step.move.type, () => {});
-        }
-      }
-      if (step.type === "damage") {
-        const defIdx = step.targetIdx;
-        applyImpact(defIdx, step);
-      }
-      if (step.type === "miss") {
-        // El movimiento falló: sin animación de daño, solo mostrar el texto
-      }
-      if (step.type === "status") {
-        const id = ++popupCounter.current;
-        setStatusPopups((prev) => [...prev, { id, targetIdx: step.targetIdx, step }]);
-        setTimeout(() => {
-          setStatusPopups((prev) => prev.filter((p) => p.id !== id));
-        }, 1200);
-      }
-      if (step.type === "faint") {
-        if (step.faintedIdx === 0) setAnimClass0("faint-slide");
-        else setAnimClass1("faint-slide");
-        const faintedPoke = step.faintedIdx === 0 ? p1Data : p2Data;
-        if (faintedPoke) {
-          playPokemonCry(faintedPoke, {
-            onPlay: () => setPlayingCryIdx(step.faintedIdx),
-            onEnd: () => setPlayingCryIdx(null),
-          });
-        }
-      }
-      if (step.type === "end") {
+      if (step.move.damageClass === "physical") {
         setAnimClass0("");
         setAnimClass1("");
+        if (atkIdx === 0) setAnimClass0("lunge-right");
+        else setAnimClass1("lunge-left");
+        const spd = useGameStore.getState().battle.playbackSpeed;
+        setTimeout(() => {
+          if (atkIdx === 0) setAnimClass0("");
+          else setAnimClass1("");
+        }, 450 / spd);
+      } else {
+        triggerProjectile(atkIdx, defIdx, step.move.type, () => {});
       }
-    },
-    [applyImpact, triggerProjectile, p1Data, p2Data],
-  );
+    }
+    if (step.type === "damage") {
+      const defIdx = step.targetIdx;
+      applyImpact(defIdx, step);
+    }
+    if (step.type === "miss") {
+      // El movimiento falló: sin animación de daño, solo mostrar el texto
+    }
+    if (step.type === "status") {
+      const id = ++popupCounter.current;
+      setStatusPopups((prev) => [...prev, { id, targetIdx: step.targetIdx, step }]);
+      setTimeout(() => {
+        setStatusPopups((prev) => prev.filter((p) => p.id !== id));
+      }, 1200);
+    }
+    if (step.type === "faint") {
+      if (step.faintedIdx === 0) setAnimClass0("faint-slide");
+      else setAnimClass1("faint-slide");
+      const faintedPoke = step.faintedIdx === 0 ? p1Data : p2Data;
+      if (faintedPoke) {
+        playPokemonCry(faintedPoke, {
+          onPlay: () => setPlayingCryIdx(step.faintedIdx),
+          onEnd: () => setPlayingCryIdx(null),
+        });
+      }
+    }
+    if (step.type === "end") {
+      setAnimClass0("");
+      setAnimClass1("");
+    }
+  };
 
-  const playStep = useCallback(
-    (idx: number) => {
-      const store = useGameStore.getState();
-      if (store.battle.isPaused) return;
-      const steps = store.battle.logs;
-      if (idx >= steps.length) {
-        finishBattle();
-        return;
-      }
-      const step = steps[idx];
-      store.setCurrentStepIdx(idx);
-      executeStepVisuals(step);
-      const duration = getStepDuration(step, store.battle.playbackSpeed);
-      playbackTimer.current = setTimeout(() => playStep(idx + 1), duration);
-    },
-    [executeStepVisuals, finishBattle],
-  );
+  const playStep = useEffectEvent((idx: number) => {
+    const store = useGameStore.getState();
+    if (store.battle.isPaused) return;
+    const steps = store.battle.logs;
+    if (idx >= steps.length) {
+      finishBattle();
+      return;
+    }
+    const step = steps[idx];
+    store.setCurrentStepIdx(idx);
+    executeStepVisuals(step);
+    const duration = getStepDuration(step, store.battle.playbackSpeed);
+    playbackTimer.current = setTimeout(() => playStep(idx + 1), duration);
+  });
 
   // Start playback when battle phase changes
   useEffect(() => {
     if (battlePhase === "battle" && battleSteps.length > 0 && !startedRef.current) {
       startedRef.current = true;
-      setCurrentStep(null);
       setAnimClass0("");
       setAnimClass1("");
       setDamagePopups([]);
@@ -232,7 +224,7 @@ export function BattleStage() {
     }
     if (battlePhase !== "battle") startedRef.current = false;
     return undefined;
-  }, [battlePhase, battleSteps.length, playStep]);
+  }, [battlePhase, battleSteps.length]);
 
   // Cleanup
   useEffect(() => {

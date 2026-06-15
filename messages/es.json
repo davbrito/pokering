@@ -47,6 +47,7 @@
   "battle_spa": "SpA",
   "battle_spd": "SpD",
   "battle_vel": "VEL",
+  "battle_rematch": "⚔ Revancha",
   "battle_bst": "BST",
   "battle_vs": "vs {total}",
   "result_reason_elemental": "La ventaja elemental de tipo de {name} desarmó por completo la defensa del contrincante.",

@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
@@ -79,6 +80,11 @@ export function BattleResult() {
   const { chosen } = useChosenPokemon();
   const level1 = useGameStore((s) => s.players.player1.level);
   const level2 = useGameStore((s) => s.players.player2.level);
+  const queryClient = useQueryClient();
+
+  const handleRestart = async () => {
+    await useGameStore.getState().startBattle(queryClient);
+  };
 
   if (battlePhase !== "result") return null;
 
@@ -218,6 +224,11 @@ export function BattleResult() {
               })}
             </div>
           </div>
+        </div>
+        <div className="result-actions">
+          <button type="button" className="restart-btn" onClick={handleRestart}>
+            {m.battle_rematch()}
+          </button>
         </div>
       </div>
     </div>
