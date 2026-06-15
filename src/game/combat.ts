@@ -6,6 +6,7 @@ import type { MoveDetail, PokemonStat } from "../api/pokeapi/types.gen";
 import { getEffectiveness, getStabMultiplier, selectBattleMoves, selectMove, struggleMove } from "./combat/moves";
 import { coinFlip, randomProbability } from "./random";
 import type { AilmentState, BattleStep, MoveInfo, PokemonStats, StatStages, StatusEffect } from "./types";
+import { isSupportedAilment, SUPPORTED_AILMENTS } from "./types";
 
 /**
  * Transforma un MoveDetail crudo de la PokéAPI en un MoveInfo limpio
@@ -56,7 +57,7 @@ function parseStatusEffect(meta: MoveDetail["meta"], statChanges: MoveDetail["st
 
   if (cat === "ailment" && meta.ailment.name !== "none") {
     const ailmentName = meta.ailment.name;
-    if (ailmentName === "burn" || ailmentName === "paralysis") {
+    if (isSupportedAilment(ailmentName)) {
       return { kind: "ailment", ailment: ailmentName };
     }
   }

@@ -36,9 +36,16 @@ export type StatChangeEffect = {
   changes: Array<{ stat: "atk" | "def" | "spa" | "spd" | "spe"; change: number }>;
 };
 
+export const SUPPORTED_AILMENTS = ["burn", "paralysis"] as const;
+export type AilmentName = (typeof SUPPORTED_AILMENTS)[number];
+
+export function isSupportedAilment(name: string): name is AilmentName {
+  return (SUPPORTED_AILMENTS as readonly string[]).includes(name);
+}
+
 export type AilmentEffect = {
   kind: "ailment";
-  ailment: "burn" | "paralysis";
+  ailment: AilmentName;
 };
 
 export type HealEffect = {
@@ -99,7 +106,7 @@ export interface BattleEndStep {
 
 export type StatusPayload =
   | { subType: "stat-change"; stat: "atk" | "def" | "spa" | "spd" | "spe"; change: number; currentStage: number }
-  | { subType: "ailment"; name: "burn" | "paralysis" }
+  | { subType: "ailment"; name: AilmentName }
   | { subType: "heal"; amount: number; currentHp: number };
 
 export interface BattleStatusStep {
@@ -126,7 +133,7 @@ export interface BattlePassiveStep {
 // ─── AilmentState ────────────────────────────────────────────────────────────
 
 export interface AilmentState {
-  type: "burn" | "paralysis" | null;
+  type: AilmentName | null;
 }
 
 export interface StatStages {
