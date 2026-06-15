@@ -3,13 +3,14 @@ import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { ParaglideMessage } from "@inlang/paraglide-js-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { clamp, randomInt } from "es-toolkit/math";
-import { Settings, Shuffle } from "lucide-react";
+import { Settings, Shuffle, Volume2, VolumeX } from "lucide-react";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
 import { BattleResult } from "../game/components/BattleResult";
 import { BattleStage } from "../game/components/BattleStage";
 import { PokemonModal } from "../game/components/PokemonModal";
 import { PokemonSlot } from "../game/components/PokemonSlot";
+import { useSettingsStore } from "../game/settings-store";
 import { useBothReady, useChosenPokemon, useGameStore } from "../game/store";
 
 export const Route = createFileRoute("/")({
@@ -145,6 +146,9 @@ function Home() {
 
 function Header() {
   const locale = getLocale();
+  const audioEnabled = useSettingsStore((s) => s.audio.enabled);
+  const setAudioEnabled = useSettingsStore((s) => s.setAudioEnabled);
+
   return (
     <header>
       <div className="absolute top-4 right-4 flex items-center gap-2">
@@ -172,6 +176,15 @@ function Header() {
             EN
           </Toggle>
         </ToggleGroup>
+        <button
+          type="button"
+          className="settings-gear"
+          aria-label={audioEnabled ? m.settings_audio_on() : m.settings_audio_off()}
+          onClick={() => setAudioEnabled(!audioEnabled)}
+          title={audioEnabled ? m.settings_audio_on() : m.settings_audio_off()}
+        >
+          {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
+        </button>
         <Link to="/settings" className="settings-gear" aria-label={m.settings_title()}>
           <Settings size={20} />
         </Link>
