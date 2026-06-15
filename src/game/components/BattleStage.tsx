@@ -3,6 +3,7 @@ import type { PokemonDetail } from "../../api/pokeapi";
 import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
 import { playPokemonCries, playPokemonCry } from "../audio";
+import { BattleEngine } from "../battle-engine";
 import { getStatsObject } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
 import type { BattleDamageStep, BattleStatusStep, BattleStep } from "../types";
@@ -10,19 +11,6 @@ import { DamagePopup, type DamagePopupData } from "./DamagePopup";
 import { usePokemonName } from "./PokemonName";
 import { type Projectile, ProjectileFx } from "./ProjectileFx";
 import { RenderStatusContent, RenderStepContent } from "./renderStepContent";
-
-function getStepDuration(step: BattleStep, speed: number): number {
-  let base = 1800;
-  if (step.type === "start") base = 2200;
-  if (step.type === "miss") base = 1500;
-  if (step.type === "faint") base = 2000;
-  if (step.type === "end") base = 2500;
-  if (step.type === "status") base = 1700;
-  if (step.type === "passive") base = 1500;
-  if (step.type === "use-move") base = step.move.damageClass === "special" ? 2000 : 1800;
-  if (step.type === "damage") base = 600;
-  return base / speed;
-}
 
 export function BattleStage() {
   const playbackSpeed = useGameStore((s) => s.battle.playbackSpeed);
@@ -55,7 +43,7 @@ export function BattleStage() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const imgRef0 = useRef<HTMLImageElement | null>(null);
   const imgRef1 = useRef<HTMLImageElement | null>(null);
-  const playbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const engineRef = useRef<BattleEngine | null>(null);
 
   const startedRef = useRef(false);
 
@@ -194,20 +182,15 @@ export function BattleStage() {
     }
   };
 
-  const playStep = useEffectEvent((idx: number) => {
-    const store = useGameStore.getState();
-    if (store.battle.isPaused) return;
-    const steps = store.battle.logs;
-    if (idx >= steps.length) {
-      finishBattle();
-      return;
-    }
-    const step = steps[idx];
-    store.setCurrentStepIdx(idx);
-    executeStepVisuals(step);
-    const duration = getStepDuration(step, store.battle.playbackSpeed);
-    playbackTimer.current = setTimeout(() => playStep(idx + 1), duration);
-  });
+  const onExecuteStep = useEffectEvent(executeStepVisuals);
+  const onFinish = useEffectEvent(finishBattle);
+
+  // Initialize engine once
+  useEffect(() => {
+    const engine = new BattleEngine({ onExecuteStep, onFinish });
+    engineRef.current = engine;
+    return () => engine.stop();
+  }, []);
 
   // Start playback when battle phase changes
   useEffect(() => {
@@ -218,29 +201,16 @@ export function BattleStage() {
       setDamagePopups([]);
       setStatusPopups([]);
       setProjectiles([]);
-      const timer = setTimeout(() => playStep(0), 400);
+      const timer = setTimeout(() => engineRef.current?.start(0), 400);
       return () => clearTimeout(timer);
     }
     if (battlePhase !== "battle") startedRef.current = false;
     return undefined;
   }, [battlePhase, battleSteps.length]);
 
-  // Cleanup
-  useEffect(() => {
-    return () => {
-      if (playbackTimer.current) clearTimeout(playbackTimer.current);
-    };
-  }, []);
-
   const togglePause = () => {
     const store = useGameStore.getState();
-    if (store.battle.isPaused) {
-      store.setIsPaused(false);
-      playStep(store.battle.currentStepIdx);
-    } else {
-      store.setIsPaused(true);
-      if (playbackTimer.current) clearTimeout(playbackTimer.current);
-    }
+    store.setIsPaused(!store.battle.isPaused);
   };
 
   const toggleSpeed = () => {
@@ -249,7 +219,7 @@ export function BattleStage() {
     store.setPlaybackSpeed(b.playbackSpeed === 4 ? 1 : ((b.playbackSpeed * 2) as 1 | 2 | 4));
   };
   const skipCinematics = () => {
-    if (playbackTimer.current) clearTimeout(playbackTimer.current);
+    engineRef.current?.stop();
     useGameStore.getState().setIsPaused(false);
     finishBattle();
   };
