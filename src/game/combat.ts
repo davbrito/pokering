@@ -85,8 +85,8 @@ export async function fetchPokemonMoves(queryClient: QueryClient, pokemon: Pokem
   const movesNames = [...new Set(pokemon.moves.map((m) => m.move.name))];
   const results = await Promise.all(movesNames.map((name) => fetchSingleMove(queryClient, name)));
   const valid = results.filter((r): r is MoveInfo => r !== null);
-  // Aplicar estrategia de 4 slots estratégicos
-  return selectBattleMoves(valid);
+  // Aplicar estrategia de 4 slots estratégicos con sesgo por stats base
+  return selectBattleMoves(valid, getStatsObject(pokemon));
 }
 
 async function fetchSingleMove(queryClient: QueryClient, name: string): Promise<MoveInfo | null> {

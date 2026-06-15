@@ -117,26 +117,71 @@ function pickBestAttack(
 
 /**
  * Aplica la estrategia de 4 slots: pule un pool de movimientos a exactamente 4,
- * escogiendo el mejor de cada categoría estratégica.
+ * escogiendo estratégicamente según las estadísticas del Pokémon.
  *
- *   Slot 1: Mejor movimiento físico (mayor power)
- *   Slot 2: Mejor movimiento especial (mayor power)
- *   Slot 3: Primer stat-change o heal (net-good-stats/heal)
- *   Slot 4: Primer ailment
+ *   - Ruleta competitiva: elige al azar entre el Top 3 de ataques de cada categoría.
+ *   - Sesgo por estadísticas: si ATK > SpA × 1.5, privilegia 2 físicos;
+ *     si SpA > ATK × 1.5, privilegia 2 especiales.
+ *   - Slot 3: Primer stat-change o heal (net-good-stats/heal)
+ *   - Slot 4: Primer ailment
+ *
+ * @param pool  Pool completo de movimientos válidos.
+ * @param stats Estadísticas base del Pokémon (opcional, para sesgo).
  */
-export function selectBattleMoves(pool: MoveInfo[]): MoveInfo[] {
-  const physical = pool.filter((m) => m.damageClass === "physical").sort((a, b) => b.power - a.power);
-  const special = pool.filter((m) => m.damageClass === "special").sort((a, b) => b.power - a.power);
+export function selectBattleMoves(pool: MoveInfo[], stats?: PokemonStats): MoveInfo[] {
+  // Ponderación estocástica: pequeño ruido (±5) al comparar poder para que
+  // movimientos con potencia similar puedan reordenarse aleatoriamente.
+  const noisySort = (a: MoveInfo, b: MoveInfo) => (b.power ?? 0) + random(-5, 5) - ((a.power ?? 0) + random(-5, 5));
+
+  const physical = pool.filter((m) => m.damageClass === "physical").sort(noisySort);
+  const special = pool.filter((m) => m.damageClass === "special").sort(noisySort);
   const stat = pool.find(
     (m) => m.damageClass === "status" && (m.effect.kind === "stat-change" || m.effect.kind === "heal"),
   );
-
   const ailment = pool.find((m) => m.damageClass === "status" && m.effect.kind === "ailment");
 
   const result: MoveInfo[] = [];
 
-  if (physical.length > 0) result.push(physical[0]);
-  if (special.length > 0) result.push(special[0]);
+  // ── Determinar sesgo físico/especial ──
+  // Si una estadística ofensiva supera a la otra por ≥ 50 %, duplicamos esa categoría.
+  const atk = stats?.atk ?? 0;
+  const spa = stats?.spa ?? 0;
+  const biasPhysical = atk > 0 && spa > 0 && atk >= spa * 1.5;
+  const biasSpecial = spa > 0 && atk > 0 && spa >= atk * 1.5;
+
+  // ── Ruleta competitiva: elegir al azar del Top 3 ──
+  const pickTop = (arr: MoveInfo[]): MoveInfo | undefined => {
+    if (arr.length === 0) return undefined;
+    const top = arr.slice(0, Math.min(3, arr.length));
+    return top[Math.floor(random(0, top.length))];
+  };
+
+  if (biasPhysical) {
+    // Dos ataques físicos + 0 especiales
+    const p1 = pickTop(physical);
+    if (p1) {
+      result.push(p1);
+      const remaining = physical.filter((m) => m.name !== p1.name);
+      const p2 = pickTop(remaining);
+      if (p2) result.push(p2);
+    }
+  } else if (biasSpecial) {
+    // Dos ataques especiales + 0 físicos
+    const s1 = pickTop(special);
+    if (s1) {
+      result.push(s1);
+      const remaining = special.filter((m) => m.name !== s1.name);
+      const s2 = pickTop(remaining);
+      if (s2) result.push(s2);
+    }
+  } else {
+    // Balanceado: 1 físico + 1 especial
+    const p = pickTop(physical);
+    if (p) result.push(p);
+    const s = pickTop(special);
+    if (s) result.push(s);
+  }
+
   if (stat) result.push(stat);
   if (ailment) result.push(ailment);
 
