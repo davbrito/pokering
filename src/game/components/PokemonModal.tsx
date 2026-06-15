@@ -72,7 +72,7 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
   const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const deferredHoveredId = useDeferredValue(hoveredId);
-  const PAGE_SIZE = 120;
+  const PAGE_SIZE = 500;
 
   // Debounced search for client-side filtering
   const [debouncedSearch] = useDebouncedValue(searchQuery, { wait: 300 });
