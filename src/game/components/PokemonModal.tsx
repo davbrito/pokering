@@ -14,6 +14,7 @@ import { m } from "#/i18n/paraglide/messages.js";
 import { cn } from "#/lib/utils.ts";
 import { getSpriteUrl } from "../api";
 import { getTypeSpriteUrl, TYPE_TAB_COLORS } from "../data";
+import { useSettingsStore } from "../settings-store";
 import { useGameStore } from "../store";
 import { getPokemonNameById } from "./PokemonName";
 import { PokemonPreview } from "./PokemonPreview";
@@ -68,7 +69,7 @@ function getIdFromUrl(url: string): number {
 function DialogContent({ slot = 0 }: { slot: number | undefined }) {
   const searchQuery = useGameStore((s) => s.searchQuery);
   const activeTab = useGameStore((s) => s.activeTab);
-  const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
+  const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const deferredHoveredId = useDeferredValue(hoveredId);
   const PAGE_SIZE = 120;

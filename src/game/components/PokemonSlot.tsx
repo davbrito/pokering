@@ -8,12 +8,13 @@ import { getArtworkUrl } from "../api";
 import { playPokemonCry } from "../audio";
 import { scaleStatsArrayByLevel } from "../combat";
 import { STAT_ABBR } from "../data";
+import { useSettingsStore } from "../settings-store";
 import { useChosenPokemon, useGameStore } from "../store";
 import { getPokemonName, PokemonName } from "./PokemonName";
 import { pickerDialogHandle } from "./pickerDialogHandle";
 
 function PokemonCard({ pokemon, slotIndex }: { pokemon: PokemonDetail; slotIndex: number }) {
-  const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
+  const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
   const level = useGameStore((s) => (slotIndex === 0 ? s.players.player1.level : s.players.player2.level));
   const art = getArtworkUrl(pokemon);
   const types = pokemon.types.map((t) => t.type.name);

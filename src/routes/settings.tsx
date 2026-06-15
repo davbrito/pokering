@@ -8,15 +8,15 @@ import { m } from "#/i18n/paraglide/messages.js";
 import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
 import { languageListOptions } from "../api/pokeapi/@tanstack/react-query.gen";
 import { localizedNameCache } from "../game/api";
-import { useGameStore } from "../game/store";
+import { useSettingsStore } from "../game/settings-store";
 
 export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
 function SettingsPage() {
-  const currentLang = useGameStore((s) => s.pokemonLanguage);
-  const setPokemonLanguage = useGameStore((s) => s.setPokemonLanguage);
+  const currentLang = useSettingsStore((s) => s.pokemonLanguage);
+  const setPokemonLanguage = useSettingsStore((s) => s.setPokemonLanguage);
 
   const { data, isLoading } = useQuery({
     ...languageListOptions({ query: { limit: 100 } }),
@@ -24,10 +24,10 @@ function SettingsPage() {
     select: (d) => d.results.toSorted((a, b) => a.name.localeCompare(b.name)),
   });
 
-  const audioEnabled = useGameStore((s) => s.audio.enabled);
-  const audioVolume = useGameStore((s) => s.audio.volume);
-  const setAudioEnabled = useGameStore((s) => s.setAudioEnabled);
-  const setAudioVolume = useGameStore((s) => s.setAudioVolume);
+  const audioEnabled = useSettingsStore((s) => s.audio.enabled);
+  const audioVolume = useSettingsStore((s) => s.audio.volume);
+  const setAudioEnabled = useSettingsStore((s) => s.setAudioEnabled);
+  const setAudioVolume = useSettingsStore((s) => s.setAudioVolume);
 
   const displayNames = new Intl.DisplayNames(["es"], { type: "language" });
 

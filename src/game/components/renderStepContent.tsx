@@ -16,7 +16,15 @@ function renderAttackClassLabel(damageClass: "physical" | "special" | "status") 
   }
 }
 
-export function RenderStepContent({ step, p1Name, p2Name }: { step: BattleStep | null; p1Name: string; p2Name: string }): ReactNode {
+export function RenderStepContent({
+  step,
+  p1Name,
+  p2Name,
+}: {
+  step: BattleStep | null;
+  p1Name: string;
+  p2Name: string;
+}): ReactNode {
   if (!step) return m.battle_preparing_arena();
 
   switch (step.type) {

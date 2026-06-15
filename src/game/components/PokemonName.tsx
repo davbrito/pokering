@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { pokemonSpeciesRetrieveOptions } from "../../api/pokeapi/@tanstack/react-query.gen";
 import { localizedNameCache } from "../api";
-import { useGameStore } from "../store";
+import { useSettingsStore } from "../settings-store";
 
 /**
  * Resuelve el nombre localizado de un Pokémon desde el caché usando su ID.
@@ -38,7 +38,7 @@ export function PokemonName({
 
 export function usePokemonName(pokemon: PokemonDetail | null, fallback?: string): string {
   const speciesName = pokemon?.species.name;
-  const pokemonLanguage = useGameStore((s) => s.pokemonLanguage);
+  const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
 
   const species = useQuery({
     ...pokemonSpeciesRetrieveOptions({ path: { id: speciesName || "" } }),

@@ -1,5 +1,5 @@
 import type { PokemonDetail } from "../api/pokeapi";
-import { useGameStore } from "./store";
+import { useSettingsStore } from "./settings-store";
 
 export interface CryCallbacks {
   /** Se dispara cuando el audio empieza a reproducirse realmente. */
@@ -16,7 +16,7 @@ export interface CryCallbacks {
  * Acepta callbacks opcionales para sincronizar estado visual con el audio.
  */
 export function playPokemonCry(pokemon: PokemonDetail, callbacks?: CryCallbacks): void {
-  const { enabled, volume } = useGameStore.getState().audio;
+  const { enabled, volume } = useSettingsStore.getState().audio;
   if (!enabled) return;
 
   const url = pokemon.cries.latest;

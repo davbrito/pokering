@@ -31,25 +31,16 @@ interface PlayersState {
   player2: PlayerState;
 }
 
-interface AudioSettings {
-  enabled: boolean;
-  volume: number; // 0.0 — 1.0
-}
-
 interface GameState {
   searchQuery: string;
   activeTab: string;
-  /** Idioma para nombres de Pokémon (código ISO, ej. "es", "ja", "fr") */
-  pokemonLanguage: string;
   players: PlayersState;
   battle: BattleState;
-  audio: AudioSettings;
 }
 
 interface GameActions {
   setSearchQuery: (q: string) => void;
   setActiveTab: (tab: string) => void;
-  setPokemonLanguage: (lang: string) => void;
   selectPokemon: (slot: number, id: number) => void;
   setLevel: (slot: number, level: number) => void;
   setBattlePhase: (phase: BattlePhase) => void;
@@ -61,15 +52,12 @@ interface GameActions {
   setMaxHealths: (hps: [number, number]) => void;
   setCurrentHps: (hps: [number, number]) => void;
   resetBattle: () => void;
-  setAudioEnabled: (enabled: boolean) => void;
-  setAudioVolume: (volume: number) => void;
 }
 
 export const useGameStore = create<GameState & GameActions>()((set) => ({
   // ── State ──
   searchQuery: "",
   activeTab: "all",
-  pokemonLanguage: "es",
   players: {
     player1: { chosenId: null, level: 50, maxHealth: 100, currentHp: 100 },
     player2: { chosenId: null, level: 50, maxHealth: 100, currentHp: 100 },
@@ -82,17 +70,11 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
     isPaused: false,
     isLoadingMoves: false,
   },
-  audio: {
-    enabled: true,
-    volume: 0.5,
-  },
 
   // ── Actions ──
   setSearchQuery: (q) => set({ searchQuery: q }),
 
   setActiveTab: (tab) => set({ activeTab: tab }),
-
-  setPokemonLanguage: (lang) => set({ pokemonLanguage: lang }),
 
   selectPokemon: (slot, id) =>
     set((s) => {
@@ -152,10 +134,6 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
         isLoadingMoves: false,
       },
     })),
-
-  setAudioEnabled: (enabled) => set((s) => ({ audio: { ...s.audio, enabled } })),
-
-  setAudioVolume: (volume) => set((s) => ({ audio: { ...s.audio, volume } })),
 }));
 
 // ─── React Query bridge ──────────────────────────────────────────────────────

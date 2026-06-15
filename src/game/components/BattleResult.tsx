@@ -2,6 +2,7 @@ import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { getEffectiveness, getStatsObject } from "../combat";
+import { useSettingsStore } from "../settings-store";
 import { useChosenPokemon, useGameStore } from "../store";
 import type { BattleStep, PokemonStats } from "../types";
 import { getPokemonName, PokemonName } from "./PokemonName";
@@ -93,7 +94,11 @@ export function BattleResult() {
       <div id="result-inner">
         <div className="result-card">
           <div className="result-top">
-            <img className="win-art" src={wart} alt={getPokemonName(w.wp, useGameStore.getState().pokemonLanguage)} />
+            <img
+              className="win-art"
+              src={wart}
+              alt={getPokemonName(w.wp, useSettingsStore.getState().pokemonLanguage)}
+            />
             <div>
               <div className="win-eyebrow">{m.battle_winner_trophy()}</div>
               <div className="win-name">
@@ -118,7 +123,9 @@ export function BattleResult() {
                 // biome-ignore lint/suspicious/noArrayIndexKey: Using index as key is acceptable here because the list is static and does not change order.
                 <div key={`${step.type}-${i}`} className="log-item">
                   <span className="log-t">{m.battle_step_t({ turn: String(i + 1) })}</span>
-                  <span><RenderStepContent step={step} p1Name={p1.name} p2Name={p2.name} /></span>
+                  <span>
+                    <RenderStepContent step={step} p1Name={p1.name} p2Name={p2.name} />
+                  </span>
                 </div>
               ))}
             </div>
