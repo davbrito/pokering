@@ -9,7 +9,7 @@ import type { BattleDamageStep, BattleStatusStep, BattleStep } from "../types";
 import { DamagePopup, type DamagePopupData } from "./DamagePopup";
 import { usePokemonName } from "./PokemonName";
 import { type Projectile, ProjectileFx } from "./ProjectileFx";
-import { renderStatusContent, renderStepContent } from "./renderStepContent";
+import { RenderStatusContent, RenderStepContent } from "./renderStepContent";
 
 function getStepDuration(step: BattleStep, speed: number): number {
   let base = 1800;
@@ -296,7 +296,9 @@ export function BattleStage() {
       </div>
 
       <div className="stage-footer">
-        <div className="stage-dialog">{renderStepContent(currentStep, p1Name, p2Name)}</div>
+        <div className="stage-dialog">
+          <RenderStepContent step={currentStep} p1Name={p1Name} p2Name={p2Name} />
+        </div>
         <div className="stage-controls">
           <button type="button" className="ctrl-btn" onClick={togglePause}>
             {isPaused ? "Reanudar" : "Pausa"}
@@ -392,7 +394,7 @@ function Figter({
               justifySelf: "anchor-center",
             }}
           >
-            {renderStatusContent(pop.step, name)}
+            <RenderStatusContent step={pop.step} targetName={name} />
           </div>
         ))}
     </div>

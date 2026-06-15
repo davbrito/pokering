@@ -16,7 +16,7 @@ function renderAttackClassLabel(damageClass: "physical" | "special" | "status") 
   }
 }
 
-export function renderStepContent(step: BattleStep | null, p1Name: string, p2Name: string): ReactNode {
+export function RenderStepContent({ step, p1Name, p2Name }: { step: BattleStep | null; p1Name: string; p2Name: string }): ReactNode {
   if (!step) return m.battle_preparing_arena();
 
   switch (step.type) {
@@ -76,7 +76,7 @@ export function renderStepContent(step: BattleStep | null, p1Name: string, p2Nam
     }
     case "status": {
       const targetName = formatName(step.targetIdx, p1Name, p2Name);
-      return renderStatusContent(step, targetName);
+      return <RenderStatusContent step={step} targetName={targetName} />;
     }
     case "passive": {
       const targetName = formatName(step.targetIdx, p1Name, p2Name);
@@ -107,7 +107,7 @@ export function renderStepContent(step: BattleStep | null, p1Name: string, p2Nam
   }
 }
 
-export function renderStatusContent(step: BattleStatusStep, targetName: string): ReactNode {
+export function RenderStatusContent({ step, targetName }: { step: BattleStatusStep; targetName: string }): ReactNode {
   const payload = step.payload;
 
   switch (payload.subType) {

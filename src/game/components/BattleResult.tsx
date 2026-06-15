@@ -5,7 +5,7 @@ import { getEffectiveness, getStatsObject } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
 import type { BattleStep, PokemonStats } from "../types";
 import { getPokemonName, PokemonName } from "./PokemonName";
-import { renderStepContent } from "./renderStepContent";
+import { RenderStepContent } from "./renderStepContent";
 
 interface WinnerInfo {
   wp: PokemonDetail;
@@ -118,7 +118,7 @@ export function BattleResult() {
                 // biome-ignore lint/suspicious/noArrayIndexKey: Using index as key is acceptable here because the list is static and does not change order.
                 <div key={`${step.type}-${i}`} className="log-item">
                   <span className="log-t">{m.battle_step_t({ turn: String(i + 1) })}</span>
-                  <span>{renderStepContent(step, p1.name, p2.name)}</span>
+                  <span><RenderStepContent step={step} p1Name={p1.name} p2Name={p2.name} /></span>
                 </div>
               ))}
             </div>
