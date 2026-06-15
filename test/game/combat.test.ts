@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { determineFirstAttacker, generateBattleSteps, getStageMultiplier, getStatsObject } from "#/game/combat.ts";
-import type { StatStages } from "#/game/types.ts";
+import type { MoveInfo, StatStages } from "#/game/types.ts";
 
 describe("getStageMultiplier", () => {
   it("returns 1.0 for neutral stage 0", () => {
@@ -84,6 +84,46 @@ function makeTestPokemon(overrides: {
     weight: 100,
   } as unknown as PokemonDetail;
 }
+
+describe("generateBattleSteps status immunity", () => {
+  it("fails a fire-type status move against a Fire-type target", () => {
+    const p1 = makeTestPokemon({ name: "caster", types: ["fire"], stats: { speed: 100 } });
+    const p2 = makeTestPokemon({ name: "charizard", types: ["fire"], stats: { speed: 50 } });
+
+    const burnMove: MoveInfo = {
+      name: "will-o-wisp",
+      type: "fire",
+      accuracy: 100,
+      pp: 10,
+      damageClass: "status",
+      power: null,
+      effect: { kind: "ailment", ailment: "burn" },
+    };
+
+    const tackle: MoveInfo = {
+      name: "tackle",
+      type: "normal",
+      accuracy: 100,
+      pp: 10,
+      damageClass: "physical",
+      power: 40,
+    };
+
+    const steps = generateBattleSteps(
+      p1,
+      p2,
+      getStatsObject(p1),
+      getStatsObject(p2),
+      200,
+      200,
+      [burnMove],
+      [tackle],
+    );
+
+    expect(steps.some((step) => step.type === "miss")).toBe(true);
+    expect(steps.some((step) => step.type === "status" && step.payload.subType === "ailment")).toBe(false);
+  });
+});
 
 describe("generateBattleSteps applies speed stages to turn order", () => {
   it("pokemon with +6 speed stage attacks first every round", () => {

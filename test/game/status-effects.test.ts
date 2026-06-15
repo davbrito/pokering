@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyEndOfTurnDamage, applyStatusEffect } from "#/game/combat.ts";
+import { applyEndOfTurnDamage, applyStatusEffect, isStatusImmune } from "#/game/combat.ts";
 import type { AilmentState, StatStages } from "#/game/types.ts";
 
 describe("applyStatusEffect", () => {
@@ -101,6 +101,13 @@ describe("applyStatusEffect", () => {
     if (step.type === "status" && step.payload.subType === "ailment") {
       expect(step.payload.name).toBe("paralysis");
     }
+  });
+
+  it("uses move type to detect elemental immunity", () => {
+    expect(isStatusImmune("fire", ["fire"])).toBe(true);
+    expect(isStatusImmune("electric", ["electric"])).toBe(true);
+    expect(isStatusImmune("fire", ["water"])).toBe(false);
+    expect(isStatusImmune("electric", ["ground"])).toBe(false);
   });
 
   it("does not re-apply ailment if target already has one", () => {

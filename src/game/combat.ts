@@ -271,6 +271,10 @@ export interface EndOfTurnResult {
  * Procesa el daño pasivo al final de un turno basado en el estado alterado.
  * - Quemadura (burn): 1/16 del HP máximo.
  */
+export function isStatusImmune(moveType: string, targetTypes: string[]): boolean {
+  return targetTypes.includes(moveType);
+}
+
 export function applyEndOfTurnDamage(
   ailment: AilmentState,
   targetIdx: number,
@@ -366,8 +370,8 @@ function resolveRound(
   // Destructure for local mutable access
   const p1s = player1.stats;
   const p2s = player2.stats;
-  const pt1 = player1.types;
-  const pt2 = player2.types;
+  const player1Types = player1.types;
+  const player2Types = player2.types;
   const p1Moves = player1.moves;
   const p2Moves = player2.moves;
   const maxHp1 = player1.maxHp;
@@ -393,11 +397,11 @@ function resolveRound(
   const availableP2Moves = p2Moves.length > 0 ? p2Moves.filter((_, i) => p2Pp[i] > 0) : [];
   const p1Move =
     availableP1Moves.length > 0
-      ? selectMove(availableP1Moves, p1s, pt1, pt2, p2s, hp1, maxHp1, p2Ailment, p1Stages)
+      ? selectMove(availableP1Moves, p1s, player1Types, player2Types, p2s, hp1, maxHp1, p2Ailment, p1Stages)
       : struggleMove;
   const p2Move =
     availableP2Moves.length > 0
-      ? selectMove(availableP2Moves, p2s, pt2, pt1, p1s, hp2, maxHp2, p1Ailment, p2Stages)
+      ? selectMove(availableP2Moves, p2s, player2Types, player1Types, p1s, hp2, maxHp2, p1Ailment, p2Stages)
       : struggleMove;
 
   // ── Fase 2: determinar orden de ataque por velocidad (con stages y parálisis) ──
@@ -432,7 +436,7 @@ function resolveRound(
         defStat:
           (isPhys ? (isP1 ? p2s.def : p1s.def) : isP1 ? p2s.spd : p1s.spd) *
           getStageMultiplier(isPhys ? (isP1 ? p2Stages.def : p1Stages.def) : isP1 ? p2Stages.spd : p1Stages.spd),
-        stab: getStabMultiplier(move.type, isP1 ? pt1 : pt2),
+        stab: getStabMultiplier(move.type, isP1 ? player1Types : player2Types),
         targetHp: isP1 ? hp2 : hp1,
         targetMaxHp: isP1 ? maxHp2 : maxHp1,
         targetStages: isP1 ? p2Stages : p1Stages,
@@ -520,7 +524,7 @@ function resolveRound(
     if (attack.move.damageClass === "physical" || attack.move.damageClass === "special") {
       // ── Daño físico/especial (V1) ──
       // Calculate temp eff
-      const eff = getEffectiveness(attack.move.type, attack.attackerIdx === 0 ? pt2 : pt1);
+      const eff = getEffectiveness(attack.move.type, attack.attackerIdx === 0 ? player2Types : player1Types);
       const atkLevel = attack.attackerIdx === 0 ? level1 : level2;
       let { damage: finalDamage, isCrit } = calculateAttackDamage(
         atkLevel,
@@ -579,6 +583,14 @@ function resolveRound(
       const effect = attack.move.effect;
       const isSelfTarget = effect.kind === "heal" || effect.kind === "stat-change";
       const targetIdx = isSelfTarget ? attack.attackerIdx : attack.attackerIdx === 0 ? 1 : 0;
+      if (effect.kind === "ailment" && isStatusImmune(attack.move.type, targetIdx === 0 ? player1Types : player2Types)) {
+        steps.push({
+          type: "miss",
+          attackerIdx: attack.attackerIdx,
+          moveName: attack.move.name,
+        });
+        continue;
+      }
       steps.push({
         type: "use-move",
         attackerIdx: attack.attackerIdx,
