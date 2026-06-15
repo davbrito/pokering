@@ -18,6 +18,7 @@ interface BaseMoveFields {
   name: string;
   type: string;
   accuracy: number | null;
+  pp: number;
 }
 
 export interface PhysicalMove extends BaseMoveFields {
@@ -113,6 +114,7 @@ export interface BattleStatusStep {
 
 export type PassivePayload =
   | { subType: "residual-damage"; reason: "burn"; damage: number; currentHp: number }
+  | { subType: "recoil"; damage: number; currentHp: number }
   | { subType: "restriction"; reason: "paralysis" };
 
 export interface BattlePassiveStep {

@@ -34,6 +34,7 @@
   "battle_heal": "¡{#strong}{target}{/strong} recovered +{#strong}{amount}{/strong} HP!",
   "battle_ailment": "¡{#strong}{target}{/strong} was afflicted by {#strong}{ailment}{/strong}!",
   "battle_burn_damage": "{#strong}{target}{/strong} suffers burn damage: -{#strong}{damage}{/strong} PS",
+  "battle_recoil": "{#strong}{target}{/strong} is hurt by recoil: -{#strong}{damage}{/strong} PS",
   "battle_full_para": "{#strong}{target}{/strong} is fully paralyzed and can't move!",
   "battle_immune": "IMMUNE",
   "battle_cat_physical": "PHYSICAL",

@@ -110,6 +110,14 @@ export function RenderStepContent({
               markup={{ strong: ({ children }) => <strong>{children}</strong> }}
             />
           );
+        case "recoil":
+          return (
+            <ParaglideMessage
+              message={m.battle_recoil}
+              inputs={{ target: targetName, damage: String(p.damage) }}
+              markup={{ strong: ({ children }) => <strong>{children}</strong> }}
+            />
+          );
         case "restriction":
           return (
             <ParaglideMessage

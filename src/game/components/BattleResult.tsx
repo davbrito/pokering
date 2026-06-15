@@ -1,7 +1,8 @@
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
-import { getEffectiveness, getStatsObject } from "../combat";
+import { getStatsObject } from "../combat";
+import { getEffectiveness } from "../combat/moves";
 import { useSettingsStore } from "../settings-store";
 import { useChosenPokemon, useGameStore } from "../store";
 import type { BattleStep, PokemonStats } from "../types";

@@ -1,14 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { selectMove } from "#/game/combat.ts";
+import { selectMove } from "#/game/combat/moves.ts";
 import * as randomModule from "#/game/random.ts";
 import type { AilmentState, MoveInfo, StatStages } from "#/game/types.ts";
 
-const physical: MoveInfo = { damageClass: "physical", name: "tackle", type: "normal", accuracy: 100, power: 40 };
+const physical: MoveInfo = {
+  damageClass: "physical",
+  name: "tackle",
+  type: "normal",
+  accuracy: 100,
+  pp: 35,
+  power: 40,
+};
 const heal: MoveInfo = {
   damageClass: "status",
   name: "recover",
   type: "normal",
   accuracy: null,
+  pp: 10,
   power: null,
   effect: { kind: "heal", percentage: 50 },
 };
@@ -17,6 +25,7 @@ const ailment: MoveInfo = {
   name: "thunder-wave",
   type: "electric",
   accuracy: 90,
+  pp: 20,
   power: null,
   effect: { kind: "ailment", ailment: "paralysis" },
 };

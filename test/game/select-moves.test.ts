@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectBattleMoves } from "#/game/combat.ts";
+import { selectBattleMoves } from "#/game/combat/moves.ts";
 import type { MoveInfo } from "#/game/types.ts";
 
 const physical1: MoveInfo = {
@@ -7,6 +7,7 @@ const physical1: MoveInfo = {
   name: "tackle",
   type: "normal",
   accuracy: 100,
+  pp: 35,
   power: 40,
 };
 const physical2: MoveInfo = {
@@ -14,6 +15,7 @@ const physical2: MoveInfo = {
   name: "body-slam",
   type: "normal",
   accuracy: 100,
+  pp: 15,
   power: 85,
 };
 const special1: MoveInfo = {
@@ -21,6 +23,7 @@ const special1: MoveInfo = {
   name: "flamethrower",
   type: "fire",
   accuracy: 100,
+  pp: 15,
   power: 90,
 };
 const statMove: MoveInfo = {
@@ -28,6 +31,7 @@ const statMove: MoveInfo = {
   name: "growl",
   type: "normal",
   accuracy: 100,
+  pp: 40,
   power: null,
   effect: { kind: "stat-change", changes: [{ stat: "atk", change: -1 }] },
 };
@@ -36,6 +40,7 @@ const healMove: MoveInfo = {
   name: "recover",
   type: "normal",
   accuracy: null,
+  pp: 10,
   power: null,
   effect: { kind: "heal", percentage: 50 },
 };
@@ -44,6 +49,7 @@ const ailmentMove: MoveInfo = {
   name: "thunder-wave",
   type: "electric",
   accuracy: 90,
+  pp: 20,
   power: null,
   effect: { kind: "ailment", ailment: "paralysis" },
 };

@@ -3,7 +3,7 @@ import { random } from "es-toolkit/math";
 import type { PokemonDetail } from "../api/pokeapi";
 import { moveRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
 import type { MoveDetail, PokemonStat } from "../api/pokeapi/types.gen";
-import { TYPE_CHART } from "./data";
+import { getEffectiveness, getStabMultiplier, selectBattleMoves, selectMove, struggleMove } from "./combat/moves";
 import { coinFlip, randomProbability } from "./random";
 import type { AilmentState, BattleStep, MoveInfo, PokemonStats, StatStages, StatusEffect } from "./types";
 
@@ -23,6 +23,7 @@ export function mapMoveToMoveInfo(raw: MoveDetail): MoveInfo {
       name,
       type,
       accuracy,
+      pp: raw.pp ?? 10,
       damageClass: "status",
       power: null,
       effect: parseStatusEffect(raw.meta, raw.stat_changes),
@@ -33,6 +34,7 @@ export function mapMoveToMoveInfo(raw: MoveDetail): MoveInfo {
     name,
     type,
     accuracy,
+    pp: raw.pp ?? 10,
     damageClass: dc as "physical" | "special",
     power: raw.power ?? 0,
   };
@@ -79,34 +81,6 @@ function mapApiStatName(raw: string): "atk" | "def" | "spa" | "spd" | "spe" {
   return map[raw] || "atk";
 }
 
-/**
- * Aplica la estrategia de 4 slots: pule un pool de movimientos a exactamente 4,
- * escogiendo el mejor de cada categoría estratégica.
- *
- *   Slot 1: Mejor movimiento físico (mayor power)
- *   Slot 2: Mejor movimiento especial (mayor power)
- *   Slot 3: Primer stat-change o heal (net-good-stats/heal)
- *   Slot 4: Primer ailment
- */
-export function selectBattleMoves(pool: MoveInfo[]): MoveInfo[] {
-  const physical = pool.filter((m) => m.damageClass === "physical").sort((a, b) => b.power - a.power);
-  const special = pool.filter((m) => m.damageClass === "special").sort((a, b) => b.power - a.power);
-  const stat = pool.find(
-    (m) => m.damageClass === "status" && (m.effect.kind === "stat-change" || m.effect.kind === "heal"),
-  );
-
-  const ailment = pool.find((m) => m.damageClass === "status" && m.effect.kind === "ailment");
-
-  const result: MoveInfo[] = [];
-
-  if (physical.length > 0) result.push(physical[0]);
-  if (special.length > 0) result.push(special[0]);
-  if (stat) result.push(stat);
-  if (ailment) result.push(ailment);
-
-  return result;
-}
-
 export async function fetchPokemonMoves(queryClient: QueryClient, pokemon: PokemonDetail): Promise<MoveInfo[]> {
   const movesNames = [...new Set(pokemon.moves.map((m) => m.move.name))];
   const results = await Promise.all(movesNames.map((name) => fetchSingleMove(queryClient, name)));
@@ -123,22 +97,6 @@ async function fetchSingleMove(queryClient: QueryClient, name: string): Promise<
   } catch {
     return null;
   }
-}
-
-// Retorna multiplicador de efectividad acumulado
-export function getEffectiveness(attackerType: string, defenderTypes: string[]): number {
-  const attackerChart = TYPE_CHART[attackerType];
-  if (!attackerChart) return 1; // Si el tipo atacante no está en la tabla, se asume efectividad normal
-  return defenderTypes
-    .values()
-    .filter((defType) => attackerChart[defType] !== undefined)
-    .reduce((eff, defType) => eff * attackerChart[defType], 1);
-}
-
-// STAB (Same Type Attack Bonus): si el tipo del movimiento coincide
-// con uno de los tipos del atacante, el daño se multiplica por 1.5.
-export function getStabMultiplier(moveType: string, attackerTypes: string[]): number {
-  return attackerTypes.includes(moveType) ? 1.5 : 1;
 }
 
 // Extrae las 6 estadísticas base (HP, Atk, Def, SpA, SpD, Spe) de la API.
@@ -336,108 +294,6 @@ export function applyEndOfTurnDamage(
   return { hp: currentHp, damage: 0, fainted: false, steps };
 }
 
-/**
- * Heurística de IA para elegir movimiento entre daño y estado.
- *
- * Evalúa primero los movimientos de estado según la situación:
- *   - heal si HP < 50%
- *   - ailment si el rival no tiene estado
- *   - buff de estadística (atk/spa) si el stage está bajo
- * Si no aplica ningún estado, o el azar cae en el 70% de daño,
- * elige el ataque físico/especial con mayor daño esperado.
- */
-export function selectMove(
-  moves: MoveInfo[],
-  attackerStats: PokemonStats,
-  attackerTypes: string[],
-  defenderTypes: string[],
-  defenderStats: PokemonStats,
-  currentHp: number,
-  maxHp: number,
-  defenderAilment: AilmentState,
-  attackerStages: StatStages,
-): MoveInfo {
-  if (moves.length === 0) return struggleMove;
-
-  // Separar ataques y estados
-  const attacks = moves.filter((m) => m.damageClass === "physical" || m.damageClass === "special");
-  const statusMoves = moves.filter((m) => m.damageClass === "status");
-
-  // 70% → ataque (o si no hay estados útiles)
-  const shouldUseStatus = statusMoves.length > 0 && randomProbability(0.3);
-
-  if (!shouldUseStatus) {
-    return pickBestAttack(attacks, attackerStats, attackerTypes, defenderTypes, defenderStats) ?? moves[0];
-  }
-
-  // 30% → intentar estado táctico
-  // Heal si HP bajo
-  if (currentHp / maxHp < 0.5) {
-    const heal = statusMoves.find((m) => m.effect.kind === "heal");
-    if (heal) return heal;
-  }
-
-  // Ailment si el rival no tiene uno
-  if (defenderAilment.type === null) {
-    const ailmentMove = statusMoves.find((m) => m.effect.kind === "ailment");
-    if (ailmentMove) return ailmentMove;
-  }
-
-  // Buff de ataque si el stage no está en máximo
-  const atkStage = attackerStages.atk;
-  const spaStage = attackerStages.spa;
-  const highestOff = attackerStats.atk > attackerStats.spa ? "atk" : "spa";
-  const statBuff = statusMoves.find(
-    (m) =>
-      m.effect.kind === "stat-change" &&
-      m.effect.changes.length === 1 &&
-      m.effect.changes[0].stat === highestOff &&
-      (highestOff === "atk" ? atkStage : spaStage) < 4,
-  );
-  if (statBuff) return statBuff;
-
-  // Fallback: mejor ataque
-  return pickBestAttack(attacks, attackerStats, attackerTypes, defenderTypes, defenderStats) ?? moves[0];
-}
-
-/** Elige el ataque físico/especial con mayor daño esperado. */
-function pickBestAttack(
-  attacks: MoveInfo[],
-  attackerStats: PokemonStats,
-  attackerTypes: string[],
-  defenderTypes: string[],
-  defenderStats: PokemonStats,
-): MoveInfo | null {
-  if (attacks.length === 0) return null;
-
-  let best = attacks[0];
-  let maxDmg = -1;
-
-  for (const move of attacks) {
-    if (move.damageClass === "physical" || move.damageClass === "special") {
-      const offStat = move.damageClass === "physical" ? attackerStats.atk : attackerStats.spa;
-      const defStat = move.damageClass === "physical" ? defenderStats.def : defenderStats.spd;
-      const typeEff = getEffectiveness(move.type, defenderTypes);
-      const stab = getStabMultiplier(move.type, attackerTypes);
-
-      // Valor Esperado: daño bruto penalizado por riesgo de fallo
-      const trueAccuracy = move.accuracy ?? 100;
-      const baseExpected = (offStat / defStat) * move.power * stab * typeEff * (trueAccuracy / 100);
-
-      // Ruido táctico ampliado: la IA no es perfecta
-      const tacticalNoise = random(0.7, 1.3);
-      const valuation = baseExpected * tacticalNoise;
-
-      if (valuation > maxDmg) {
-        maxDmg = valuation;
-        best = move;
-      }
-    }
-  }
-
-  return best;
-}
-
 export function determineFirstAttacker(speP1: number, speP2: number): boolean {
   if (speP1 > speP2) return true;
   if (speP2 > speP1) return false;
@@ -475,15 +331,6 @@ export function calculateAttackDamage(
 
   return { damage, isCrit };
 }
-
-/** Movimiento de fallback cuando un Pokémon no tiene movimientos válidos. */
-const struggleMove: MoveInfo = {
-  damageClass: "physical",
-  name: "struggle",
-  type: "normal",
-  accuracy: null,
-  power: 50,
-};
 
 /**
  * Resuelve una ronda de combate Pokémon.
@@ -524,6 +371,8 @@ function resolveRound(
   maxHp2: number,
   level1: number,
   level2: number,
+  p1Pp: number[],
+  p2Pp: number[],
 ): {
   steps: BattleStep[];
   hp1: number;
@@ -532,12 +381,23 @@ function resolveRound(
   p2Stages: StatStages;
   p1Ailment: AilmentState;
   p2Ailment: AilmentState;
+  p1Pp: number[];
+  p2Pp: number[];
 } {
   const steps: BattleStep[] = [];
 
   // ── Fase 1: selección simultánea de movimientos ──
-  const p1Move = selectMove(p1Moves, p1s, pt1, pt2, p2s, hp1, maxHp1, p2Ailment, p1Stages);
-  const p2Move = selectMove(p2Moves, p2s, pt2, pt1, p1s, hp2, maxHp2, p1Ailment, p2Stages);
+  // Filtrar movimientos con PP restante; si no hay, usar Struggle
+  const availableP1Moves = p1Moves.length > 0 ? p1Moves.filter((_, i) => p1Pp[i] > 0) : [];
+  const availableP2Moves = p2Moves.length > 0 ? p2Moves.filter((_, i) => p2Pp[i] > 0) : [];
+  const p1Move =
+    availableP1Moves.length > 0
+      ? selectMove(availableP1Moves, p1s, pt1, pt2, p2s, hp1, maxHp1, p2Ailment, p1Stages)
+      : struggleMove;
+  const p2Move =
+    availableP2Moves.length > 0
+      ? selectMove(availableP2Moves, p2s, pt2, pt1, p1s, hp2, maxHp2, p1Ailment, p2Stages)
+      : struggleMove;
 
   // ── Fase 2: determinar orden de ataque por velocidad (con stages y parálisis) ──
   const paraMod1 = p1Ailment.type === "paralysis" ? 0.5 : 1;
@@ -605,6 +465,20 @@ function resolveRound(
   let currentStages2 = { ...p2Stages };
   let currentAilment1 = { ...p1Ailment };
   let currentAilment2 = { ...p2Ailment };
+  const newPp1 = [...p1Pp];
+  const newPp2 = [...p2Pp];
+
+  const faintCheck = (): boolean => {
+    if (currentHp1 <= 0) {
+      steps.push({ type: "faint", faintedIdx: 0 });
+      return true;
+    }
+    if (currentHp2 <= 0) {
+      steps.push({ type: "faint", faintedIdx: 1 });
+      return true;
+    }
+    return false;
+  };
 
   for (const attack of queue) {
     if (currentHp1 <= 0 || currentHp2 <= 0) break;
@@ -618,6 +492,19 @@ function resolveRound(
         payload: { subType: "restriction", reason: "paralysis" },
       });
       continue;
+    }
+
+    // Descontar PP en cuanto el movimiento se declara (antes del chequeo de precisión)
+    // Solo la parálisis total evita el descuento; el fallo por precisión SÍ consume PP.
+    if (attack.move.pp > 0) {
+      const moveIdx = (attack.attackerIdx === 0 ? p1Moves : p2Moves).findIndex((m) => m.name === attack.move.name);
+      if (moveIdx !== -1) {
+        if (attack.attackerIdx === 0) {
+          newPp1[moveIdx]--;
+        } else {
+          newPp2[moveIdx]--;
+        }
+      }
     }
 
     // Chequeo de precisión (accuracy)
@@ -671,14 +558,22 @@ function resolveRound(
         currentHp: attack.attackerIdx === 0 ? currentHp2 : currentHp1,
       });
 
-      if (attack.attackerIdx === 0 && currentHp2 <= 0) {
-        steps.push({ type: "faint", faintedIdx: 1 });
-        break;
+      // Struggle recoil: 1/4 del HP máximo
+      if (attack.move.name === "struggle") {
+        const recoil = Math.max(1, Math.floor((attack.attackerIdx === 0 ? maxHp1 : maxHp2) / 4));
+        if (attack.attackerIdx === 0) {
+          currentHp1 = Math.max(0, currentHp1 - recoil);
+        } else {
+          currentHp2 = Math.max(0, currentHp2 - recoil);
+        }
+        steps.push({
+          type: "passive",
+          targetIdx: attack.attackerIdx,
+          payload: { subType: "recoil", damage: recoil, currentHp: attack.attackerIdx === 0 ? currentHp1 : currentHp2 },
+        });
       }
-      if (attack.attackerIdx === 1 && currentHp1 <= 0) {
-        steps.push({ type: "faint", faintedIdx: 0 });
-        break;
-      }
+
+      if (faintCheck()) break;
     } else {
       // ── Movimiento de estado (V2) ──
       // heal y stat-change van al usuario; ailment va al rival
@@ -718,31 +613,28 @@ function resolveRound(
         currentAilment2 = statusResult.ailment;
       }
 
-      // Faint check for residual damage
-      if (currentHp1 <= 0) {
-        steps.push({ type: "faint", faintedIdx: 0 });
-        break;
-      }
-      if (currentHp2 <= 0) {
-        steps.push({ type: "faint", faintedIdx: 1 });
-        break;
-      }
+      if (faintCheck()) break;
     }
   }
 
   // ── Fase 4: Desgaste pasivo (quemadura) ──
-  const burn1 = applyEndOfTurnDamage(currentAilment1, 0, maxHp1, currentHp1);
-  if (burn1.damage > 0) {
-    steps.push(...burn1.steps);
-    currentHp1 = burn1.hp;
-    if (burn1.fainted) steps.push({ type: "faint", faintedIdx: 0 });
+  // Solo evaluar a combatientes que siguen en pie para evitar faints duplicados
+  if (currentHp1 > 0) {
+    const burn1 = applyEndOfTurnDamage(currentAilment1, 0, maxHp1, currentHp1);
+    if (burn1.damage > 0) {
+      steps.push(...burn1.steps);
+      currentHp1 = burn1.hp;
+      if (burn1.fainted) steps.push({ type: "faint", faintedIdx: 0 });
+    }
   }
 
-  const burn2 = applyEndOfTurnDamage(currentAilment2, 1, maxHp2, currentHp2);
-  if (burn2.damage > 0) {
-    steps.push(...burn2.steps);
-    currentHp2 = burn2.hp;
-    if (burn2.fainted) steps.push({ type: "faint", faintedIdx: 1 });
+  if (currentHp2 > 0) {
+    const burn2 = applyEndOfTurnDamage(currentAilment2, 1, maxHp2, currentHp2);
+    if (burn2.damage > 0) {
+      steps.push(...burn2.steps);
+      currentHp2 = burn2.hp;
+      if (burn2.fainted) steps.push({ type: "faint", faintedIdx: 1 });
+    }
   }
 
   return {
@@ -753,6 +645,8 @@ function resolveRound(
     p2Stages: currentStages2,
     p1Ailment: currentAilment1,
     p2Ailment: currentAilment2,
+    p1Pp: newPp1,
+    p2Pp: newPp2,
   };
 }
 
@@ -794,10 +688,13 @@ export function generateBattleSteps(
   let p1Ailment: AilmentState = { type: null };
   let p2Ailment: AilmentState = { type: null };
 
+  // PP inicial: cada movimiento conserva su PP máximo
+  let p1Pp = p1Moves.map((m) => m.pp);
+  let p2Pp = p2Moves.map((m) => m.pp);
+
   steps.push({ type: "start" });
 
-  let turn = 1;
-  while (hp1 > 0 && hp2 > 0 && turn <= 15) {
+  while (hp1 > 0 && hp2 > 0) {
     const round = resolveRound(
       scaled1,
       scaled2,
@@ -815,6 +712,8 @@ export function generateBattleSteps(
       effectiveMaxHp2,
       lv1,
       lv2,
+      p1Pp,
+      p2Pp,
     );
     steps.push(...round.steps);
     hp1 = round.hp1;
@@ -823,7 +722,8 @@ export function generateBattleSteps(
     p2Stages = round.p2Stages;
     p1Ailment = round.p1Ailment;
     p2Ailment = round.p2Ailment;
-    turn++;
+    p1Pp = round.p1Pp;
+    p2Pp = round.p2Pp;
   }
 
   const winnerIdx = hp1 > 0 ? 0 : 1;
