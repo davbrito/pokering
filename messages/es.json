@@ -57,6 +57,7 @@
   "battle_recoil": "{#strong}{target}{/strong} sufre daño por retroceso: -{#strong}{damage}{/strong} PS",
   "battle_full_para": "{#strong}{target}{/strong} está totalmente paralizadx y no pudo moverse.",
   "battle_immune": "INMUNE",
+  "battle_immune_target": "¡No le afecta a {#strong}{target}{/strong}!",
   "battle_cat_physical": "FÍSICO",
   "battle_cat_special": "ESPECIAL",
   "battle_cat_status": "STATUS",

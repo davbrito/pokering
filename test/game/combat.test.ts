@@ -120,7 +120,8 @@ describe("generateBattleSteps status immunity", () => {
       [tackle],
     );
 
-    expect(steps.some((step) => step.type === "miss")).toBe(true);
+    expect(steps.some((step) => step.type === "immune")).toBe(true);
+    expect(steps.some((step) => step.type === "miss")).toBe(false);
     expect(steps.some((step) => step.type === "status" && step.payload.subType === "ailment")).toBe(false);
   });
 });

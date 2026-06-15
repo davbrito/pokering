@@ -585,8 +585,9 @@ function resolveRound(
       const targetIdx = isSelfTarget ? attack.attackerIdx : attack.attackerIdx === 0 ? 1 : 0;
       if (effect.kind === "ailment" && isStatusImmune(attack.move.type, targetIdx === 0 ? player1Types : player2Types)) {
         steps.push({
-          type: "miss",
+          type: "immune",
           attackerIdx: attack.attackerIdx,
+          targetIdx,
           moveName: attack.move.name,
         });
         continue;

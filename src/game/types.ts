@@ -92,6 +92,13 @@ export interface BattleMissStep {
   moveName: string;
 }
 
+export interface BattleImmuneStep {
+  type: "immune";
+  attackerIdx: number;
+  targetIdx: number;
+  moveName: string;
+}
+
 export interface BattleFaintStep {
   type: "faint";
   faintedIdx: number;
@@ -149,6 +156,7 @@ export type BattleStep =
   | BattleUseMoveStep
   | BattleDamageStep
   | BattleMissStep
+  | BattleImmuneStep
   | BattleFaintStep
   | BattleEndStep
   | BattleStatusStep

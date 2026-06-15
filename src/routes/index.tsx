@@ -98,7 +98,7 @@ function Home() {
                     className="battle-btn random aspect-square size-12 shrink-0 justify-center self-center"
                     type="button"
                     onClick={randomBattle}
-                    title={m.home_random_battle()}
+                    title="Random battle"
                   >
                     <Shuffle size={20} />
                   </button>
@@ -115,7 +115,7 @@ function Home() {
               className="battle-btn random aspect-square size-12 shrink-0 justify-center self-center"
               type="button"
               onClick={randomBattle}
-              title={m.home_random_battle()}
+              title="Random battle"
             >
               <Shuffle size={20} />
             </button>
@@ -179,9 +179,9 @@ function Header() {
         <button
           type="button"
           className="settings-gear"
-          aria-label={audioEnabled ? m.settings_audio_on() : m.settings_audio_off()}
+          aria-label={audioEnabled ? "Mute audio" : "Unmute audio"}
           onClick={() => setAudioEnabled(!audioEnabled)}
-          title={audioEnabled ? m.settings_audio_on() : m.settings_audio_off()}
+          title={audioEnabled ? "Mute audio" : "Unmute audio"}
         >
           {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
         </button>

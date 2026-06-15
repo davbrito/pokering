@@ -57,6 +57,7 @@
   "battle_recoil": "{#strong}{target}{/strong} is hurt by recoil: -{#strong}{damage}{/strong} PS",
   "battle_full_para": "{#strong}{target}{/strong} is fully paralyzed and can't move!",
   "battle_immune": "IMMUNE",
+  "battle_immune_target": "It doesn’t affect {#strong}{target}{/strong}!",
   "battle_cat_physical": "PHYSICAL",
   "battle_cat_special": "SPECIAL",
   "battle_cat_status": "STATUS",

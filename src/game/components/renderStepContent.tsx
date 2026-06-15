@@ -78,6 +78,16 @@ export function RenderStepContent({
       const attackerName = formatName(step.attackerIdx, p1Name, p2Name);
       return <>{m.battle_miss({ attacker: attackerName, move: step.moveName.toUpperCase() })}</>;
     }
+    case "immune": {
+      const targetName = formatName(step.targetIdx, p1Name, p2Name);
+      return (
+        <ParaglideMessage
+          message={m.battle_immune_target}
+          inputs={{ target: targetName }}
+          markup={{ strong: ({ children }) => <strong>{children}</strong> }}
+        />
+      );
+    }
     case "faint": {
       const faintedName = formatName(step.faintedIdx, p1Name, p2Name);
       return (
