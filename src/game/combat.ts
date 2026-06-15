@@ -5,8 +5,8 @@ import { moveRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
 import type { MoveDetail, PokemonStat } from "../api/pokeapi/types.gen";
 import { getEffectiveness, getStabMultiplier, selectBattleMoves, selectMove, struggleMove } from "./combat/moves";
 import { coinFlip, randomProbability } from "./random";
-import type { AilmentState, BattleStep, MoveInfo, PokemonStats, StatStages, StatusEffect } from "./types";
-import { isSupportedAilment, SUPPORTED_AILMENTS } from "./types";
+import type { AilmentState, BattleStep, MoveInfo, PlayerState, PokemonStats, StatStages, StatusEffect } from "./types";
+import { isSupportedAilment } from "./types";
 
 /**
  * Transforma un MoveDetail crudo de la PokéAPI en un MoveInfo limpio
@@ -356,35 +356,35 @@ export function calculateAttackDamage(
  * Retorna los BattleStep generados en esta ronda y los HP actualizados.
  */
 function resolveRound(
-  p1s: PokemonStats,
-  p2s: PokemonStats,
-  pt1: string[],
-  pt2: string[],
-  p1Moves: MoveInfo[],
-  p2Moves: MoveInfo[],
-  p1Stages: StatStages,
-  p2Stages: StatStages,
-  p1Ailment: AilmentState,
-  p2Ailment: AilmentState,
-  hp1: number,
-  hp2: number,
-  maxHp1: number,
-  maxHp2: number,
-  level1: number,
-  level2: number,
-  p1Pp: number[],
-  p2Pp: number[],
+  player1: PlayerState,
+  player2: PlayerState,
 ): {
   steps: BattleStep[];
-  hp1: number;
-  hp2: number;
-  p1Stages: StatStages;
-  p2Stages: StatStages;
-  p1Ailment: AilmentState;
-  p2Ailment: AilmentState;
-  p1Pp: number[];
-  p2Pp: number[];
+  player1: PlayerState;
+  player2: PlayerState;
 } {
+  // Destructure for local mutable access
+  const p1s = player1.stats;
+  const p2s = player2.stats;
+  const pt1 = player1.types;
+  const pt2 = player2.types;
+  const p1Moves = player1.moves;
+  const p2Moves = player2.moves;
+  const maxHp1 = player1.maxHp;
+  const maxHp2 = player2.maxHp;
+  const level1 = player1.level;
+  const level2 = player2.level;
+  const p1Stages = player1.stages;
+  const p2Stages = player2.stages;
+  const p1Ailment = player1.ailment;
+  const p2Ailment = player2.ailment;
+  const hp1 = player1.hp;
+  const hp2 = player2.hp;
+  const p1Pp = player1.pp;
+  const p2Pp = player2.pp;
+  const currentStats1 = player1.currentStats;
+  const currentStats2 = player2.currentStats;
+
   const steps: BattleStep[] = [];
 
   // ── Fase 1: selección simultánea de movimientos ──
@@ -401,11 +401,9 @@ function resolveRound(
       : struggleMove;
 
   // ── Fase 2: determinar orden de ataque por velocidad (con stages y parálisis) ──
-  const paraMod1 = p1Ailment.type === "paralysis" ? 0.5 : 1;
-  const paraMod2 = p2Ailment.type === "paralysis" ? 0.5 : 1;
-
-  const effectiveSpe1 = p1s.spe * getStageMultiplier(p1Stages.spe) * paraMod1;
-  const effectiveSpe2 = p2s.spe * getStageMultiplier(p2Stages.spe) * paraMod2;
+  // currentStats1.spe / currentStats2.spe ya incorporan la reducción por parálisis
+  const effectiveSpe1 = currentStats1.spe * getStageMultiplier(p1Stages.spe);
+  const effectiveSpe2 = currentStats2.spe * getStageMultiplier(p2Stages.spe);
   const p1First = determineFirstAttacker(effectiveSpe1, effectiveSpe2);
 
   // ── Fase 3: ejecutar en orden ──
@@ -614,6 +612,13 @@ function resolveRound(
         currentAilment2 = statusResult.ailment;
       }
 
+      // Si se aplicó parálisis, reducir la velocidad efectiva a la mitad en currentStats
+      const oldAilment = targetIdx === 0 ? p1Ailment : p2Ailment;
+      if (statusResult.ailment.type === "paralysis" && oldAilment.type !== "paralysis") {
+        const targetStats = targetIdx === 0 ? currentStats1 : currentStats2;
+        targetStats.spe = Math.floor(targetStats.spe / 2);
+      }
+
       if (faintCheck()) break;
     }
   }
@@ -640,14 +645,22 @@ function resolveRound(
 
   return {
     steps,
-    hp1: currentHp1,
-    hp2: currentHp2,
-    p1Stages: currentStages1,
-    p2Stages: currentStages2,
-    p1Ailment: currentAilment1,
-    p2Ailment: currentAilment2,
-    p1Pp: newPp1,
-    p2Pp: newPp2,
+    player1: {
+      ...player1,
+      hp: currentHp1,
+      stages: currentStages1,
+      ailment: currentAilment1,
+      pp: newPp1,
+      currentStats: currentStats1,
+    },
+    player2: {
+      ...player2,
+      hp: currentHp2,
+      stages: currentStages2,
+      ailment: currentAilment2,
+      pp: newPp2,
+      currentStats: currentStats2,
+    },
   };
 }
 
@@ -678,56 +691,48 @@ export function generateBattleSteps(
   const effectiveMaxHp1 = maxHp1 > 0 ? maxHp1 : scaled1.hp;
   const effectiveMaxHp2 = maxHp2 > 0 ? maxHp2 : scaled2.hp;
 
-  let hp1 = effectiveMaxHp1;
-  let hp2 = effectiveMaxHp2;
-
   // Stat stages: empiezan en 0, o usan los iniciales para testing
-  let p1Stages = initialStages1 ?? { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
-  let p2Stages = initialStages2 ?? { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+  const p1Stages = initialStages1 ?? { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
+  const p2Stages = initialStages2 ?? { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
 
-  // Ailment state: ninguno al inicio
-  let p1Ailment: AilmentState = { type: null };
-  let p2Ailment: AilmentState = { type: null };
+  const p1pp = p1Moves.map((m) => m.pp);
+  const p2pp = p2Moves.map((m) => m.pp);
 
-  // PP inicial: cada movimiento conserva su PP máximo
-  let p1Pp = p1Moves.map((m) => m.pp);
-  let p2Pp = p2Moves.map((m) => m.pp);
+  let player1: PlayerState = {
+    stats: scaled1,
+    types: pt1,
+    moves: p1Moves,
+    stages: p1Stages,
+    ailment: { type: null },
+    hp: effectiveMaxHp1,
+    maxHp: effectiveMaxHp1,
+    level: lv1,
+    pp: p1pp,
+    currentStats: { ...scaled1 },
+  };
+  let player2: PlayerState = {
+    stats: scaled2,
+    types: pt2,
+    moves: p2Moves,
+    stages: p2Stages,
+    ailment: { type: null },
+    hp: effectiveMaxHp2,
+    maxHp: effectiveMaxHp2,
+    level: lv2,
+    pp: p2pp,
+    currentStats: { ...scaled2 },
+  };
 
   steps.push({ type: "start" });
 
-  while (hp1 > 0 && hp2 > 0) {
-    const round = resolveRound(
-      scaled1,
-      scaled2,
-      pt1,
-      pt2,
-      p1Moves,
-      p2Moves,
-      p1Stages,
-      p2Stages,
-      p1Ailment,
-      p2Ailment,
-      hp1,
-      hp2,
-      effectiveMaxHp1,
-      effectiveMaxHp2,
-      lv1,
-      lv2,
-      p1Pp,
-      p2Pp,
-    );
+  while (player1.hp > 0 && player2.hp > 0) {
+    const round = resolveRound(player1, player2);
     steps.push(...round.steps);
-    hp1 = round.hp1;
-    hp2 = round.hp2;
-    p1Stages = round.p1Stages;
-    p2Stages = round.p2Stages;
-    p1Ailment = round.p1Ailment;
-    p2Ailment = round.p2Ailment;
-    p1Pp = round.p1Pp;
-    p2Pp = round.p2Pp;
+    player1 = round.player1;
+    player2 = round.player2;
   }
 
-  const winnerIdx = hp1 > 0 ? 0 : 1;
+  const winnerIdx = player1.hp > 0 ? 0 : 1;
   steps.push({ type: "end", winnerIdx });
 
   return steps;

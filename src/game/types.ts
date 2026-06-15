@@ -153,3 +153,18 @@ export type BattleStep =
   | BattleEndStep
   | BattleStatusStep
   | BattlePassiveStep;
+
+/** Estado completo de un Pokémon dentro de una ronda de combate. */
+export interface PlayerState {
+  stats: PokemonStats;
+  types: string[];
+  moves: MoveInfo[];
+  stages: StatStages;
+  ailment: AilmentState;
+  hp: number;
+  maxHp: number;
+  level: number;
+  pp: number[];
+  /** stats escalados por nivel, modificables (p.ej. parálisis reduce spe). */
+  currentStats: PokemonStats;
+}
