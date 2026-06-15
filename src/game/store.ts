@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { create } from "zustand";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { pokemonRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
-import type { BattleStep } from "./types";
+import type { BattleStep, MoveInfo } from "./types";
 
 // ─── Store ───────────────────────────────────────────────────────────────────
 // Action-Driven Logic: state and actions coexist in a single store.
@@ -24,6 +24,8 @@ interface PlayerState {
   level: number;
   maxHealth: number;
   currentHp: number;
+  moves: MoveInfo[];
+  pp: number[];
 }
 
 interface PlayersState {
@@ -51,6 +53,8 @@ interface GameActions {
   setIsLoadingMoves: (loading: boolean) => void;
   setMaxHealths: (hps: [number, number]) => void;
   setCurrentHps: (hps: [number, number]) => void;
+  setPlayerMoves: (slot: number, moves: MoveInfo[]) => void;
+  setPlayerPp: (slot: number, pp: number[]) => void;
   resetBattle: () => void;
 }
 
@@ -59,8 +63,8 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
   searchQuery: "",
   activeTab: "all",
   players: {
-    player1: { chosenId: null, level: 50, maxHealth: 100, currentHp: 100 },
-    player2: { chosenId: null, level: 50, maxHealth: 100, currentHp: 100 },
+    player1: { chosenId: null, level: 50, maxHealth: 100, currentHp: 100, moves: [], pp: [] },
+    player2: { chosenId: null, level: 50, maxHealth: 100, currentHp: 100, moves: [], pp: [] },
   },
   battle: {
     phase: "selection",
@@ -100,6 +104,18 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
 
   setIsLoadingMoves: (loading) => set((s) => ({ battle: { ...s.battle, isLoadingMoves: loading } })),
 
+  setPlayerMoves: (slot, moves) =>
+    set((s) => {
+      const key = slot === 0 ? ("player1" as const) : ("player2" as const);
+      return { players: { ...s.players, [key]: { ...s.players[key], moves, pp: moves.map((m) => m.pp) } } };
+    }),
+
+  setPlayerPp: (slot, pp) =>
+    set((s) => {
+      const key = slot === 0 ? ("player1" as const) : ("player2" as const);
+      return { players: { ...s.players, [key]: { ...s.players[key], pp } } };
+    }),
+
   setMaxHealths: (hps) =>
     set((s) => ({
       players: {
@@ -122,8 +138,8 @@ export const useGameStore = create<GameState & GameActions>()((set) => ({
     set((s) => ({
       players: {
         ...s.players,
-        player1: { ...s.players.player1, maxHealth: 100, currentHp: 100 },
-        player2: { ...s.players.player2, maxHealth: 100, currentHp: 100 },
+        player1: { ...s.players.player1, maxHealth: 100, currentHp: 100, moves: [], pp: [] },
+        player2: { ...s.players.player2, maxHealth: 100, currentHp: 100, moves: [], pp: [] },
       },
       battle: {
         phase: "selection",

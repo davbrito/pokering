@@ -34,6 +34,10 @@ export function BattleStage() {
   const battlePhase = useGameStore((s) => s.battle.phase);
   const p1Level = useGameStore((s) => s.players.player1.level);
   const p2Level = useGameStore((s) => s.players.player2.level);
+  const p1Moves = useGameStore((s) => s.players.player1.moves);
+  const p2Moves = useGameStore((s) => s.players.player2.moves);
+  const p1Pp = useGameStore((s) => s.players.player1.pp);
+  const p2Pp = useGameStore((s) => s.players.player2.pp);
   const { chosen } = useChosenPokemon();
   const [p1Data, p2Data] = chosen;
   const p1Name = usePokemonName(p1Data, "Luchador 1");
@@ -135,6 +139,19 @@ export function BattleStage() {
       if (step.type === "use-move") {
         const atkIdx = step.attackerIdx;
         const defIdx = atkIdx === 0 ? 1 : 0;
+
+        // Descontar PP en el store
+        if (step.move.pp > 0) {
+          const store = useGameStore.getState();
+          const playerKey = atkIdx === 0 ? "player1" : "player2";
+          const pp = [...store.players[playerKey].pp];
+          const moveIdx = store.players[playerKey].moves.findIndex((m) => m.name === step.move.name);
+          if (moveIdx !== -1 && pp[moveIdx] > 0) {
+            pp[moveIdx]--;
+            store.setPlayerPp(atkIdx, pp);
+          }
+        }
+
         if (step.move.damageClass === "physical") {
           setAnimClass0("");
           setAnimClass1("");
@@ -255,6 +272,10 @@ export function BattleStage() {
     ? `#${String(p2Data.id).padStart(3, "0")} · Nv.${p2Level} · BST ${Object.values(getStatsObject(p2Data)).reduce((a, b) => a + b, 0)}`
     : "#000 · Nv.? · BST 0";
 
+  // Construir datos de PP para los HUDs desde el estado del store
+  const pp1 = p1Moves.map((m, i) => ({ name: m.name, pp: p1Pp[i] ?? 0, maxPp: m.pp }));
+  const pp2 = p2Moves.map((m, i) => ({ name: m.name, pp: p2Pp[i] ?? 0, maxPp: m.pp }));
+
   return (
     <div className={cn("stage-container isolate", battlePhase === "battle" && "show")} id="stageContainer">
       <div
@@ -263,8 +284,8 @@ export function BattleStage() {
         ref={viewportRef}
       >
         <div className="stage-huds">
-          <PlayerHud name={p1Name} currentHp={currentHps[0]} maxHp={maxHealths[0]} meta={p1Meta} />
-          <PlayerHud name={p2Name} currentHp={currentHps[1]} maxHp={maxHealths[1]} meta={p2Meta} />
+          <PlayerHud name={p1Name} currentHp={currentHps[0]} maxHp={maxHealths[0]} meta={p1Meta} pp={pp1} />
+          <PlayerHud name={p2Name} currentHp={currentHps[1]} maxHp={maxHealths[1]} meta={p2Meta} pp={pp2} />
         </div>
 
         <div className="stage-grid" id="stageGrid">
@@ -315,7 +336,19 @@ export function BattleStage() {
   );
 }
 
-function PlayerHud({ name, currentHp, maxHp, meta }: { name: string; currentHp: number; maxHp: number; meta: string }) {
+function PlayerHud({
+  name,
+  currentHp,
+  maxHp,
+  meta,
+  pp,
+}: {
+  name: string;
+  currentHp: number;
+  maxHp: number;
+  meta: string;
+  pp: { name: string; pp: number; maxPp: number }[];
+}) {
   const pct = Math.max(0, Math.min(100, (currentHp / maxHp) * 100));
 
   const hpColor = () => {
@@ -333,6 +366,25 @@ function PlayerHud({ name, currentHp, maxHp, meta }: { name: string; currentHp: 
       <div className="hud-hp-text">
         {currentHp} / {maxHp} PS
       </div>
+      {pp.length > 0 && (
+        <div className="hud-pp-wrap">
+          {pp.map((m) => {
+            const pctPp = m.maxPp > 0 ? Math.round((m.pp / m.maxPp) * 100) : 0;
+            const ppColor = pctPp > 50 ? "var(--blue)" : pctPp > 20 ? "var(--gold)" : "var(--accent)";
+            return (
+              <div key={m.name} className="hud-pp-row">
+                <span className="hud-pp-name">{m.name}</span>
+                <div className="hud-pp-track">
+                  <div className="hud-pp-fill" style={{ width: `${pctPp}%`, backgroundColor: ppColor }} />
+                </div>
+                <span className="hud-pp-num">
+                  {m.pp}/{m.maxPp}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

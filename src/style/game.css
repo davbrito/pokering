@@ -448,7 +448,7 @@ h1 em {
 }
 .stage-viewport {
   position: relative;
-  height: 340px;
+  min-height: 340px;
   background: radial-gradient(circle at 50% 120%, #171728 0%, #07070d 90%);
   overflow: hidden;
   display: flex;
@@ -523,6 +523,49 @@ h1 em {
   color: var(--muted);
   text-align: right;
   margin-top: 4px;
+  margin-bottom: 6px;
+}
+
+/* PP display in HUD */
+.hud-pp-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-top: 0.5px solid rgba(255, 255, 255, 0.06);
+  padding-top: 5px;
+}
+.hud-pp-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 36px;
+  align-items: center;
+  gap: 4px;
+}
+.hud-pp-name {
+  font-size: 9px;
+  font-family: var(--font-m);
+  color: var(--text);
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+.hud-pp-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.hud-pp-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+.hud-pp-num {
+  font-size: 8px;
+  font-family: var(--font-m);
+  color: var(--muted);
+  text-align: right;
 }
 
 /* STAGE BATTLEGROUND */
@@ -530,7 +573,7 @@ h1 em {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  padding: 0 5rem 3.5rem;
+  padding: 2rem 5rem 3rem;
 }
 .fighter-wrapper {
   position: relative;
@@ -1729,7 +1772,7 @@ footer {
     padding: 0.8rem;
   }
   .stage-grid {
-    padding: 0 2rem 2.8rem;
+    padding: 2rem 2rem 2.8rem;
   }
   .hud-box {
     width: 125px;

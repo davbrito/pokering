@@ -52,6 +52,7 @@ function Home() {
       setMaxHealths,
       setCurrentHps,
       setBattleLogs,
+      setPlayerMoves,
       setCurrentStepIdx,
       setIsPaused,
       setBattlePhase,
@@ -59,6 +60,8 @@ function Home() {
     } = useGameStore.getState();
     setMaxHealths([mh1, mh2]);
     setCurrentHps([mh1, mh2]);
+    setPlayerMoves(0, p1Moves);
+    setPlayerMoves(1, p2Moves);
 
     const steps = generateBattleSteps(
       poke1,
