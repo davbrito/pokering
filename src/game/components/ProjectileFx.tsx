@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 
 export interface Projectile {
-  id: number;
+  id: string;
   sx: number;
   sy: number;
   tx: number;

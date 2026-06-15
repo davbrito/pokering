@@ -48,7 +48,7 @@ export function BattleStage() {
   const [animClass1, setAnimClass1] = useState("");
   const [shakeScreen, setShakeScreen] = useState(false);
   const [damagePopups, setDamagePopups] = useState<DamagePopupData[]>([]);
-  const [statusPopups, setStatusPopups] = useState<{ id: number; targetIdx: number; step: BattleStatusStep }[]>([]);
+  const [statusPopups, setStatusPopups] = useState<{ id: string; targetIdx: number; step: BattleStatusStep }[]>([]);
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
   const [playingCryIdx, setPlayingCryIdx] = useState<number | null>(null);
 
@@ -56,8 +56,7 @@ export function BattleStage() {
   const imgRef0 = useRef<HTMLImageElement | null>(null);
   const imgRef1 = useRef<HTMLImageElement | null>(null);
   const playbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const popupCounter = useRef(0);
-  const projCounter = useRef(0);
+
   const startedRef = useRef(false);
 
   const finishBattle = () => {
@@ -75,7 +74,7 @@ export function BattleStage() {
       setTimeout(() => setShakeScreen(false), 350);
     }
 
-    const popId = ++popupCounter.current;
+    const popId = crypto.randomUUID();
     setDamagePopups((prev) => [...prev, { id: popId, defIdx, step }]);
     setTimeout(() => {
       setDamagePopups((prev) => prev.filter((p) => p.id !== popId));
@@ -110,7 +109,7 @@ export function BattleStage() {
     const tx = rd.left + rd.width / 2 - rv.left;
     const ty = rd.top + rd.height / 2 - rv.top;
 
-    const pid = ++projCounter.current;
+    const pid = crypto.randomUUID();
     setProjectiles((prev) => [...prev, { id: pid, sx, sy, tx, ty, moveType }]);
     const animTime = 380 / useGameStore.getState().battle.playbackSpeed;
     setTimeout(() => {
@@ -172,7 +171,7 @@ export function BattleStage() {
       // El movimiento falló: sin animación de daño, solo mostrar el texto
     }
     if (step.type === "status") {
-      const id = ++popupCounter.current;
+      const id = crypto.randomUUID();
       setStatusPopups((prev) => [...prev, { id, targetIdx: step.targetIdx, step }]);
       setTimeout(() => {
         setStatusPopups((prev) => prev.filter((p) => p.id !== id));
@@ -397,7 +396,7 @@ function Figter({
   animClass: string;
   pokemon: PokemonDetail | null;
   damagePopups: DamagePopupData[];
-  statusPopups: { id: number; targetIdx: number; step: BattleStatusStep }[];
+  statusPopups: { id: string; targetIdx: number; step: BattleStatusStep }[];
   playingCry: boolean;
 }) {
   const anchorName = `--fighter-${index + 1}`;

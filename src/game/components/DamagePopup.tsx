@@ -3,7 +3,7 @@ import { cn } from "#/lib/utils.ts";
 import type { BattleDamageStep } from "../types";
 
 export interface DamagePopupData {
-  id: number;
+  id: string;
   defIdx: number;
   step: BattleDamageStep;
 }
