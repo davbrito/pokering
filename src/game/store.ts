@@ -195,6 +195,7 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => {
             undefined,
             lv1,
             lv2,
+            rng,
           );
           return { p1Moves, p2Moves, steps };
         });
