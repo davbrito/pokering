@@ -12,3 +12,5 @@ dist-ssr
 __unconfig*
 
 src/api/pokeapi
+# Caché generada por inlang/paraglide
+project.inlang/cache/
