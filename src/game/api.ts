@@ -7,7 +7,7 @@ export function getSpriteUrl(id: number): string {
 }
 
 export function getArtworkUrl(d: PokemonDetail): string {
-  return (d.sprites.other as any)?.["official-artwork"]?.front_default || d.sprites.front_default || "";
+  return d.sprites.other?.["official-artwork"]?.front_default || d.sprites.front_default || "";
 }
 
 /** Names array entry from PokemonSpeciesDetail */
