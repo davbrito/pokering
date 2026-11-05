@@ -1,7 +1,7 @@
-import { orderBy, sample } from "es-toolkit/array";
-import { random } from "es-toolkit/math";
+import { orderBy } from "es-toolkit/array";
+import { getGameContext } from "../context";
 import { TYPE_CHART } from "../data";
-import { randomProbability } from "../random";
+import type { Rng } from "../rng";
 import type { AilmentState, MoveInfo, PokemonStats, StatStages } from "../types";
 
 /** Movimiento de fallback cuando un Pokémon no tiene movimientos válidos. */
@@ -34,6 +34,7 @@ export function selectMove(
   maxHp: number,
   defenderAilment: AilmentState,
   attackerStages: StatStages,
+  rng: Rng = getGameContext().rng,
 ): MoveInfo {
   if (moves.length === 0) return struggleMove;
 
@@ -42,10 +43,10 @@ export function selectMove(
   const statusMoves = moves.filter((m) => m.damageClass === "status");
 
   // 70% → ataque (o si no hay estados útiles)
-  const shouldUseStatus = statusMoves.length > 0 && randomProbability(0.3);
+  const shouldUseStatus = statusMoves.length > 0 && rng.chance(0.3);
 
   if (!shouldUseStatus) {
-    return pickBestAttack(attacks, attackerStats, attackerTypes, defenderTypes, defenderStats) ?? moves[0];
+    return pickBestAttack(attacks, attackerStats, attackerTypes, defenderTypes, defenderStats, rng) ?? moves[0];
   }
 
   // 30% → intentar estado táctico
@@ -75,7 +76,7 @@ export function selectMove(
   if (statBuff) return statBuff;
 
   // Fallback: mejor ataque
-  return pickBestAttack(attacks, attackerStats, attackerTypes, defenderTypes, defenderStats) ?? moves[0];
+  return pickBestAttack(attacks, attackerStats, attackerTypes, defenderTypes, defenderStats, rng) ?? moves[0];
 }
 
 /** Elige el ataque físico/especial con mayor daño esperado. */
@@ -85,6 +86,7 @@ function pickBestAttack(
   attackerTypes: string[],
   defenderTypes: string[],
   defenderStats: PokemonStats,
+  rng: Rng,
 ): MoveInfo | null {
   if (attacks.length === 0) return null;
 
@@ -103,7 +105,7 @@ function pickBestAttack(
       const baseExpected = (offStat / defStat) * move.power * stab * typeEff * (trueAccuracy / 100);
 
       // Ruido táctico ampliado: la IA no es perfecta
-      const tacticalNoise = random(0.7, 1.3);
+      const tacticalNoise = rng.float(0.7, 1.3);
       const valuation = baseExpected * tacticalNoise;
 
       if (valuation > maxDmg) {
@@ -129,11 +131,11 @@ function pickBestAttack(
  * @param pool  Pool completo de movimientos válidos.
  * @param stats Estadísticas base del Pokémon (opcional, para sesgo).
  */
-export function selectBattleMoves(pool: MoveInfo[], stats?: PokemonStats): MoveInfo[] {
+export function selectBattleMoves(pool: MoveInfo[], stats?: PokemonStats, rng: Rng = getGameContext().rng): MoveInfo[] {
   // Ponderación estocástica: pequeño ruido (±5) al comparar poder para que
   // movimientos con potencia similar puedan reordenarse aleatoriamente.
   // El ruido se calcula una vez por movimiento (un comparador aleatorio sería inconsistente).
-  const byNoisyPower = (moves: MoveInfo[]) => orderBy(moves, [(m) => (m.power ?? 0) + random(-5, 5)], ["desc"]);
+  const byNoisyPower = (moves: MoveInfo[]) => orderBy(moves, [(m) => (m.power ?? 0) + rng.float(-5, 5)], ["desc"]);
 
   const physical = byNoisyPower(pool.filter((m) => m.damageClass === "physical"));
   const special = byNoisyPower(pool.filter((m) => m.damageClass === "special"));
@@ -153,7 +155,7 @@ export function selectBattleMoves(pool: MoveInfo[], stats?: PokemonStats): MoveI
 
   // ── Ruleta competitiva: elegir al azar del Top 3 ──
   const pickTop = (arr: MoveInfo[]): MoveInfo | undefined => {
-    return sample(arr.slice(0, 3));
+    return rng.pick(arr.slice(0, 3));
   };
 
   if (biasPhysical) {

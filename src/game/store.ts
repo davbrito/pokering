@@ -2,7 +2,10 @@ import { type QueryClient, useQuery } from "@tanstack/react-query";
 import { create } from "zustand";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { pokemonRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
-import { fetchPokemonMoves, generateBattleSteps, getStatsObject, scaleStatsArrayByLevel } from "./combat";
+import { fetchPokemonMovePool, generateBattleSteps, getStatsObject, scaleStatsArrayByLevel } from "./combat";
+import { selectBattleMoves } from "./combat/moves";
+import { createGameContext, runWithGameContext } from "./context";
+import { randomSeed } from "./rng";
 import type { BattleStep, MoveInfo } from "./types";
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -14,6 +17,8 @@ type BattlePhase = "selection" | "battle" | "result";
 interface BattleState {
   phase: BattlePhase;
   logs: BattleStep[];
+  /** Semilla de la batalla actual (permite revancha idéntica / depuración). */
+  seed: number | null;
   currentStepIdx: number;
   playbackSpeed: number;
   isPaused: boolean;
@@ -48,6 +53,7 @@ interface GameActions {
   setLevel: (slot: number, level: number) => void;
   setBattlePhase: (phase: BattlePhase) => void;
   setBattleLogs: (logs: BattleStep[]) => void;
+  setBattleSeed: (seed: number | null) => void;
   setCurrentStepIdx: (idx: number) => void;
   setPlaybackSpeed: (speed: number) => void;
   setIsPaused: (paused: boolean) => void;
@@ -73,6 +79,7 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => {
     battle: {
       phase: "selection",
       logs: [],
+      seed: null,
       currentStepIdx: 0,
       playbackSpeed: 1,
       isPaused: false,
@@ -97,6 +104,7 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => {
       }),
 
     setBattlePhase: (phase) => set((s) => ({ battle: { ...s.battle, phase } })),
+    setBattleSeed: (seed) => set((s) => ({ battle: { ...s.battle, seed } })),
     setBattleLogs: (logs) => set((s) => ({ battle: { ...s.battle, logs } })),
     setCurrentStepIdx: (idx) => set((s) => ({ battle: { ...s.battle, currentStepIdx: idx } })),
     setPlaybackSpeed: (speed) => set((s) => ({ battle: { ...s.battle, playbackSpeed: speed } })),
@@ -127,6 +135,7 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => {
         battle: {
           phase: "selection",
           logs: [],
+          seed: null,
           currentStepIdx: 0,
           playbackSpeed: 1,
           isPaused: false,
@@ -139,7 +148,7 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => {
       })),
 
     async startBattle(queryClient: QueryClient): Promise<void> {
-      const { setBattleLogs, setBattlePhase, setCurrentStepIdx, setIsPaused } = get();
+      const { setBattleLogs, setBattleSeed, setBattlePhase, setCurrentStepIdx, setIsPaused } = get();
       const { player1, player2 } = get().players;
       if (!player1.chosenId || !player2.chosenId) return;
       const level1 = player1.level;
@@ -151,13 +160,16 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => {
 
       setLoading(true);
 
-      const [p1Moves, p2Moves] = await Promise.all([
-        fetchPokemonMoves(queryClient, poke1),
-        fetchPokemonMoves(queryClient, poke2),
+      // El fetch es async (unctx pierde el contexto tras un await): se hace antes,
+      // y toda la parte aleatoria se ejecuta de forma síncrona dentro del contexto.
+      const [pool1, pool2] = await Promise.all([
+        fetchPokemonMovePool(queryClient, poke1),
+        fetchPokemonMovePool(queryClient, poke2),
       ]);
 
       const s1 = getStatsObject(poke1);
       const s2 = getStatsObject(poke2);
+      const seed = randomSeed();
       const { players } = useGameStore.getState();
       const lv1 = level1 ?? players.player1.level;
       const lv2 = level2 ?? players.player2.level;
@@ -165,6 +177,26 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => {
       const scaled2 = scaleStatsArrayByLevel(poke2.stats, lv2);
       const mh1 = scaled1.find((s) => s.stat.name === "hp")?.base_stat ?? 100;
       const mh2 = scaled2.find((s) => s.stat.name === "hp")?.base_stat ?? 100;
+
+      const { p1Moves, p2Moves, steps } = runWithGameContext(createGameContext(seed), () => {
+        const p1Moves = selectBattleMoves(pool1, s1);
+        const p2Moves = selectBattleMoves(pool2, s2);
+        const steps = generateBattleSteps(
+          poke1,
+          poke2,
+          s1,
+          s2,
+          mh1,
+          mh2,
+          p1Moves,
+          p2Moves,
+          undefined,
+          undefined,
+          lv1,
+          lv2,
+        );
+        return { p1Moves, p2Moves, steps };
+      });
 
       set((state) => ({
         players: {
@@ -186,20 +218,7 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => {
         },
       }));
 
-      const steps = generateBattleSteps(
-        poke1,
-        poke2,
-        s1,
-        s2,
-        mh1,
-        mh2,
-        p1Moves,
-        p2Moves,
-        undefined,
-        undefined,
-        lv1,
-        lv2,
-      );
+      setBattleSeed(seed);
       setBattleLogs(steps);
       setCurrentStepIdx(0);
       setIsPaused(false);

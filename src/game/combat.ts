@@ -1,11 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { compact, uniq } from "es-toolkit/array";
-import { clamp, random, sum } from "es-toolkit/math";
+import { clamp, sum } from "es-toolkit/math";
 import type { PokemonDetail } from "../api/pokeapi";
 import { moveRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
 import type { MoveDetail, PokemonStat } from "../api/pokeapi/types.gen";
-import { getEffectiveness, getStabMultiplier, selectBattleMoves, selectMove, struggleMove } from "./combat/moves";
-import { coinFlip, randomProbability } from "./random";
+import { getEffectiveness, getStabMultiplier, selectMove, struggleMove } from "./combat/moves";
+import { getGameContext } from "./context";
+import type { Rng } from "./rng";
 import type { AilmentState, BattleStep, MoveInfo, PlayerState, PokemonStats, StatStages, StatusEffect } from "./types";
 import { isSupportedAilment } from "./types";
 
@@ -83,12 +84,11 @@ function mapApiStatName(raw: string): "atk" | "def" | "spa" | "spd" | "spe" {
   return map[raw] || "atk";
 }
 
-export async function fetchPokemonMoves(queryClient: QueryClient, pokemon: PokemonDetail): Promise<MoveInfo[]> {
+/** Obtiene el pool completo de movimientos válidos (async, sin azar). */
+export async function fetchPokemonMovePool(queryClient: QueryClient, pokemon: PokemonDetail): Promise<MoveInfo[]> {
   const movesNames = uniq(pokemon.moves.map((m) => m.move.name));
   const results = await Promise.all(movesNames.map((name) => fetchSingleMove(queryClient, name)));
-  const valid = compact(results);
-  // Aplicar estrategia de 4 slots estratégicos con sesgo por stats base
-  return selectBattleMoves(valid, getStatsObject(pokemon));
+  return compact(results);
 }
 
 async function fetchSingleMove(queryClient: QueryClient, name: string): Promise<MoveInfo | null> {
@@ -305,11 +305,11 @@ export function applyEndOfTurnDamage(
   return { hp: currentHp, damage: 0, fainted: false, steps };
 }
 
-export function determineFirstAttacker(speP1: number, speP2: number): boolean {
+export function determineFirstAttacker(speP1: number, speP2: number, rng: Rng = getGameContext().rng): boolean {
   if (speP1 > speP2) return true;
   if (speP2 > speP1) return false;
   // Empate de velocidad: coin flip aleatorio
-  return coinFlip();
+  return rng.chance(0.5);
 }
 
 /**
@@ -330,12 +330,13 @@ export function calculateAttackDamage(
   defensiveStat: number,
   stab: number,
   typeEff: number,
+  rng: Rng = getGameContext().rng,
 ): { damage: number; isCrit: boolean } {
   const baseDamage = (((2 * level) / 5 + 2) * power * (offensiveStat / defensiveStat)) / 50 + 2;
 
-  const isCrit = randomProbability(0.12);
+  const isCrit = rng.chance(0.12);
   const critMultiplier = isCrit ? 1.5 : 1;
-  const randomMultiplier = random(0.85, 1.0);
+  const randomMultiplier = rng.float(0.85, 1.0);
 
   let damage = Math.floor(baseDamage * stab * typeEff * critMultiplier * randomMultiplier);
   if (damage <= 0 && typeEff > 0) damage = 1;
@@ -368,6 +369,7 @@ export function calculateAttackDamage(
 function resolveRound(
   player1: PlayerState,
   player2: PlayerState,
+  rng: Rng,
 ): {
   steps: BattleStep[];
   player1: PlayerState;
@@ -403,18 +405,18 @@ function resolveRound(
   const availableP2Moves = p2Moves.length > 0 ? p2Moves.filter((_, i) => p2Pp[i] > 0) : [];
   const p1Move =
     availableP1Moves.length > 0
-      ? selectMove(availableP1Moves, p1s, player1Types, player2Types, p2s, hp1, maxHp1, p2Ailment, p1Stages)
+      ? selectMove(availableP1Moves, p1s, player1Types, player2Types, p2s, hp1, maxHp1, p2Ailment, p1Stages, rng)
       : struggleMove;
   const p2Move =
     availableP2Moves.length > 0
-      ? selectMove(availableP2Moves, p2s, player2Types, player1Types, p1s, hp2, maxHp2, p1Ailment, p2Stages)
+      ? selectMove(availableP2Moves, p2s, player2Types, player1Types, p1s, hp2, maxHp2, p1Ailment, p2Stages, rng)
       : struggleMove;
 
   // ── Fase 2: determinar orden de ataque por velocidad (con stages y parálisis) ──
   // currentStats1.spe / currentStats2.spe ya incorporan la reducción por parálisis
   const effectiveSpe1 = currentStats1.spe * getStageMultiplier(p1Stages.spe);
   const effectiveSpe2 = currentStats2.spe * getStageMultiplier(p2Stages.spe);
-  const p1First = determineFirstAttacker(effectiveSpe1, effectiveSpe2);
+  const p1First = determineFirstAttacker(effectiveSpe1, effectiveSpe2, rng);
 
   // ── Fase 3: ejecutar en orden ──
   // Construimos la cola de ataques en orden: [primero, segundo]
@@ -494,7 +496,7 @@ function resolveRound(
 
     // Chequeo de Parálisis Total (25% de no poder moverse)
     const attackerAilment = attack.attackerIdx === 0 ? currentAilment1 : currentAilment2;
-    if (attackerAilment.type === "paralysis" && randomProbability(0.25)) {
+    if (attackerAilment.type === "paralysis" && rng.chance(0.25)) {
       steps.push({
         type: "passive",
         targetIdx: attack.attackerIdx,
@@ -518,7 +520,7 @@ function resolveRound(
 
     // Chequeo de precisión (accuracy)
     const acc = attack.move.accuracy;
-    if (acc !== null && acc < 100 && random(1, 100) > acc) {
+    if (acc !== null && acc < 100 && rng.int(1, 100) > acc) {
       steps.push({
         type: "miss",
         attackerIdx: attack.attackerIdx,
@@ -539,6 +541,7 @@ function resolveRound(
         attack.defStat,
         attack.stab,
         eff,
+        rng,
       );
 
       // La quemadura corta el daño físico a la mitad
@@ -700,6 +703,7 @@ export function generateBattleSteps(
   initialStages2?: StatStages,
   level1?: number,
   level2?: number,
+  rng: Rng = getGameContext().rng,
 ): BattleStep[] {
   const steps: BattleStep[] = [];
   const pt1 = p1.types.map((t) => t.type.name);
@@ -748,7 +752,7 @@ export function generateBattleSteps(
   steps.push({ type: "start" });
 
   while (player1.hp > 0 && player2.hp > 0) {
-    const round = resolveRound(player1, player2);
+    const round = resolveRound(player1, player2, rng);
     steps.push(...round.steps);
     player1 = round.player1;
     player2 = round.player2;
