@@ -6,13 +6,11 @@ import { gameMachine } from "./machine";
 export const GameActorContext = createActorContext(gameMachine);
 
 export type GamePhase = "selection" | "loading" | "battle" | "result" | "error";
+const PHASE_TAGS: readonly GamePhase[] = ["loading", "battle", "result", "error", "selection"];
 
 export function useGamePhase(): GamePhase {
   return GameActorContext.useSelector((s) => {
-    if (s.matches("loading")) return "loading";
-    if (s.matches("battle")) return "battle";
-    if (s.matches("result")) return "result";
-    if (s.matches("error")) return "error";
+    for (const tag of PHASE_TAGS) if (s.hasTag(tag)) return tag;
     return "selection";
   });
 }

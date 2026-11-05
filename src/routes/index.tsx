@@ -4,6 +4,7 @@ import { ParaglideMessage } from "@inlang/paraglide-js-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { clamp, randomInt } from "es-toolkit/math";
 import { Settings, Shuffle, Volume2, VolumeX } from "lucide-react";
+import { useEffect } from "react";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
 import { BattleResult } from "../game/components/BattleResult";
@@ -13,7 +14,7 @@ import { PokemonSlot } from "../game/components/PokemonSlot";
 import { GameActorContext, useGamePhase } from "../game/game-actor";
 import type { Fighter } from "../game/prepare-battle";
 import { useSettingsStore } from "../game/settings-store";
-import { useBothReady, useGameStore } from "../game/store";
+import { useGameStore, useSelectedFighters } from "../game/store";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -28,31 +29,29 @@ function Home() {
   );
 }
 
-function scrollToStage() {
-  setTimeout(() => {
-    document.getElementById("stageContainer")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, 100);
-}
-
 function HomeContent() {
   const actorRef = GameActorContext.useActorRef();
   const phase = useGamePhase();
   const isLoadingMoves = phase === "loading";
-  const bothReady = useBothReady();
+  const selected = useSelectedFighters();
+  // La máquina decide si START es válido (solo en `selection`) y hay dos luchadores elegidos.
+  const canStart = GameActorContext.useSelector(
+    (s) => selected !== null && s.can({ type: "START", fighters: selected }),
+  );
+
+  useEffect(() => {
+    if (phase === "battle") {
+      document.getElementById("stageContainer")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [phase]);
 
   const startWith = (fighters: readonly [Fighter, Fighter]) => {
     // START solo se acepta en `selection`: un doble clic no puede lanzar dos batallas.
     actorRef.send({ type: "START", fighters });
-    scrollToStage();
   };
 
   const handleStartBattle = () => {
-    const { player1, player2 } = useGameStore.getState().players;
-    if (player1.chosenId === null || player2.chosenId === null) return;
-    startWith([
-      { id: player1.chosenId, level: player1.level },
-      { id: player2.chosenId, level: player2.level },
-    ]);
+    if (selected) startWith(selected);
   };
 
   const randomBattle = () => {
@@ -107,7 +106,7 @@ function HomeContent() {
                   <button
                     className="battle-btn"
                     id="battleBtn"
-                    disabled={!bothReady}
+                    disabled={!canStart}
                     type="button"
                     onClick={handleStartBattle}
                   >

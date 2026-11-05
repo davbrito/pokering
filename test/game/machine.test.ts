@@ -122,3 +122,29 @@ describe("gameMachine", () => {
     expect(actor.getSnapshot().context.seed).not.toBeNull();
   });
 });
+
+describe("gameMachine tags y clear", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("expone tags por fase y puede() refleja START solo en selección", async () => {
+    const actor = makeActor(async () => prepared);
+    const clears = vi.fn();
+    actor.on("clear", clears);
+    expect(actor.getSnapshot().hasTag("selection")).toBe(true);
+    expect(actor.getSnapshot().can({ type: "START", fighters })).toBe(true);
+
+    actor.send({ type: "START", fighters });
+    expect(actor.getSnapshot().hasTag("loading")).toBe(true);
+    expect(actor.getSnapshot().can({ type: "START", fighters })).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
+    actor.send({ type: "PAUSE" });
+    expect(actor.getSnapshot().hasTag("battle")).toBe(true);
+    expect(actor.getSnapshot().hasTag("paused")).toBe(true);
+
+    actor.send({ type: "SKIP" });
+    expect(actor.getSnapshot().hasTag("result")).toBe(true);
+    expect(clears).toHaveBeenCalledTimes(2); // al cargar y al terminar
+  });
+});

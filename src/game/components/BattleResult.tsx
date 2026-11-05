@@ -81,8 +81,8 @@ export function BattleResult() {
   const battleSteps = GameActorContext.useSelector((s) => s.context.logs);
   const fighters = GameActorContext.useSelector((s) => s.context.fighters);
   const { chosen } = useChosenPokemon();
-  const level1 = fighters?.[0].level ?? 50;
-  const level2 = fighters?.[1].level ?? 50;
+  const level1 = fighters[0].level;
+  const level2 = fighters[1].level;
   const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
 
   const handleRestart = () => actorRef.send({ type: "REMATCH" });

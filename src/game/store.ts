@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { create } from "zustand";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { pokemonRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
+import { GameActorContext, useGamePhase } from "./game-actor";
+import type { Fighter } from "./prepare-battle";
 
 // ─── Store ───────────────────────────────────────────────────────────────────
 // Solo estado de la pantalla de selección (búsqueda, pestaña, luchadores elegidos).
@@ -56,8 +59,13 @@ export function useChosenPokemon(): {
   chosen: [PokemonDetail | null, PokemonDetail | null];
   chosenLoading: [boolean, boolean];
 } {
-  const idA = useGameStore((s) => s.players.player1.chosenId);
-  const idB = useGameStore((s) => s.players.player2.chosenId);
+  // En selección la fuente es el store; desde START en adelante, la máquina (única fuente de verdad).
+  const inSelection = useGamePhase() === "selection";
+  const fighters = GameActorContext.useSelector((s) => s.context.fighters);
+  const selA = useGameStore((s) => s.players.player1.chosenId);
+  const selB = useGameStore((s) => s.players.player2.chosenId);
+  const idA = inSelection ? selA : fighters[0].id;
+  const idB = inSelection ? selB : fighters[1].id;
 
   const qA = useQuery({
     ...pokemonRetrieveOptions({ path: { id: String(idA) } }),
@@ -74,9 +82,20 @@ export function useChosenPokemon(): {
   };
 }
 
-/** True when both fighters have been selected and loaded. */
-export function useBothReady(): boolean {
-  const p1 = useGameStore((s) => s.players.player1.chosenId);
-  const p2 = useGameStore((s) => s.players.player2.chosenId);
-  return p1 !== null && p2 !== null;
+/** Luchadores elegidos en la pantalla de selección, o null si falta alguno. */
+export function useSelectedFighters(): readonly [Fighter, Fighter] | null {
+  const id1 = useGameStore((s) => s.players.player1.chosenId);
+  const id2 = useGameStore((s) => s.players.player2.chosenId);
+  const level1 = useGameStore((s) => s.players.player1.level);
+  const level2 = useGameStore((s) => s.players.player2.level);
+  return useMemo(
+    () =>
+      id1 === null || id2 === null
+        ? null
+        : ([
+            { id: id1, level: level1 },
+            { id: id2, level: level2 },
+          ] as const),
+    [id1, id2, level1, level2],
+  );
 }

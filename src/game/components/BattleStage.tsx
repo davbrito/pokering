@@ -17,15 +17,15 @@ export function BattleStage() {
   const actorRef = GameActorContext.useActorRef();
   const battlePhase = useGamePhase();
   const playbackSpeed = GameActorContext.useSelector((s) => s.context.speed);
-  const isPaused = GameActorContext.useSelector((s) => s.matches({ battle: "paused" }));
+  const isPaused = GameActorContext.useSelector((s) => s.hasTag("paused"));
   const currentStep = GameActorContext.useSelector((s) => s.context.logs[s.context.stepIdx] ?? null);
   const fighters = GameActorContext.useSelector((s) => s.context.fighters);
   const setup = GameActorContext.useSelector((s) => s.context.setup);
   const view = useBattleView();
   const maxHealths = setup?.maxHp ?? ([100, 100] as const);
   const currentHps = view?.hp ?? maxHealths;
-  const p1Level = fighters?.[0].level ?? 50;
-  const p2Level = fighters?.[1].level ?? 50;
+  const p1Level = fighters[0].level;
+  const p2Level = fighters[1].level;
   const p1Moves = setup?.moves[0] ?? [];
   const p2Moves = setup?.moves[1] ?? [];
   const p1Pp = view?.pp[0] ?? [];
@@ -160,27 +160,23 @@ export function BattleStage() {
   };
 
   const onExecuteStep = useEffectEvent(executeStepVisuals);
+  const onClear = useEffectEvent(() => {
+    setAnimClass0("");
+    setAnimClass1("");
+    setDamagePopups([]);
+    setStatusPopups([]);
+    setProjectiles([]);
+  });
 
   // Efectos visuales/sonoros: la máquina emite cada paso al entrar en escena.
   useEffect(() => {
-    const sub = actorRef.on("step", ({ step }) => onExecuteStep(step));
-    return () => sub.unsubscribe();
+    const stepSub = actorRef.on("step", ({ step }) => onExecuteStep(step));
+    const clearSub = actorRef.on("clear", () => onClear());
+    return () => {
+      stepSub.unsubscribe();
+      clearSub.unsubscribe();
+    };
   }, [actorRef]);
-
-  // Al empezar una batalla nueva, limpiar restos visuales.
-  useEffect(() => {
-    if (battlePhase === "loading" || battlePhase === "selection") {
-      setAnimClass0("");
-      setAnimClass1("");
-      setDamagePopups([]);
-      setStatusPopups([]);
-      setProjectiles([]);
-    }
-    if (battlePhase === "result") {
-      setAnimClass0("");
-      setAnimClass1("");
-    }
-  }, [battlePhase]);
 
   const togglePause = () => actorRef.send({ type: isPaused ? "RESUME" : "PAUSE" });
   const toggleSpeed = () => actorRef.send({ type: "TOGGLE_SPEED" });
