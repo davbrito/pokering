@@ -34,6 +34,7 @@
     "@tanstack/react-router-ssr-query": "latest",
     "@tanstack/react-start": "latest",
     "@tanstack/router-plugin": "^1.168.48",
+    "@xstate/react": "^6.1.0",
     "clsx": "^2.1.1",
     "es-toolkit": "^1.53.1",
     "lucide-react": "^1.68.0",
@@ -42,6 +43,7 @@
     "react-dom": "^19.3.1",
     "tailwind-merge": "^3.7.0",
     "tailwindcss": "^4.3.4",
+    "xstate": "^5.33.3",
     "zustand": "^5.0.16"
   },
   "devDependencies": {
