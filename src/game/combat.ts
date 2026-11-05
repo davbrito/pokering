@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { random } from "es-toolkit/math";
+import { compact, uniq } from "es-toolkit/array";
+import { clamp, random, sum } from "es-toolkit/math";
 import type { PokemonDetail } from "../api/pokeapi";
 import { moveRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
 import type { MoveDetail, PokemonStat } from "../api/pokeapi/types.gen";
@@ -83,9 +84,9 @@ function mapApiStatName(raw: string): "atk" | "def" | "spa" | "spd" | "spe" {
 }
 
 export async function fetchPokemonMoves(queryClient: QueryClient, pokemon: PokemonDetail): Promise<MoveInfo[]> {
-  const movesNames = [...new Set(pokemon.moves.map((m) => m.move.name))];
+  const movesNames = uniq(pokemon.moves.map((m) => m.move.name));
   const results = await Promise.all(movesNames.map((name) => fetchSingleMove(queryClient, name)));
-  const valid = results.filter((r): r is MoveInfo => r !== null);
+  const valid = compact(results);
   // Aplicar estrategia de 4 slots estratégicos con sesgo por stats base
   return selectBattleMoves(valid, getStatsObject(pokemon));
 }
@@ -103,6 +104,11 @@ async function fetchSingleMove(queryClient: QueryClient, name: string): Promise<
 // Extrae las 6 estadísticas base (HP, Atk, Def, SpA, SpD, Spe) de la API.
 // atk/def → movimientos physical; spa/spd → movimientos special.
 // spe determina el orden de ataque en cada turno (ver determineFirstAttacker).
+/** Base stat total (suma de todas las stats base). */
+export function getBst(p: PokemonDetail): number {
+  return sum(Object.values(getStatsObject(p)));
+}
+
 export function getStatsObject(p: PokemonDetail): PokemonStats {
   const gs = (name: string) => p.stats.find((s) => s.stat.name === name)?.base_stat || 0;
   return {
@@ -166,7 +172,7 @@ export function scaleStatsArrayByLevel(stats: PokemonStat[], level: number): Pok
  * Stages fuera de [-6, 6] se recortan silenciosamente.
  */
 export function getStageMultiplier(stage: number): number {
-  const bounded = Math.max(-6, Math.min(6, stage));
+  const bounded = clamp(stage, -6, 6);
   if (bounded >= 0) {
     return (2 + bounded) / 2;
   }
@@ -219,7 +225,7 @@ export function applyStatusEffect(
 
       for (const ch of effect.changes) {
         const oldStage = newStages[ch.stat];
-        const clamped = Math.max(-6, Math.min(6, oldStage + ch.change));
+        const clamped = clamp(oldStage + ch.change, -6, 6);
         newStages[ch.stat] = clamped;
 
         if (clamped !== oldStage) {
@@ -583,7 +589,10 @@ function resolveRound(
       const effect = attack.move.effect;
       const isSelfTarget = effect.kind === "heal" || effect.kind === "stat-change";
       const targetIdx = isSelfTarget ? attack.attackerIdx : attack.attackerIdx === 0 ? 1 : 0;
-      if (effect.kind === "ailment" && isStatusImmune(attack.move.type, targetIdx === 0 ? player1Types : player2Types)) {
+      if (
+        effect.kind === "ailment" &&
+        isStatusImmune(attack.move.type, targetIdx === 0 ? player1Types : player2Types)
+      ) {
         steps.push({
           type: "immune",
           attackerIdx: attack.attackerIdx,

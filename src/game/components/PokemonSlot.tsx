@@ -1,5 +1,5 @@
 import { Dialog } from "@base-ui/react";
-import { sumBy } from "es-toolkit/math";
+import { clamp, sumBy } from "es-toolkit/math";
 import { CheckIcon, TargetIcon, Volume2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
@@ -69,7 +69,7 @@ function PokemonCard({ pokemon, slotIndex }: { pokemon: PokemonDetail; slotIndex
           const effectiveValue = s.base_stat;
           const rawValue = pokemon.stats[i].base_stat;
           const abbr = STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
-          const pct = Math.round(Math.min((rawValue / 180) * 100, 100));
+          const pct = Math.round(clamp((rawValue / 180) * 100, 0, 100));
           const col = pct >= 55 ? "#4ade80" : pct >= 38 ? "#60d8a0" : pct >= 25 ? "#f5c842" : "#e63e3e";
           return (
             <div key={s.stat.name} className="srow">

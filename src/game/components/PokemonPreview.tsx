@@ -1,6 +1,6 @@
 import { Progress } from "@base-ui/react";
 import { useQuery } from "@tanstack/react-query";
-import { sumBy } from "es-toolkit/math";
+import { clamp, sumBy } from "es-toolkit/math";
 import { Volume2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
@@ -99,7 +99,7 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
       <div className="prev-stats">
         {pokemon.stats.map((s) => {
           const abbr = STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
-          const pct = Math.round(Math.min((s.base_stat / 180) * 100, 100));
+          const pct = Math.round(clamp((s.base_stat / 180) * 100, 0, 100));
           const col =
             s.base_stat >= 100 ? "#4ade80" : s.base_stat >= 70 ? "#60d8a0" : s.base_stat >= 45 ? "#f5c842" : "#e63e3e";
           return (

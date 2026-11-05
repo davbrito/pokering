@@ -1,10 +1,11 @@
+import { clamp } from "es-toolkit/math";
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { PokemonDetail } from "../../api/pokeapi";
 import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
 import { playPokemonCries, playPokemonCry } from "../audio";
 import { BattleEngine } from "../battle-engine";
-import { getStatsObject } from "../combat";
+import { getBst } from "../combat";
 import { useChosenPokemon, useGameStore } from "../store";
 import type { BattleDamageStep, BattleStatusStep, BattleStep } from "../types";
 import { DamagePopup, type DamagePopupData } from "./DamagePopup";
@@ -227,10 +228,10 @@ export function BattleStage() {
   if (battlePhase !== "battle" && battlePhase !== "result") return null;
 
   const p1Meta = p1Data
-    ? `#${String(p1Data.id).padStart(3, "0")} · Nv.${p1Level} · BST ${Object.values(getStatsObject(p1Data)).reduce((a, b) => a + b, 0)}`
+    ? `#${String(p1Data.id).padStart(3, "0")} · Nv.${p1Level} · BST ${getBst(p1Data)}`
     : "#000 · Nv.? · BST 0";
   const p2Meta = p2Data
-    ? `#${String(p2Data.id).padStart(3, "0")} · Nv.${p2Level} · BST ${Object.values(getStatsObject(p2Data)).reduce((a, b) => a + b, 0)}`
+    ? `#${String(p2Data.id).padStart(3, "0")} · Nv.${p2Level} · BST ${getBst(p2Data)}`
     : "#000 · Nv.? · BST 0";
 
   // Construir datos de PP para los HUDs desde el estado del store
@@ -310,7 +311,7 @@ function PlayerHud({
   meta: string;
   pp: { name: string; pp: number; maxPp: number }[];
 }) {
-  const pct = Math.max(0, Math.min(100, (currentHp / maxHp) * 100));
+  const pct = clamp((currentHp / maxHp) * 100, 0, 100);
 
   const hpColor = () => {
     if (pct >= 50) return "var(--green)";

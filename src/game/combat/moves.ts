@@ -1,3 +1,4 @@
+import { orderBy, sample } from "es-toolkit/array";
 import { random } from "es-toolkit/math";
 import { TYPE_CHART } from "../data";
 import { randomProbability } from "../random";
@@ -131,10 +132,11 @@ function pickBestAttack(
 export function selectBattleMoves(pool: MoveInfo[], stats?: PokemonStats): MoveInfo[] {
   // Ponderación estocástica: pequeño ruido (±5) al comparar poder para que
   // movimientos con potencia similar puedan reordenarse aleatoriamente.
-  const noisySort = (a: MoveInfo, b: MoveInfo) => (b.power ?? 0) + random(-5, 5) - ((a.power ?? 0) + random(-5, 5));
+  // El ruido se calcula una vez por movimiento (un comparador aleatorio sería inconsistente).
+  const byNoisyPower = (moves: MoveInfo[]) => orderBy(moves, [(m) => (m.power ?? 0) + random(-5, 5)], ["desc"]);
 
-  const physical = pool.filter((m) => m.damageClass === "physical").sort(noisySort);
-  const special = pool.filter((m) => m.damageClass === "special").sort(noisySort);
+  const physical = byNoisyPower(pool.filter((m) => m.damageClass === "physical"));
+  const special = byNoisyPower(pool.filter((m) => m.damageClass === "special"));
   const stat = pool.find(
     (m) => m.damageClass === "status" && (m.effect.kind === "stat-change" || m.effect.kind === "heal"),
   );
@@ -151,9 +153,7 @@ export function selectBattleMoves(pool: MoveInfo[], stats?: PokemonStats): MoveI
 
   // ── Ruleta competitiva: elegir al azar del Top 3 ──
   const pickTop = (arr: MoveInfo[]): MoveInfo | undefined => {
-    if (arr.length === 0) return undefined;
-    const top = arr.slice(0, Math.min(3, arr.length));
-    return top[Math.floor(random(0, top.length))];
+    return sample(arr.slice(0, 3));
   };
 
   if (biasPhysical) {

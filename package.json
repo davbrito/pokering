@@ -35,7 +35,7 @@
     "@tanstack/react-start": "latest",
     "@tanstack/router-plugin": "^1.168.48",
     "clsx": "^2.1.1",
-    "es-toolkit": "^1.47.1",
+    "es-toolkit": "^1.53.1",
     "lucide-react": "^1.68.0",
     "motion": "^14.9.1",
     "react": "^19.3.1",

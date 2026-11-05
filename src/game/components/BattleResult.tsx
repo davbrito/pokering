@@ -1,4 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { sum } from "es-toolkit/math";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
@@ -40,8 +41,8 @@ function computeWinner(
   const ls = winnerIdx === 0 ? getStatsObject(poke2) : getStatsObject(poke1);
   const wl = winnerIdx === 0 ? level1 : level2;
   const ll = winnerIdx === 0 ? level2 : level1;
-  const wt = Object.values(ws).reduce((a, b) => a + b, 0);
-  const lt = Object.values(ls).reduce((a, b) => a + b, 0);
+  const wt = sum(Object.values(ws));
+  const lt = sum(Object.values(ls));
   const wpTypes = wp.types.map((t) => t.type.name);
   const lpTypes = lp.types.map((t) => t.type.name);
 
@@ -104,11 +105,7 @@ export function BattleResult() {
       <div id="result-inner">
         <div className="result-card">
           <div className="result-top">
-            <img
-              className="win-art"
-              src={wart}
-              alt={getPokemonName(w.wp, pokemonLanguage)}
-            />
+            <img className="win-art" src={wart} alt={getPokemonName(w.wp, pokemonLanguage)} />
             <div>
               <div className="win-eyebrow">{m.battle_winner_trophy()}</div>
               <div className="win-name">
