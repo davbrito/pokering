@@ -13,7 +13,11 @@ export function GameProvider({ queryClient, children }: { queryClient: QueryClie
   const logic = useMemo(
     () =>
       gameMachine.provide({
-        actors: { prepareBattle: fromPromise(({ input }) => prepareBattle(queryClient, input)) },
+        actors: {
+          prepareBattle: fromPromise(({ input }) =>
+            input ? prepareBattle(queryClient, input) : Promise.reject(new Error("no battle requested")),
+          ),
+        },
       }),
     [queryClient],
   );
@@ -21,13 +25,12 @@ export function GameProvider({ queryClient, children }: { queryClient: QueryClie
 }
 
 export type GamePhase = "selection" | "loading" | "battle" | "result" | "error";
-const PHASE_TAGS: readonly GamePhase[] = ["loading", "battle", "result", "error", "selection"];
 
 export function useGamePhase(): GamePhase {
-  return GameActorContext.useSelector((s) => {
-    for (const tag of PHASE_TAGS) if (s.hasTag(tag)) return tag;
-    return "selection";
-  });
+  // El estado raíz ya es la fase: "selection" | "loading" | "battle" (con subestado) | "result" | "error".
+  return GameActorContext.useSelector((s) =>
+    typeof s.value === "string" ? s.value : Object.keys(s.value)[0],
+  ) as GamePhase;
 }
 
 /** HP/PP derivados (reducer puro sobre los pasos ya reproducidos); la vista no muta nada. */

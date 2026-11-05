@@ -13,6 +13,7 @@ import { PokemonModal } from "../game/components/PokemonModal";
 import { PokemonSlot } from "../game/components/PokemonSlot";
 import { GameActorContext, GameProvider, useGamePhase } from "../game/game-actor";
 import type { Fighter } from "../game/prepare-battle";
+import { randomSeed } from "../game/rng";
 import { useSettingsStore } from "../game/settings-store";
 import { useGameStore, useSelectedFighters } from "../game/store";
 
@@ -36,7 +37,7 @@ function HomeContent() {
   const selected = useSelectedFighters();
   // La máquina decide si START es válido (solo en `selection`) y hay dos luchadores elegidos.
   const canStart = GameActorContext.useSelector(
-    (s) => selected !== null && s.can({ type: "START", fighters: selected }),
+    (s) => selected !== null && s.can({ type: "START", fighters: selected, seed: 0 }),
   );
 
   useEffect(() => {
@@ -46,8 +47,9 @@ function HomeContent() {
   }, [phase]);
 
   const startWith = (fighters: readonly [Fighter, Fighter]) => {
-    // START solo se acepta en `selection`: un doble clic no puede lanzar dos batallas.
-    actorRef.send({ type: "START", fighters });
+    // START no se acepta en `loading`/`battle`: un doble clic no puede lanzar dos batallas.
+    // La semilla la genera quien envía el evento; la máquina no tiene azar propio.
+    actorRef.send({ type: "START", fighters, seed: randomSeed() });
   };
 
   const handleStartBattle = () => {
@@ -69,7 +71,7 @@ function HomeContent() {
     store.selectPokemon(1, id2);
 
     // Sin setTimeout: los luchadores viajan en el evento, la máquina hace el fetch.
-    if (phase !== "selection") actorRef.send({ type: "BACK" });
+    if (phase === "battle") actorRef.send({ type: "BACK" });
     startWith([
       { id: id1, level: level1 },
       { id: id2, level: level2 },
@@ -77,7 +79,7 @@ function HomeContent() {
   };
 
   const goBackToSelection = () => actorRef.send({ type: "BACK" });
-  const retry = () => actorRef.send({ type: "REMATCH" });
+  const retry = () => actorRef.send({ type: "RETRY" });
 
   return (
     <>
@@ -100,6 +102,9 @@ function HomeContent() {
                 <div className="battle-loading">
                   <div className="spinner" />
                   <span className="battle-loading-msg">{m.home_analyzing_moves()}</span>
+                  <button className="battle-btn" type="button" onClick={goBackToSelection}>
+                    {m.home_cancel()}
+                  </button>
                 </div>
               ) : (
                 <div className="battle-btns">

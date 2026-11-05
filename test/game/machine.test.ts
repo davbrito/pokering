@@ -41,14 +41,14 @@ describe("gameMachine", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(prepare).toHaveBeenCalledTimes(1);
     expect(actor.getSnapshot().matches({ battle: "intro" })).toBe(true);
-    expect(actor.getSnapshot().context.seed).toBe(1);
+    expect(actor.getSnapshot().context.request?.seed).toBe(1);
   });
 
   it("plays every step, emits them, and ends in result", async () => {
     const actor = makeActor(async () => prepared);
     const emitted: number[] = [];
     actor.on("step", (e) => emitted.push(e.stepIdx));
-    actor.send({ type: "START", fighters });
+    actor.send({ type: "START", fighters, seed: 1 });
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
     expect(actor.getSnapshot().matches({ battle: "playing" })).toBe(true);
     await vi.advanceTimersByTimeAsync(60_000);
@@ -58,7 +58,7 @@ describe("gameMachine", () => {
 
   it("pause stops the timer and resume continues", async () => {
     const actor = makeActor(async () => prepared);
-    actor.send({ type: "START", fighters });
+    actor.send({ type: "START", fighters, seed: 1 });
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
     actor.send({ type: "PAUSE" });
     await vi.advanceTimersByTimeAsync(60_000);
@@ -71,7 +71,7 @@ describe("gameMachine", () => {
 
   it("TOGGLE_SPEED cycles 1x → 2x → 4x → 1x", async () => {
     const actor = makeActor(async () => prepared);
-    actor.send({ type: "START", fighters });
+    actor.send({ type: "START", fighters, seed: 1 });
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
     const speeds = [] as number[];
     for (let i = 0; i < 3; i++) {
@@ -83,7 +83,7 @@ describe("gameMachine", () => {
 
   it("SKIP jumps to result at the last step", async () => {
     const actor = makeActor(async () => prepared);
-    actor.send({ type: "START", fighters });
+    actor.send({ type: "START", fighters, seed: 1 });
     await vi.advanceTimersByTimeAsync(0);
     actor.send({ type: "SKIP" });
     expect(actor.getSnapshot().value).toBe("result");
@@ -96,13 +96,13 @@ describe("gameMachine", () => {
       if (fail) throw new Error("network");
       return prepared;
     });
-    actor.send({ type: "START", fighters });
+    actor.send({ type: "START", fighters, seed: 1 });
     await vi.advanceTimersByTimeAsync(0);
     expect(actor.getSnapshot().value).toBe("error");
-    expect((actor.getSnapshot().context.error as Error).message).toBe("network");
+    expect(actor.getSnapshot().context.error).toBe("network");
 
     fail = false;
-    actor.send({ type: "REMATCH" });
+    actor.send({ type: "RETRY" });
     await vi.advanceTimersByTimeAsync(0);
     expect(actor.getSnapshot().matches({ battle: "intro" })).toBe(true);
 
@@ -117,9 +117,9 @@ describe("gameMachine", () => {
     actor.send({ type: "START", fighters, seed: 7 });
     await vi.advanceTimersByTimeAsync(0);
     actor.send({ type: "SKIP" });
-    actor.send({ type: "REMATCH" });
+    actor.send({ type: "REMATCH", seed: 8 });
     expect(actor.getSnapshot().value).toBe("loading");
-    expect(actor.getSnapshot().context.seed).not.toBeNull();
+    expect(actor.getSnapshot().context.request).toEqual({ fighters, seed: 8 });
   });
 });
 
@@ -132,11 +132,11 @@ describe("gameMachine tags y clear", () => {
     const clears = vi.fn();
     actor.on("clear", clears);
     expect(actor.getSnapshot().hasTag("selection")).toBe(true);
-    expect(actor.getSnapshot().can({ type: "START", fighters })).toBe(true);
+    expect(actor.getSnapshot().can({ type: "START", fighters, seed: 1 })).toBe(true);
 
-    actor.send({ type: "START", fighters });
+    actor.send({ type: "START", fighters, seed: 1 });
     expect(actor.getSnapshot().hasTag("loading")).toBe(true);
-    expect(actor.getSnapshot().can({ type: "START", fighters })).toBe(false);
+    expect(actor.getSnapshot().can({ type: "START", fighters, seed: 1 })).toBe(false);
 
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
     actor.send({ type: "PAUSE" });
@@ -155,7 +155,7 @@ describe("gameMachine BACK y batalla vacía", () => {
 
   it("BACK durante la batalla vuelve a selección y permite un nuevo START", async () => {
     const actor = makeActor(async () => prepared);
-    actor.send({ type: "START", fighters });
+    actor.send({ type: "START", fighters, seed: 1 });
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
     expect(actor.getSnapshot().matches({ battle: "playing" })).toBe(true);
 
@@ -163,18 +163,18 @@ describe("gameMachine BACK y batalla vacía", () => {
     expect(actor.getSnapshot().value).toBe("selection");
     expect(actor.getSnapshot().context.logs).toEqual([]);
 
-    actor.send({ type: "START", fighters });
+    actor.send({ type: "START", fighters, seed: 1 });
     expect(actor.getSnapshot().value).toBe("loading");
   });
 
   it("BACK también funciona en pausa y durante la intro", async () => {
     const actor = makeActor(async () => prepared);
-    actor.send({ type: "START", fighters });
+    actor.send({ type: "START", fighters, seed: 1 });
     await vi.advanceTimersByTimeAsync(0);
     actor.send({ type: "BACK" });
     expect(actor.getSnapshot().value).toBe("selection");
 
-    actor.send({ type: "START", fighters });
+    actor.send({ type: "START", fighters, seed: 1 });
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
     actor.send({ type: "PAUSE" });
     actor.send({ type: "BACK" });
@@ -185,9 +185,90 @@ describe("gameMachine BACK y batalla vacía", () => {
     const actor = makeActor(async () => ({ ...prepared, steps: [] }));
     const emitted = vi.fn();
     actor.on("step", emitted);
-    actor.send({ type: "START", fighters });
+    actor.send({ type: "START", fighters, seed: 1 });
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
     expect(actor.getSnapshot().value).toBe("error");
     expect(emitted).not.toHaveBeenCalled();
+  });
+});
+
+describe("gameMachine determinismo, RETRY y cancelación", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("RETRY conserva la semilla y limpia el error", async () => {
+    const seeds: number[] = [];
+    let fail = true;
+    const machine = gameMachine.provide({
+      actors: {
+        prepareBattle: fromPromise(async ({ input }) => {
+          seeds.push(input?.seed ?? -1);
+          if (fail) throw new Error("boom");
+          return prepared;
+        }),
+      },
+    });
+    const actor = createActor(machine).start();
+    actor.send({ type: "START", fighters, seed: 42 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(actor.getSnapshot().value).toBe("error");
+    expect(actor.getSnapshot().can({ type: "RETRY" })).toBe(true);
+    expect(actor.getSnapshot().can({ type: "REMATCH", seed: 1 })).toBe(false);
+
+    fail = false;
+    actor.send({ type: "RETRY" });
+    expect(actor.getSnapshot().context.error).toBeNull();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seeds).toEqual([42, 42]);
+  });
+
+  it("misma secuencia de eventos ⇒ mismo contexto (sin azar propio)", async () => {
+    const run = async () => {
+      const actor = makeActor(async () => prepared);
+      actor.send({ type: "START", fighters, seed: 5 });
+      await vi.advanceTimersByTimeAsync(0);
+      actor.send({ type: "SKIP" });
+      actor.send({ type: "REMATCH", seed: 6 });
+      return actor.getSnapshot().context.request;
+    };
+    expect(await run()).toEqual(await run());
+  });
+
+  it("BACK en loading cancela la carga y limpia la batalla anterior", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send({ type: "START", fighters, seed: 1 });
+    await vi.advanceTimersByTimeAsync(0);
+    actor.send({ type: "SKIP" });
+    actor.send({ type: "REMATCH", seed: 2 });
+    const snap = actor.getSnapshot();
+    expect(snap.value).toBe("loading");
+    expect(snap.context.logs).toEqual([]);
+    expect(snap.context.setup).toBeNull();
+
+    actor.send({ type: "BACK" });
+    expect(actor.getSnapshot().value).toBe("selection");
+    expect(actor.getSnapshot().context.request).toBeNull();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(actor.getSnapshot().value).toBe("selection"); // la carga cancelada no resucita
+  });
+
+  it("START se acepta desde result y error, no desde loading ni battle", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send({ type: "START", fighters, seed: 1 });
+    expect(actor.getSnapshot().can({ type: "START", fighters, seed: 2 })).toBe(false);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(actor.getSnapshot().can({ type: "START", fighters, seed: 2 })).toBe(false);
+    actor.send({ type: "SKIP" });
+    expect(actor.getSnapshot().can({ type: "START", fighters, seed: 2 })).toBe(true);
+  });
+
+  it("el contexto (con error) es serializable", async () => {
+    const actor = makeActor(async () => {
+      throw new Error("x");
+    });
+    actor.send({ type: "START", fighters, seed: 1 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(() => JSON.stringify(actor.getPersistedSnapshot())).not.toThrow();
+    expect(actor.getSnapshot().context.error).toBe("x");
   });
 });

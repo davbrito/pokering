@@ -19,13 +19,13 @@ export function BattleStage() {
   const playbackSpeed = GameActorContext.useSelector((s) => s.context.speed);
   const isPaused = GameActorContext.useSelector((s) => s.hasTag("paused"));
   const currentStep = GameActorContext.useSelector((s) => s.context.logs[s.context.stepIdx] ?? null);
-  const fighters = GameActorContext.useSelector((s) => s.context.fighters);
+  const fighters = GameActorContext.useSelector((s) => s.context.request?.fighters ?? null);
   const setup = GameActorContext.useSelector((s) => s.context.setup);
   const view = useBattleView();
   const maxHealths = setup?.maxHp ?? ([100, 100] as const);
   const currentHps = view?.hp ?? maxHealths;
-  const p1Level = fighters[0].level;
-  const p2Level = fighters[1].level;
+  const p1Level = fighters?.[0].level ?? 50;
+  const p2Level = fighters?.[1].level ?? 50;
   const p1Moves = setup?.moves[0] ?? [];
   const p2Moves = setup?.moves[1] ?? [];
   const p1Pp = view?.pp[0] ?? [];
@@ -43,6 +43,15 @@ export function BattleStage() {
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
   const [playingCryIdx, setPlayingCryIdx] = useState<number | null>(null);
 
+  // Temporizadores de efectos visuales: se cancelan en `clear` para que no sobrevivan a la batalla.
+  const timersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const later = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      timersRef.current.delete(id);
+      fn();
+    }, ms);
+    timersRef.current.add(id);
+  }, []);
   const speedRef = useRef(playbackSpeed);
   speedRef.current = playbackSpeed;
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -55,47 +64,50 @@ export function BattleStage() {
 
     if (step.isCrit || step.eff > 1.5) {
       setShakeScreen(true);
-      setTimeout(() => setShakeScreen(false), 350);
+      later(() => setShakeScreen(false), 350);
     }
 
     const popId = crypto.randomUUID();
     setDamagePopups((prev) => [...prev, { id: popId, defIdx, step }]);
-    setTimeout(() => {
+    later(() => {
       setDamagePopups((prev) => prev.filter((p) => p.id !== popId));
     }, 900);
 
-    setTimeout(() => {
+    later(() => {
       if (defIdx === 0) setAnimClass0("");
       else setAnimClass1("");
     }, 400);
   };
 
-  const triggerProjectile = useCallback((atkIdx: number, defIdx: number, moveType: string, onComplete: () => void) => {
-    const atkImg = atkIdx === 0 ? imgRef0.current : imgRef1.current;
-    const defImg = defIdx === 0 ? imgRef0.current : imgRef1.current;
-    const viewport = viewportRef.current;
-    if (!atkImg || !defImg || !viewport) {
-      onComplete();
-      return;
-    }
+  const triggerProjectile = useCallback(
+    (atkIdx: number, defIdx: number, moveType: string, onComplete: () => void) => {
+      const atkImg = atkIdx === 0 ? imgRef0.current : imgRef1.current;
+      const defImg = defIdx === 0 ? imgRef0.current : imgRef1.current;
+      const viewport = viewportRef.current;
+      if (!atkImg || !defImg || !viewport) {
+        onComplete();
+        return;
+      }
 
-    const ra = atkImg.getBoundingClientRect();
-    const rd = defImg.getBoundingClientRect();
-    const rv = viewport.getBoundingClientRect();
+      const ra = atkImg.getBoundingClientRect();
+      const rd = defImg.getBoundingClientRect();
+      const rv = viewport.getBoundingClientRect();
 
-    const sx = ra.left + ra.width / 2 - rv.left;
-    const sy = ra.top + ra.height / 2 - rv.top;
-    const tx = rd.left + rd.width / 2 - rv.left;
-    const ty = rd.top + rd.height / 2 - rv.top;
+      const sx = ra.left + ra.width / 2 - rv.left;
+      const sy = ra.top + ra.height / 2 - rv.top;
+      const tx = rd.left + rd.width / 2 - rv.left;
+      const ty = rd.top + rd.height / 2 - rv.top;
 
-    const pid = crypto.randomUUID();
-    setProjectiles((prev) => [...prev, { id: pid, sx, sy, tx, ty, moveType }]);
-    const animTime = 380 / speedRef.current;
-    setTimeout(() => {
-      setProjectiles((prev) => prev.filter((p) => p.id !== pid));
-      onComplete();
-    }, animTime);
-  }, []);
+      const pid = crypto.randomUUID();
+      setProjectiles((prev) => [...prev, { id: pid, sx, sy, tx, ty, moveType }]);
+      const animTime = 380 / speedRef.current;
+      later(() => {
+        setProjectiles((prev) => prev.filter((p) => p.id !== pid));
+        onComplete();
+      }, animTime);
+    },
+    [later],
+  );
 
   const executeStepVisuals = (step: BattleStep) => {
     if (step.type === "start") {
@@ -120,7 +132,7 @@ export function BattleStage() {
         if (atkIdx === 0) setAnimClass0("lunge-right");
         else setAnimClass1("lunge-left");
         const spd = speedRef.current;
-        setTimeout(() => {
+        later(() => {
           if (atkIdx === 0) setAnimClass0("");
           else setAnimClass1("");
         }, 450 / spd);
@@ -138,7 +150,7 @@ export function BattleStage() {
     if (step.type === "status") {
       const id = crypto.randomUUID();
       setStatusPopups((prev) => [...prev, { id, targetIdx: step.targetIdx, step }]);
-      setTimeout(() => {
+      later(() => {
         setStatusPopups((prev) => prev.filter((p) => p.id !== id));
       }, 1200);
     }
@@ -161,6 +173,9 @@ export function BattleStage() {
 
   const onExecuteStep = useEffectEvent(executeStepVisuals);
   const onClear = useEffectEvent(() => {
+    for (const id of timersRef.current) clearTimeout(id);
+    timersRef.current.clear();
+    setShakeScreen(false);
     setAnimClass0("");
     setAnimClass1("");
     setDamagePopups([]);
@@ -178,6 +193,16 @@ export function BattleStage() {
     };
   }, [actorRef]);
 
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      for (const id of timers) clearTimeout(id);
+      timers.clear();
+    };
+  }, []);
+
+  const canTogglePause = GameActorContext.useSelector((s) => s.can({ type: "PAUSE" }) || s.can({ type: "RESUME" }));
+  const canToggleSpeed = GameActorContext.useSelector((s) => s.can({ type: "TOGGLE_SPEED" }));
   const togglePause = () => actorRef.send({ type: isPaused ? "RESUME" : "PAUSE" });
   const toggleSpeed = () => actorRef.send({ type: "TOGGLE_SPEED" });
   const skipCinematics = () => actorRef.send({ type: "SKIP" });
@@ -240,10 +265,10 @@ export function BattleStage() {
           <RenderStepContent step={currentStep} p1Name={p1Name} p2Name={p2Name} />
         </div>
         <div className="stage-controls">
-          <button type="button" className="ctrl-btn" onClick={togglePause}>
+          <button type="button" className="ctrl-btn" onClick={togglePause} disabled={!canTogglePause}>
             {isPaused ? "Reanudar" : "Pausa"}
           </button>
-          <button type="button" className="ctrl-btn" onClick={toggleSpeed}>
+          <button type="button" className="ctrl-btn" onClick={toggleSpeed} disabled={!canToggleSpeed}>
             Velocidad {playbackSpeed}x
           </button>
           <button type="button" className="ctrl-btn" onClick={skipCinematics}>

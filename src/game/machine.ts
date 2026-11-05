@@ -1,41 +1,50 @@
-import { assertEvent, assign, emit, fromPromise, setup } from "xstate";
+import { assign, emit, fromPromise, setup } from "xstate";
 import { type BattleSetup, stepDuration } from "./battle-state";
 import type { Fighter, PrepareBattleInput, PreparedBattle } from "./prepare-battle";
-import { randomSeed } from "./rng";
 import type { BattleStep } from "./types";
 
 export const SPEEDS = [1, 2, 4] as const;
 export type Speed = (typeof SPEEDS)[number];
 
 export interface GameContext {
-  /** Luchadores de la batalla en curso. Hasta el primer `START` son valores por defecto sin significado. */
-  fighters: readonly [Fighter, Fighter];
-  seed: number;
+  /** Qué batalla se carga/reproduce (luchadores + semilla). `null` mientras no hay batalla. */
+  request: PrepareBattleInput | null;
   setup: BattleSetup | null;
   logs: BattleStep[];
   stepIdx: number;
   speed: Speed;
-  error: unknown;
+  /** Mensaje del último fallo de carga (string: el snapshot sigue siendo serializable). */
+  error: string | null;
 }
 
 export type GameEvent =
-  | { type: "START"; fighters: readonly [Fighter, Fighter]; seed?: number }
+  /** La semilla viaja en el evento: la máquina no genera azar, así que los eventos reproducen la batalla. */
+  | { type: "START"; fighters: readonly [Fighter, Fighter]; seed: number }
   | { type: "PAUSE" }
   | { type: "RESUME" }
   | { type: "TOGGLE_SPEED" }
   | { type: "SKIP" }
   | { type: "BACK" }
-  | { type: "REMATCH" };
+  /** Revancha con los mismos luchadores y una semilla nueva (solo desde `result`). */
+  | { type: "REMATCH"; seed: number }
+  /** Reintenta la carga con la misma batalla (solo desde `error`). */
+  | { type: "RETRY" };
 
 /** Emitido cada vez que un paso entra en escena, para disparar efectos visuales/sonoros. */
 export type GameEmitted = { type: "step"; step: BattleStep; stepIdx: number } | { type: "clear" };
 
-const DEFAULT_FIGHTERS: readonly [Fighter, Fighter] = [
-  { id: 1, level: 50 },
-  { id: 4, level: 50 },
-];
-
 export const INTRO_DELAY_MS = 400;
+
+const startTransition = {
+  target: "loading",
+  actions: {
+    type: "setRequest",
+    params: ({ event }: { event: Extract<GameEvent, { type: "START" }> }) => ({
+      fighters: event.fighters,
+      seed: event.seed,
+    }),
+  },
+} as const;
 
 export const gameMachine = setup({
   types: {
@@ -45,7 +54,7 @@ export const gameMachine = setup({
   },
   actors: {
     // Implementación a proveer con `gameMachine.provide(...)` (inyecta el queryClient; ver GameProvider).
-    prepareBattle: fromPromise<PreparedBattle, PrepareBattleInput>(async () => {
+    prepareBattle: fromPromise<PreparedBattle, PrepareBattleInput | null>(async () => {
       throw new Error("prepareBattle no fue provisto");
     }),
   },
@@ -58,15 +67,18 @@ export const gameMachine = setup({
   },
   guards: {
     isLastStep: ({ context }) => context.stepIdx >= context.logs.length - 1,
+    hasSteps: (_, params: PreparedBattle) => params.steps.length > 0,
   },
   actions: {
-    prepareFromStart: assign(({ event }) => {
-      assertEvent(event, "START");
-      return { fighters: event.fighters, seed: event.seed ?? randomSeed(), error: null };
-    }),
-    newSeed: assign({ seed: () => randomSeed(), error: () => null }),
+    setRequest: assign((_, params: PrepareBattleInput) => ({ request: params })),
+    withNewSeed: assign(({ context }, params: { seed: number }) => ({
+      request: context.request && { ...context.request, seed: params.seed },
+    })),
+    clearBattleData: assign({ setup: null, logs: [], stepIdx: 0, speed: 1, error: null }),
     storeBattle: assign((_, params: PreparedBattle) => ({ setup: params.setup, logs: params.steps, stepIdx: 0 })),
-    storeError: assign((_, params: { error: unknown }) => ({ error: params.error })),
+    storeError: assign((_, params: { error: unknown }) => ({
+      error: params.error instanceof Error ? params.error.message : String(params.error),
+    })),
     nextStep: assign({ stepIdx: ({ context }) => context.stepIdx + 1 }),
     goToLastStep: assign({ stepIdx: ({ context }) => Math.max(0, context.logs.length - 1) }),
     toggleSpeed: assign({
@@ -78,13 +90,12 @@ export const gameMachine = setup({
       step: context.logs[context.stepIdx],
       stepIdx: context.stepIdx,
     })),
-    resetBattle: assign({ setup: null, logs: [], stepIdx: 0, speed: 1, error: null }),
+    resetBattle: assign({ request: null, setup: null, logs: [], stepIdx: 0, speed: 1, error: null }),
   },
 }).createMachine({
   id: "game",
   context: () => ({
-    fighters: DEFAULT_FIGHTERS,
-    seed: 0,
+    request: null,
     setup: null,
     logs: [],
     stepIdx: 0,
@@ -95,21 +106,20 @@ export const gameMachine = setup({
   states: {
     selection: {
       tags: ["selection"],
-      on: { START: { target: "loading", actions: "prepareFromStart" } },
+      on: { START: startTransition },
     },
     loading: {
       tags: ["loading"],
-      entry: "emitClear",
+      entry: ["clearBattleData", "emitClear"],
+      // Salir del estado cancela el `invoke`: el usuario nunca queda atascado si la API tarda.
+      on: { BACK: { target: "selection", actions: "resetBattle" } },
       invoke: {
         id: "prepareBattle",
         src: "prepareBattle",
-        input: ({ context }) => ({
-          fighters: context.fighters,
-          seed: context.seed,
-        }),
+        input: ({ context }) => context.request,
         onDone: [
           {
-            guard: ({ event }) => event.output.steps.length > 0,
+            guard: { type: "hasSteps", params: ({ event }) => event.output },
             target: "battle",
             actions: { type: "storeBattle", params: ({ event }) => event.output },
           },
@@ -127,7 +137,7 @@ export const gameMachine = setup({
       initial: "intro",
       on: {
         SKIP: { target: "result", actions: "goToLastStep" },
-        BACK: { target: "#game.selection", actions: "resetBattle" },
+        BACK: { target: "#game.selection", actions: ["resetBattle", "emitClear"] },
       },
       states: {
         intro: {
@@ -159,14 +169,19 @@ export const gameMachine = setup({
       entry: "emitClear",
       on: {
         BACK: { target: "selection", actions: "resetBattle" },
-        REMATCH: { target: "loading", actions: "newSeed" },
+        START: startTransition,
+        REMATCH: {
+          target: "loading",
+          actions: { type: "withNewSeed", params: ({ event }) => ({ seed: event.seed }) },
+        },
       },
     },
     error: {
       tags: ["error"],
       on: {
         BACK: { target: "selection", actions: "resetBattle" },
-        REMATCH: { target: "loading", actions: "newSeed" },
+        START: startTransition,
+        RETRY: "loading",
       },
     },
   },

@@ -5,6 +5,7 @@ import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { getEffectiveness } from "../combat/moves";
 import { GameActorContext, useGamePhase } from "../game-actor";
+import { randomSeed } from "../rng";
 import { useSettingsStore } from "../settings-store";
 import { useChosenPokemon } from "../store";
 import type { BattleStep, PokemonStats } from "../types";
@@ -79,13 +80,13 @@ export function BattleResult() {
   const actorRef = GameActorContext.useActorRef();
   const battlePhase = useGamePhase();
   const battleSteps = GameActorContext.useSelector((s) => s.context.logs);
-  const fighters = GameActorContext.useSelector((s) => s.context.fighters);
+  const fighters = GameActorContext.useSelector((s) => s.context.request?.fighters ?? null);
   const { chosen } = useChosenPokemon();
-  const level1 = fighters[0].level;
-  const level2 = fighters[1].level;
+  const level1 = fighters?.[0].level ?? 50;
+  const level2 = fighters?.[1].level ?? 50;
   const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
 
-  const handleRestart = () => actorRef.send({ type: "REMATCH" });
+  const handleRestart = () => actorRef.send({ type: "REMATCH", seed: randomSeed() });
 
   if (battlePhase !== "result") return null;
 
