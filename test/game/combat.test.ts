@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { determineFirstAttacker, generateBattleSteps, getStageMultiplier, getStatsObject } from "#/game/combat.ts";
-import { createGameContext, getGameContext, runWithGameContext, runWithSeed } from "#/game/context.ts";
 import { createRng } from "#/game/rng.ts";
 import type { MoveInfo, StatStages } from "#/game/types.ts";
 
@@ -178,22 +177,20 @@ describe("determinismo con semilla", () => {
   const run = (seed: number) => {
     const a = makeTestPokemon({ name: "a" });
     const b = makeTestPokemon({ name: "b" });
-    return runWithSeed(seed, () =>
-      generateBattleSteps(
-        a,
-        b,
-        getStatsObject(a),
-        getStatsObject(b),
-        200,
-        200,
-        moves,
-        moves,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        getGameContext().rng,
-      ),
+    return generateBattleSteps(
+      a,
+      b,
+      getStatsObject(a),
+      getStatsObject(b),
+      200,
+      200,
+      moves,
+      moves,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      createRng(seed),
     );
   };
 
@@ -204,18 +201,5 @@ describe("determinismo con semilla", () => {
   it("semillas distintas producen logs distintos", () => {
     const logs = new Set([1, 2, 3, 4, 5].map((s) => JSON.stringify(run(s))));
     expect(logs.size).toBeGreaterThan(1);
-  });
-});
-
-describe("runWithGameContext", () => {
-  it("admite anidamiento y restaura el contexto anterior", () => {
-    const outer = createGameContext(1);
-    runWithGameContext(outer, () => {
-      runWithGameContext(createGameContext(2), () => {
-        expect(getGameContext().seed).toBe(2);
-      });
-      expect(getGameContext().seed).toBe(1);
-    });
-    expect(() => getGameContext()).toThrow();
   });
 });

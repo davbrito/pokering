@@ -4,8 +4,7 @@ import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { pokemonRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
 import { fetchPokemonMovePool, generateBattleSteps, getStatsObject, scaleStatsArrayByLevel } from "./combat";
 import { selectBattleMoves } from "./combat/moves";
-import { createGameContext, getGameContext, runWithGameContext } from "./context";
-import { randomSeed } from "./rng";
+import { createRng, randomSeed } from "./rng";
 import type { BattleStep, MoveInfo } from "./types";
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -17,7 +16,7 @@ type BattlePhase = "selection" | "battle" | "result";
 interface BattleState {
   phase: BattlePhase;
   logs: BattleStep[];
-  /** Semilla de la batalla actual, para depuración. Por sí sola no reproduce la batalla (movimientos y niveles vienen de fuera). */
+  /** Semilla de la batalla actual (por si se necesita a futuro; por sí sola no reproduce la batalla). */
   seed: number | null;
   currentStepIdx: number;
   playbackSpeed: number;
@@ -160,8 +159,7 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => {
 
       setLoading(true);
       try {
-        // El fetch es async (unctx pierde el contexto tras un await): se hace antes,
-        // y toda la parte aleatoria se ejecuta de forma síncrona dentro del contexto.
+        // Primero el fetch async del pool; el azar usa un rng derivado de la seed (pasado por parámetro).
         const [pool1, pool2] = await Promise.all([
           fetchPokemonMovePool(queryClient, poke1),
           fetchPokemonMovePool(queryClient, poke2),
@@ -178,27 +176,24 @@ export const useGameStore = create<GameState & GameActions>()((set, get) => {
         const mh1 = scaled1.find((s) => s.stat.name === "hp")?.base_stat ?? 100;
         const mh2 = scaled2.find((s) => s.stat.name === "hp")?.base_stat ?? 100;
 
-        const { p1Moves, p2Moves, steps } = runWithGameContext(createGameContext(seed), () => {
-          const { rng } = getGameContext();
-          const p1Moves = selectBattleMoves(pool1, s1, rng);
-          const p2Moves = selectBattleMoves(pool2, s2, rng);
-          const steps = generateBattleSteps(
-            poke1,
-            poke2,
-            s1,
-            s2,
-            mh1,
-            mh2,
-            p1Moves,
-            p2Moves,
-            undefined,
-            undefined,
-            lv1,
-            lv2,
-            rng,
-          );
-          return { p1Moves, p2Moves, steps };
-        });
+        const rng = createRng(seed);
+        const p1Moves = selectBattleMoves(pool1, s1, rng);
+        const p2Moves = selectBattleMoves(pool2, s2, rng);
+        const steps = generateBattleSteps(
+          poke1,
+          poke2,
+          s1,
+          s2,
+          mh1,
+          mh2,
+          p1Moves,
+          p2Moves,
+          undefined,
+          undefined,
+          lv1,
+          lv2,
+          rng,
+        );
 
         set((state) => ({
           players: {
