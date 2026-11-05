@@ -1,11 +1,10 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { heyApiPlugin } from "@hey-api/vite-plugin";
 import { paraglideVitePlugin } from "@inlang/paraglide-js";
-import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
 import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 const POKEAPI_SCHEMA_URL = "https://raw.githubusercontent.com/PokeAPI/pokeapi/refs/heads/master/openapi.yml";
@@ -33,7 +32,6 @@ export default defineConfig({
         enabled: true,
       },
     }),
-    react(),
-    babel({ presets: [reactCompilerPreset()] }),
+    react({ compiler: { logDiagnostics: true } }),
   ],
 });

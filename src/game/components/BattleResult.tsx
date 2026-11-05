@@ -80,6 +80,7 @@ export function BattleResult() {
   const { chosen } = useChosenPokemon();
   const level1 = useGameStore((s) => s.players.player1.level);
   const level2 = useGameStore((s) => s.players.player2.level);
+  const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
   const queryClient = useQueryClient();
 
   const handleRestart = async () => {
@@ -106,7 +107,7 @@ export function BattleResult() {
             <img
               className="win-art"
               src={wart}
-              alt={getPokemonName(w.wp, useSettingsStore.getState().pokemonLanguage)}
+              alt={getPokemonName(w.wp, pokemonLanguage)}
             />
             <div>
               <div className="win-eyebrow">{m.battle_winner_trophy()}</div>

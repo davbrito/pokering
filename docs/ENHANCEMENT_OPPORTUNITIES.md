@@ -40,17 +40,9 @@ The `TYPE_TAB_COLORS` object in `data.ts` defines colors for all 18 types (+ "al
 
 ---
 
-### 3. React Compiler Plugin May Cause Build Issues
+### 3. React Compiler Uses Experimental Oxc Support
 
-`babel-plugin-react-compiler` is installed as a dev dependency and configured in `vite.config.ts`:
-
-```ts
-babel({ presets: [reactCompilerPreset()] })
-```
-
-The React compiler (former React Forget) requires strict coding patterns (no mutating state, proper hook rules, stable component types). If the codebase doesn't follow these patterns — particularly the Zustand store mutations and the complex animation logic in `BattleStage.tsx` — it may produce incorrect compiled output or build warnings/errors.
-
-**Suggested fix:** Either ensure all components follow compiler-safe patterns (use `useCallback`/`useMemo` properly, avoid closures with changing values), or remove the compiler plugin if it's not being actively validated in CI.
+The React Compiler is enabled through `@vitejs/plugin-react`'s native Oxc integration in `vite.config.ts`. This removes the Babel transform previously used for compilation. The Oxc integration is experimental, so keep an eye on compiler diagnostics and verify behavior in production builds.
 
 ---
 
