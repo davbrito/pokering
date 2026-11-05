@@ -1,12 +1,12 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { sum } from "es-toolkit/math";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { getEffectiveness } from "../combat/moves";
+import { GameActorContext, useGamePhase } from "../game-actor";
 import { useSettingsStore } from "../settings-store";
-import { useChosenPokemon, useGameStore } from "../store";
+import { useChosenPokemon } from "../store";
 import type { BattleStep, PokemonStats } from "../types";
 import { getPokemonName, PokemonName } from "./PokemonName";
 import { RenderStepContent } from "./renderStepContent";
@@ -76,17 +76,16 @@ const statKeys = ["hp", "atk", "def", "spa", "spd", "spe"] as const;
 const statLabels = ["HP", "ATK", "DEF", "SpA", "SpD", "VEL"];
 
 export function BattleResult() {
-  const battlePhase = useGameStore((s) => s.battle.phase);
-  const battleSteps = useGameStore((s) => s.battle.logs);
+  const actorRef = GameActorContext.useActorRef();
+  const battlePhase = useGamePhase();
+  const battleSteps = GameActorContext.useSelector((s) => s.context.logs);
+  const fighters = GameActorContext.useSelector((s) => s.context.fighters);
   const { chosen } = useChosenPokemon();
-  const level1 = useGameStore((s) => s.players.player1.level);
-  const level2 = useGameStore((s) => s.players.player2.level);
+  const level1 = fighters?.[0].level ?? 50;
+  const level2 = fighters?.[1].level ?? 50;
   const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
-  const queryClient = useQueryClient();
 
-  const handleRestart = async () => {
-    await useGameStore.getState().startBattle(queryClient);
-  };
+  const handleRestart = () => actorRef.send({ type: "REMATCH" });
 
   if (battlePhase !== "result") return null;
 

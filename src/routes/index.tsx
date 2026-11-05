@@ -10,63 +10,82 @@ import { BattleResult } from "../game/components/BattleResult";
 import { BattleStage } from "../game/components/BattleStage";
 import { PokemonModal } from "../game/components/PokemonModal";
 import { PokemonSlot } from "../game/components/PokemonSlot";
+import { GameActorContext, useGamePhase } from "../game/game-actor";
+import type { Fighter } from "../game/prepare-battle";
 import { useSettingsStore } from "../game/settings-store";
-import { useBothReady, useChosenPokemon, useGameStore } from "../game/store";
+import { useBothReady, useGameStore } from "../game/store";
 
 export const Route = createFileRoute("/")({
   component: Home,
 });
 
 function Home() {
-  const battlePhase = useGameStore((s) => s.battle.phase);
-  const isLoadingMoves = useGameStore((s) => s.battle.isLoadingMoves);
-  const bothReady = useBothReady();
-  const { chosen } = useChosenPokemon();
-
   const { queryClient } = Route.useRouteContext();
+  return (
+    <GameActorContext.Provider options={{ input: { queryClient } }}>
+      <HomeContent />
+    </GameActorContext.Provider>
+  );
+}
 
-  const handleStartBattle = async () => {
-    const poke1 = chosen[0];
-    const poke2 = chosen[1];
-    if (!poke1 || !poke2) return;
-    await useGameStore.getState().startBattle(queryClient);
-    setTimeout(() => {
-      const stage = document.getElementById("stageContainer");
-      stage?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 100);
+function scrollToStage() {
+  setTimeout(() => {
+    document.getElementById("stageContainer")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 100);
+}
+
+function HomeContent() {
+  const actorRef = GameActorContext.useActorRef();
+  const phase = useGamePhase();
+  const isLoadingMoves = phase === "loading";
+  const bothReady = useBothReady();
+
+  const startWith = (fighters: readonly [Fighter, Fighter]) => {
+    // START solo se acepta en `selection`: un doble clic no puede lanzar dos batallas.
+    actorRef.send({ type: "START", fighters });
+    scrollToStage();
+  };
+
+  const handleStartBattle = () => {
+    const { player1, player2 } = useGameStore.getState().players;
+    if (player1.chosenId === null || player2.chosenId === null) return;
+    startWith([
+      { id: player1.chosenId, level: player1.level },
+      { id: player2.chosenId, level: player2.level },
+    ]);
   };
 
   const randomBattle = () => {
     const store = useGameStore.getState();
-    // Pick random levels
     const baseLevel = randomInt(20, 80);
-    const level1 = baseLevel + randomInt(-10, 10);
-    const level2 = baseLevel + randomInt(-10, 10);
-    store.setLevel(0, clamp(level1, 1, 100));
-    store.setLevel(1, clamp(level2, 1, 100));
-
-    // Pick random Pokémon if not both selected
+    const level1 = clamp(baseLevel + randomInt(-10, 10), 1, 100);
+    const level2 = clamp(baseLevel + randomInt(-10, 10), 1, 100);
     const id1 = randomInt(1, 151);
     let id2 = randomInt(1, 151);
-    // Avoid same Pokémon
     while (id2 === id1) id2 = randomInt(1, 151);
+
+    store.setLevel(0, level1);
+    store.setLevel(1, level2);
     store.selectPokemon(0, id1);
     store.selectPokemon(1, id2);
 
-    // Small delay to let React Query fetch the Pokémon, then start
-    setTimeout(() => handleStartBattle(), 100);
+    // Sin setTimeout: los luchadores viajan en el evento, la máquina hace el fetch.
+    if (phase !== "selection") actorRef.send({ type: "BACK" });
+    startWith([
+      { id: id1, level: level1 },
+      { id: id2, level: level2 },
+    ]);
   };
 
-  const goBackToSelection = () => {
-    useGameStore.getState().setBattlePhase("selection");
-  };
+  const goBackToSelection = () => actorRef.send({ type: "BACK" });
+  const retry = () => actorRef.send({ type: "REMATCH" });
 
   return (
     <>
       <div className="wrap isolate">
         <Header />
 
-        {battlePhase === "selection" ? (
+        {phase === "selection" || phase === "loading" ? (
           <>
             <div className="arena-grid" id="arenaGrid">
               <PokemonSlot index={0} label={m.home_fighter_1()} />
@@ -106,6 +125,16 @@ function Home() {
               )}
             </div>
           </>
+        ) : phase === "error" ? (
+          <div className="battle-section flex items-center justify-center gap-3" role="alert">
+            <span>{m.home_error_title()}</span>
+            <button className="battle-btn" type="button" onClick={retry}>
+              {m.home_error_retry()}
+            </button>
+            <button className="battle-btn" type="button" onClick={goBackToSelection}>
+              {m.home_error_back()}
+            </button>
+          </div>
         ) : (
           <div className="battle-section flex items-center justify-center gap-3">
             <button className="battle-btn" type="button" onClick={goBackToSelection}>

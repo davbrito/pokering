@@ -4,9 +4,9 @@ import type { PokemonDetail } from "../../api/pokeapi";
 import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
 import { playPokemonCries, playPokemonCry } from "../audio";
-import { BattleEngine } from "../battle-engine";
 import { getBst } from "../combat";
-import { useChosenPokemon, useGameStore } from "../store";
+import { GameActorContext, useBattleView, useGamePhase } from "../game-actor";
+import { useChosenPokemon } from "../store";
 import type { BattleDamageStep, BattleStatusStep, BattleStep } from "../types";
 import { DamagePopup, type DamagePopupData } from "./DamagePopup";
 import { usePokemonName } from "./PokemonName";
@@ -14,20 +14,22 @@ import { type Projectile, ProjectileFx } from "./ProjectileFx";
 import { RenderStatusContent, RenderStepContent } from "./renderStepContent";
 
 export function BattleStage() {
-  const playbackSpeed = useGameStore((s) => s.battle.playbackSpeed);
-  const currentStep = useGameStore((s) => s.battle.logs[s.battle.currentStepIdx] ?? null);
-  const players = useGameStore((s) => s.players);
-  const maxHealths = [players.player1.maxHealth, players.player2.maxHealth] as const;
-  const currentHps = [players.player1.currentHp, players.player2.currentHp] as const;
-  const isPaused = useGameStore((s) => s.battle.isPaused);
-  const battleSteps = useGameStore((s) => s.battle.logs);
-  const battlePhase = useGameStore((s) => s.battle.phase);
-  const p1Level = useGameStore((s) => s.players.player1.level);
-  const p2Level = useGameStore((s) => s.players.player2.level);
-  const p1Moves = useGameStore((s) => s.players.player1.moves);
-  const p2Moves = useGameStore((s) => s.players.player2.moves);
-  const p1Pp = useGameStore((s) => s.players.player1.pp);
-  const p2Pp = useGameStore((s) => s.players.player2.pp);
+  const actorRef = GameActorContext.useActorRef();
+  const battlePhase = useGamePhase();
+  const playbackSpeed = GameActorContext.useSelector((s) => s.context.speed);
+  const isPaused = GameActorContext.useSelector((s) => s.matches({ battle: "paused" }));
+  const currentStep = GameActorContext.useSelector((s) => s.context.logs[s.context.stepIdx] ?? null);
+  const fighters = GameActorContext.useSelector((s) => s.context.fighters);
+  const setup = GameActorContext.useSelector((s) => s.context.setup);
+  const view = useBattleView();
+  const maxHealths = setup?.maxHp ?? ([100, 100] as const);
+  const currentHps = view?.hp ?? maxHealths;
+  const p1Level = fighters?.[0].level ?? 50;
+  const p2Level = fighters?.[1].level ?? 50;
+  const p1Moves = setup?.moves[0] ?? [];
+  const p2Moves = setup?.moves[1] ?? [];
+  const p1Pp = view?.pp[0] ?? [];
+  const p2Pp = view?.pp[1] ?? [];
   const { chosen } = useChosenPokemon();
   const [p1Data, p2Data] = chosen;
   const p1Name = usePokemonName(p1Data, "Luchador 1");
@@ -41,18 +43,11 @@ export function BattleStage() {
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
   const [playingCryIdx, setPlayingCryIdx] = useState<number | null>(null);
 
+  const speedRef = useRef(playbackSpeed);
+  speedRef.current = playbackSpeed;
   const viewportRef = useRef<HTMLDivElement>(null);
   const imgRef0 = useRef<HTMLImageElement | null>(null);
   const imgRef1 = useRef<HTMLImageElement | null>(null);
-  const engineRef = useRef<BattleEngine | null>(null);
-
-  const startedRef = useRef(false);
-
-  const finishBattle = () => {
-    useGameStore.getState().setBattlePhase("result");
-    setAnimClass0("");
-    setAnimClass1("");
-  };
 
   const applyImpact = (defIdx: number, step: BattleDamageStep) => {
     if (defIdx === 0) setAnimClass0("hit-shake");
@@ -68,11 +63,6 @@ export function BattleStage() {
     setTimeout(() => {
       setDamagePopups((prev) => prev.filter((p) => p.id !== popId));
     }, 900);
-
-    const store = useGameStore.getState();
-    const hps: [number, number] = [store.players.player1.currentHp, store.players.player2.currentHp];
-    hps[defIdx] = step.currentHp;
-    store.setCurrentHps(hps);
 
     setTimeout(() => {
       if (defIdx === 0) setAnimClass0("");
@@ -100,7 +90,7 @@ export function BattleStage() {
 
     const pid = crypto.randomUUID();
     setProjectiles((prev) => [...prev, { id: pid, sx, sy, tx, ty, moveType }]);
-    const animTime = 380 / useGameStore.getState().battle.playbackSpeed;
+    const animTime = 380 / speedRef.current;
     setTimeout(() => {
       setProjectiles((prev) => prev.filter((p) => p.id !== pid));
       onComplete();
@@ -109,8 +99,6 @@ export function BattleStage() {
 
   const executeStepVisuals = (step: BattleStep) => {
     if (step.type === "start") {
-      const p = useGameStore.getState().players;
-      useGameStore.getState().setCurrentHps([p.player1.maxHealth, p.player2.maxHealth]);
       playPokemonCries(p1Data, p2Data, 1200, {
         onP1Play: {
           onPlay: () => setPlayingCryIdx(0),
@@ -126,24 +114,12 @@ export function BattleStage() {
       const atkIdx = step.attackerIdx;
       const defIdx = atkIdx === 0 ? 1 : 0;
 
-      // Descontar PP en el store
-      if (step.move.pp > 0) {
-        const store = useGameStore.getState();
-        const playerKey = atkIdx === 0 ? "player1" : "player2";
-        const pp = [...store.players[playerKey].pp];
-        const moveIdx = store.players[playerKey].moves.findIndex((m) => m.name === step.move.name);
-        if (moveIdx !== -1 && pp[moveIdx] > 0) {
-          pp[moveIdx]--;
-          store.setPlayerPp(atkIdx, pp);
-        }
-      }
-
       if (step.move.damageClass === "physical") {
         setAnimClass0("");
         setAnimClass1("");
         if (atkIdx === 0) setAnimClass0("lunge-right");
         else setAnimClass1("lunge-left");
-        const spd = useGameStore.getState().battle.playbackSpeed;
+        const spd = speedRef.current;
         setTimeout(() => {
           if (atkIdx === 0) setAnimClass0("");
           else setAnimClass1("");
@@ -184,46 +160,31 @@ export function BattleStage() {
   };
 
   const onExecuteStep = useEffectEvent(executeStepVisuals);
-  const onFinish = useEffectEvent(finishBattle);
 
-  // Initialize engine once
+  // Efectos visuales/sonoros: la máquina emite cada paso al entrar en escena.
   useEffect(() => {
-    const engine = new BattleEngine({ onExecuteStep, onFinish });
-    engineRef.current = engine;
-    return () => engine.stop();
-  }, []);
+    const sub = actorRef.on("step", ({ step }) => onExecuteStep(step));
+    return () => sub.unsubscribe();
+  }, [actorRef]);
 
-  // Start playback when battle phase changes
+  // Al empezar una batalla nueva, limpiar restos visuales.
   useEffect(() => {
-    if (battlePhase === "battle" && battleSteps.length > 0 && !startedRef.current) {
-      startedRef.current = true;
+    if (battlePhase === "loading" || battlePhase === "selection") {
       setAnimClass0("");
       setAnimClass1("");
       setDamagePopups([]);
       setStatusPopups([]);
       setProjectiles([]);
-      const timer = setTimeout(() => engineRef.current?.start(0), 400);
-      return () => clearTimeout(timer);
     }
-    if (battlePhase !== "battle") startedRef.current = false;
-    return undefined;
-  }, [battlePhase, battleSteps.length]);
+    if (battlePhase === "result") {
+      setAnimClass0("");
+      setAnimClass1("");
+    }
+  }, [battlePhase]);
 
-  const togglePause = () => {
-    const store = useGameStore.getState();
-    store.setIsPaused(!store.battle.isPaused);
-  };
-
-  const toggleSpeed = () => {
-    const store = useGameStore.getState();
-    const b = useGameStore.getState().battle;
-    store.setPlaybackSpeed(b.playbackSpeed === 4 ? 1 : ((b.playbackSpeed * 2) as 1 | 2 | 4));
-  };
-  const skipCinematics = () => {
-    engineRef.current?.stop();
-    useGameStore.getState().setIsPaused(false);
-    finishBattle();
-  };
+  const togglePause = () => actorRef.send({ type: isPaused ? "RESUME" : "PAUSE" });
+  const toggleSpeed = () => actorRef.send({ type: "TOGGLE_SPEED" });
+  const skipCinematics = () => actorRef.send({ type: "SKIP" });
 
   if (battlePhase !== "battle" && battlePhase !== "result") return null;
 
