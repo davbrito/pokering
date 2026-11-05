@@ -6,6 +6,7 @@ import { getArtworkUrl } from "../api";
 import { playPokemonCries, playPokemonCry } from "../audio";
 import { getBst } from "../combat";
 import { GameActorContext, useBattleView, useGamePhase } from "../game-actor";
+import { nextSpeed } from "../machine";
 import { useChosenPokemon } from "../store";
 import type { BattleDamageStep, BattleStatusStep, BattleStep } from "../types";
 import { DamagePopup, type DamagePopupData } from "./DamagePopup";
@@ -18,9 +19,9 @@ export function BattleStage() {
   const battlePhase = useGamePhase();
   const playbackSpeed = GameActorContext.useSelector((s) => s.context.speed);
   const isPaused = GameActorContext.useSelector((s) => s.hasTag("paused"));
-  const currentStep = GameActorContext.useSelector((s) => s.context.logs[s.context.stepIdx] ?? null);
-  const fighters = GameActorContext.useSelector((s) => s.context.request?.fighters ?? null);
-  const setup = GameActorContext.useSelector((s) => s.context.setup);
+  const currentStep = GameActorContext.useSelector((s) => s.context.prepared?.steps[s.context.stepIdx] ?? null);
+  const fighters = GameActorContext.useSelector((s) => s.context.match?.fighters ?? null);
+  const setup = GameActorContext.useSelector((s) => s.context.prepared?.setup ?? null);
   const view = useBattleView();
   const maxHealths = setup?.maxHp ?? ([100, 100] as const);
   const currentHps = view?.hp ?? maxHealths;
@@ -185,8 +186,8 @@ export function BattleStage() {
 
   // Efectos visuales/sonoros: la máquina emite cada paso al entrar en escena.
   useEffect(() => {
-    const stepSub = actorRef.on("step", ({ step }) => onExecuteStep(step));
-    const clearSub = actorRef.on("clear", () => onClear());
+    const stepSub = actorRef.on("step.played", ({ step }) => onExecuteStep(step));
+    const clearSub = actorRef.on("battle.ended", () => onClear());
     return () => {
       stepSub.unsubscribe();
       clearSub.unsubscribe();
@@ -201,11 +202,13 @@ export function BattleStage() {
     };
   }, []);
 
-  const canTogglePause = GameActorContext.useSelector((s) => s.can({ type: "PAUSE" }) || s.can({ type: "RESUME" }));
-  const canToggleSpeed = GameActorContext.useSelector((s) => s.can({ type: "TOGGLE_SPEED" }));
-  const togglePause = () => actorRef.send({ type: isPaused ? "RESUME" : "PAUSE" });
-  const toggleSpeed = () => actorRef.send({ type: "TOGGLE_SPEED" });
-  const skipCinematics = () => actorRef.send({ type: "SKIP" });
+  const canTogglePause = GameActorContext.useSelector(
+    (s) => s.can({ type: "playback.pause" }) || s.can({ type: "playback.resume" }),
+  );
+  const canToggleSpeed = GameActorContext.useSelector((s) => s.can({ type: "playback.setSpeed", speed: 1 }));
+  const togglePause = () => actorRef.send({ type: isPaused ? "playback.resume" : "playback.pause" });
+  const toggleSpeed = () => actorRef.send({ type: "playback.setSpeed", speed: nextSpeed(playbackSpeed) });
+  const skipCinematics = () => actorRef.send({ type: "playback.skip" });
 
   if (battlePhase !== "battle" && battlePhase !== "result") return null;
 

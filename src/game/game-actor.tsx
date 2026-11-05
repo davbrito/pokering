@@ -3,7 +3,7 @@ import { createActorContext } from "@xstate/react";
 import { type ReactNode, useMemo } from "react";
 import { fromPromise } from "xstate";
 import { deriveBattleViewState } from "./battle-state";
-import { gameMachine } from "./machine";
+import { type GameTag, gameMachine } from "./machine";
 import { prepareBattle } from "./prepare-battle";
 
 export const GameActorContext = createActorContext(gameMachine);
@@ -24,19 +24,20 @@ export function GameProvider({ queryClient, children }: { queryClient: QueryClie
   return <GameActorContext.Provider logic={logic}>{children}</GameActorContext.Provider>;
 }
 
-export type GamePhase = "selection" | "loading" | "battle" | "result" | "error";
+const PHASES = ["loading", "battle", "result", "error", "selection"] as const satisfies readonly GameTag[];
+export type GamePhase = (typeof PHASES)[number];
 
 export function useGamePhase(): GamePhase {
-  // El estado raíz ya es la fase: "selection" | "loading" | "battle" (con subestado) | "result" | "error".
-  return GameActorContext.useSelector((s) =>
-    typeof s.value === "string" ? s.value : Object.keys(s.value)[0],
-  ) as GamePhase;
+  // Cada fase tiene su tag (tipado en `setup`); "selection" es la última.
+  return GameActorContext.useSelector((s) => PHASES.find((tag) => s.hasTag(tag)) ?? "selection");
 }
 
 /** HP/PP derivados (reducer puro sobre los pasos ya reproducidos); la vista no muta nada. */
 export function useBattleView() {
-  const setup = GameActorContext.useSelector((s) => s.context.setup);
-  const logs = GameActorContext.useSelector((s) => s.context.logs);
+  const prepared = GameActorContext.useSelector((s) => s.context.prepared);
   const stepIdx = GameActorContext.useSelector((s) => s.context.stepIdx);
-  return useMemo(() => (setup ? deriveBattleViewState(setup, logs, stepIdx) : null), [setup, logs, stepIdx]);
+  return useMemo(
+    () => (prepared ? deriveBattleViewState(prepared.setup, prepared.steps, stepIdx) : null),
+    [prepared, stepIdx],
+  );
 }

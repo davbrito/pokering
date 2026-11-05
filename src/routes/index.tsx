@@ -37,7 +37,7 @@ function HomeContent() {
   const selected = useSelectedFighters();
   // La máquina decide si START es válido (solo en `selection`) y hay dos luchadores elegidos.
   const canStart = GameActorContext.useSelector(
-    (s) => selected !== null && s.can({ type: "START", fighters: selected, seed: 0 }),
+    (s) => selected !== null && s.can({ type: "battle.start", fighters: selected, seed: 0 }),
   );
 
   useEffect(() => {
@@ -47,9 +47,9 @@ function HomeContent() {
   }, [phase]);
 
   const startWith = (fighters: readonly [Fighter, Fighter]) => {
-    // START no se acepta en `loading`/`battle`: un doble clic no puede lanzar dos batallas.
+    // battle.start no se acepta en `loading`/`battle`: un doble clic no puede lanzar dos batallas.
     // La semilla la genera quien envía el evento; la máquina no tiene azar propio.
-    actorRef.send({ type: "START", fighters, seed: randomSeed() });
+    actorRef.send({ type: "battle.start", fighters, seed: randomSeed() });
   };
 
   const handleStartBattle = () => {
@@ -71,15 +71,15 @@ function HomeContent() {
     store.selectPokemon(1, id2);
 
     // Sin setTimeout: los luchadores viajan en el evento, la máquina hace el fetch.
-    if (phase === "battle") actorRef.send({ type: "BACK" });
+    if (phase === "battle") actorRef.send({ type: "battle.exit" });
     startWith([
       { id: id1, level: level1 },
       { id: id2, level: level2 },
     ]);
   };
 
-  const goBackToSelection = () => actorRef.send({ type: "BACK" });
-  const retry = () => actorRef.send({ type: "RETRY" });
+  const goBackToSelection = () => actorRef.send({ type: "battle.exit" });
+  const retry = () => actorRef.send({ type: "battle.retry" });
 
   return (
     <>

@@ -79,14 +79,14 @@ const statLabels = ["HP", "ATK", "DEF", "SpA", "SpD", "VEL"];
 export function BattleResult() {
   const actorRef = GameActorContext.useActorRef();
   const battlePhase = useGamePhase();
-  const battleSteps = GameActorContext.useSelector((s) => s.context.logs);
-  const fighters = GameActorContext.useSelector((s) => s.context.request?.fighters ?? null);
+  const battleSteps = GameActorContext.useSelector((s) => s.context.prepared?.steps ?? []);
+  const fighters = GameActorContext.useSelector((s) => s.context.match?.fighters ?? null);
   const { chosen } = useChosenPokemon();
   const level1 = fighters?.[0].level ?? 50;
   const level2 = fighters?.[1].level ?? 50;
   const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
 
-  const handleRestart = () => actorRef.send({ type: "REMATCH", seed: randomSeed() });
+  const handleRestart = () => actorRef.send({ type: "battle.rematch", seed: randomSeed() });
 
   if (battlePhase !== "result") return null;
 

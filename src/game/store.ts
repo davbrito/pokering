@@ -61,7 +61,7 @@ export function useChosenPokemon(): {
 } {
   // En selección la fuente es el store; desde START en adelante, la máquina (única fuente de verdad).
   const inSelection = useGamePhase() === "selection";
-  const fighters = GameActorContext.useSelector((s) => s.context.request?.fighters ?? null);
+  const fighters = GameActorContext.useSelector((s) => s.context.match?.fighters ?? null);
   const selA = useGameStore((s) => s.players.player1.chosenId);
   const selB = useGameStore((s) => s.players.player2.chosenId);
   const idA = inSelection || !fighters ? selA : fighters[0].id;
