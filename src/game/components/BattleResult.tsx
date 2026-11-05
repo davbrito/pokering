@@ -4,7 +4,7 @@ import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { getEffectiveness } from "../combat/moves";
-import { GameActorContext, useGamePhase } from "../game-actor";
+import { GameActorContext, useGamePhase, useMatch, usePrepared } from "../game-actor";
 import { randomSeed } from "../rng";
 import { useSettingsStore } from "../settings-store";
 import { useChosenPokemon } from "../store";
@@ -77,22 +77,22 @@ const statKeys = ["hp", "atk", "def", "spa", "spd", "spe"] as const;
 const statLabels = ["HP", "ATK", "DEF", "SpA", "SpD", "VEL"];
 
 export function BattleResult() {
+  return useGamePhase() === "result" ? <BattleResultContent /> : null;
+}
+
+function BattleResultContent() {
   const actorRef = GameActorContext.useActorRef();
-  const battlePhase = useGamePhase();
-  const battleSteps = GameActorContext.useSelector((s) => s.context.prepared?.steps ?? []);
-  const fighters = GameActorContext.useSelector((s) => s.context.match?.fighters ?? null);
+  const { fighters } = useMatch();
+  const { steps: battleSteps } = usePrepared();
   const { chosen } = useChosenPokemon();
-  const level1 = fighters?.[0].level ?? 50;
-  const level2 = fighters?.[1].level ?? 50;
+  const [{ level: level1 }, { level: level2 }] = fighters;
   const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
 
   const handleRestart = () => actorRef.send({ type: "battle.rematch", seed: randomSeed() });
 
-  if (battlePhase !== "result") return null;
-
   const p1 = chosen[0];
   const p2 = chosen[1];
-  if (!p1 || !p2 || battleSteps.length === 0) return null;
+  if (!p1 || !p2) return null;
 
   const w = computeWinner(p1, p2, battleSteps, level1, level2);
   const actionSteps = battleSteps.filter((s) => s.type !== "start");

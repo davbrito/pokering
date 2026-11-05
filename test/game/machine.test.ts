@@ -20,7 +20,7 @@ const start = (seed = 1) => ({ type: "battle.start", fighters, seed }) as const;
 
 function makeActor(prepare: (seed: number | undefined) => Promise<PreparedBattle>) {
   const machine = gameMachine.provide({
-    actors: { prepareBattle: fromPromise(({ input }) => prepare(input?.seed)) },
+    actors: { prepareBattle: fromPromise(({ input }) => prepare(input.seed)) },
   });
   return createActor(machine).start();
 }

@@ -5,7 +5,7 @@ import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
 import { playPokemonCries, playPokemonCry } from "../audio";
 import { getBst } from "../combat";
-import { GameActorContext, useBattleView, useGamePhase } from "../game-actor";
+import { GameActorContext, useBattleView, useGamePhase, useMatch, usePrepared } from "../game-actor";
 import { nextSpeed } from "../machine";
 import { useChosenPokemon } from "../store";
 import type { BattleDamageStep, BattleStatusStep, BattleStep } from "../types";
@@ -15,22 +15,24 @@ import { type Projectile, ProjectileFx } from "./ProjectileFx";
 import { RenderStatusContent, RenderStepContent } from "./renderStepContent";
 
 export function BattleStage() {
+  const phase = useGamePhase();
+  return phase === "battle" || phase === "result" ? <BattleStageContent phase={phase} /> : null;
+}
+
+function BattleStageContent({ phase: battlePhase }: { phase: "battle" | "result" }) {
   const actorRef = GameActorContext.useActorRef();
-  const battlePhase = useGamePhase();
   const playbackSpeed = GameActorContext.useSelector((s) => s.context.speed);
   const isPaused = GameActorContext.useSelector((s) => s.hasTag("paused"));
-  const currentStep = GameActorContext.useSelector((s) => s.context.prepared?.steps[s.context.stepIdx] ?? null);
-  const fighters = GameActorContext.useSelector((s) => s.context.match?.fighters ?? null);
-  const setup = GameActorContext.useSelector((s) => s.context.prepared?.setup ?? null);
+  const { fighters } = useMatch();
+  const { setup, steps } = usePrepared();
   const view = useBattleView();
-  const maxHealths = setup?.maxHp ?? ([100, 100] as const);
-  const currentHps = view?.hp ?? maxHealths;
-  const p1Level = fighters?.[0].level ?? 50;
-  const p2Level = fighters?.[1].level ?? 50;
-  const p1Moves = setup?.moves[0] ?? [];
-  const p2Moves = setup?.moves[1] ?? [];
-  const p1Pp = view?.pp[0] ?? [];
-  const p2Pp = view?.pp[1] ?? [];
+  const currentStep = GameActorContext.useSelector((s) => steps[s.context.stepIdx] ?? null);
+  const maxHealths = setup.maxHp;
+  const currentHps = view.hp;
+  const p1Level = fighters[0].level;
+  const p2Level = fighters[1].level;
+  const [p1Moves, p2Moves] = setup.moves;
+  const [p1Pp, p2Pp] = view.pp;
   const { chosen } = useChosenPokemon();
   const [p1Data, p2Data] = chosen;
   const p1Name = usePokemonName(p1Data, "Luchador 1");
@@ -209,8 +211,6 @@ export function BattleStage() {
   const togglePause = () => actorRef.send({ type: isPaused ? "playback.resume" : "playback.pause" });
   const toggleSpeed = () => actorRef.send({ type: "playback.setSpeed", speed: nextSpeed(playbackSpeed) });
   const skipCinematics = () => actorRef.send({ type: "playback.skip" });
-
-  if (battlePhase !== "battle" && battlePhase !== "result") return null;
 
   const p1Meta = p1Data
     ? `#${String(p1Data.id).padStart(3, "0")} · Nv.${p1Level} · BST ${getBst(p1Data)}`
