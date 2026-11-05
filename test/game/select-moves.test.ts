@@ -114,8 +114,9 @@ describe("selectBattleMoves", () => {
 
   it("returns 2 physical moves when ATK >> SpA (sesgo físico)", () => {
     // Ejecutar varias veces para confirmar el patrón (el orden interno tiene azar)
+    const rng = createRng(1);
     for (let i = 0; i < 10; i++) {
-      const result = selectBattleMoves(allMoves, physicalBiasStats, createRng(1));
+      const result = selectBattleMoves(allMoves, physicalBiasStats, rng);
       const physicalMoves = result.filter((m) => m.damageClass === "physical");
       expect(physicalMoves.length).toBe(2);
       expect(result.filter((m) => m.damageClass === "special").length).toBe(0);
@@ -123,8 +124,9 @@ describe("selectBattleMoves", () => {
   });
 
   it("returns 2 special moves when SpA >> ATK (sesgo especial)", () => {
+    const rng = createRng(1);
     for (let i = 0; i < 10; i++) {
-      const result = selectBattleMoves(allMoves, specialBiasStats, createRng(1));
+      const result = selectBattleMoves(allMoves, specialBiasStats, rng);
       const specialMoves = result.filter((m) => m.damageClass === "special");
       expect(specialMoves.length).toBe(2);
       expect(result.filter((m) => m.damageClass === "physical").length).toBe(0);

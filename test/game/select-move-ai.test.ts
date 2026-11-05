@@ -111,7 +111,7 @@ describe("selectMove", () => {
       200,
       burnAilment,
       baseStages,
-      fakeRng(false),
+      fakeRng(true),
     );
     expect(result.damageClass).toBe("physical");
   });

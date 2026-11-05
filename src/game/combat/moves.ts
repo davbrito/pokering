@@ -1,5 +1,3 @@
-import { orderBy } from "es-toolkit/array";
-import { getGameContext } from "../context";
 import { TYPE_CHART } from "../data";
 import type { Rng } from "../rng";
 import type { AilmentState, MoveInfo, PokemonStats, StatStages } from "../types";
@@ -34,7 +32,7 @@ export function selectMove(
   maxHp: number,
   defenderAilment: AilmentState,
   attackerStages: StatStages,
-  rng: Rng = getGameContext().rng,
+  rng: Rng,
 ): MoveInfo {
   if (moves.length === 0) return struggleMove;
 
@@ -131,11 +129,17 @@ function pickBestAttack(
  * @param pool  Pool completo de movimientos válidos.
  * @param stats Estadísticas base del Pokémon (opcional, para sesgo).
  */
-export function selectBattleMoves(pool: MoveInfo[], stats?: PokemonStats, rng: Rng = getGameContext().rng): MoveInfo[] {
+export function selectBattleMoves(pool: MoveInfo[], stats: PokemonStats | undefined, rng: Rng): MoveInfo[] {
   // Ponderación estocástica: pequeño ruido (±5) al comparar poder para que
   // movimientos con potencia similar puedan reordenarse aleatoriamente.
-  // El ruido se calcula una vez por movimiento (un comparador aleatorio sería inconsistente).
-  const byNoisyPower = (moves: MoveInfo[]) => orderBy(moves, [(m) => (m.power ?? 0) + rng.float(-5, 5)], ["desc"]);
+  // La clave se calcula UNA vez por movimiento y en orden de entrada: si se pidiera
+  // al RNG dentro del comparador, el consumo dependería del algoritmo de sort del motor
+  // y la misma seed daría resultados distintos entre navegadores.
+  const byNoisyPower = (moves: MoveInfo[]) =>
+    moves
+      .map((m) => ({ m, key: (m.power ?? 0) + rng.float(-5, 5) }))
+      .sort((a, b) => b.key - a.key)
+      .map(({ m }) => m);
 
   const physical = byNoisyPower(pool.filter((m) => m.damageClass === "physical"));
   const special = byNoisyPower(pool.filter((m) => m.damageClass === "special"));

@@ -5,7 +5,6 @@ import type { PokemonDetail } from "../api/pokeapi";
 import { moveRetrieveOptions } from "../api/pokeapi/@tanstack/react-query.gen";
 import type { MoveDetail, PokemonStat } from "../api/pokeapi/types.gen";
 import { getEffectiveness, getStabMultiplier, selectMove, struggleMove } from "./combat/moves";
-import { getGameContext } from "./context";
 import type { Rng } from "./rng";
 import type { AilmentState, BattleStep, MoveInfo, PlayerState, PokemonStats, StatStages, StatusEffect } from "./types";
 import { isSupportedAilment } from "./types";
@@ -305,7 +304,7 @@ export function applyEndOfTurnDamage(
   return { hp: currentHp, damage: 0, fainted: false, steps };
 }
 
-export function determineFirstAttacker(speP1: number, speP2: number, rng: Rng = getGameContext().rng): boolean {
+export function determineFirstAttacker(speP1: number, speP2: number, rng: Rng): boolean {
   if (speP1 > speP2) return true;
   if (speP2 > speP1) return false;
   // Empate de velocidad: coin flip aleatorio
@@ -330,7 +329,7 @@ export function calculateAttackDamage(
   defensiveStat: number,
   stab: number,
   typeEff: number,
-  rng: Rng = getGameContext().rng,
+  rng: Rng,
 ): { damage: number; isCrit: boolean } {
   const baseDamage = (((2 * level) / 5 + 2) * power * (offensiveStat / defensiveStat)) / 50 + 2;
 
@@ -699,11 +698,11 @@ export function generateBattleSteps(
   maxHp2: number,
   p1Moves: MoveInfo[],
   p2Moves: MoveInfo[],
-  initialStages1?: StatStages,
-  initialStages2?: StatStages,
-  level1?: number,
-  level2?: number,
-  rng: Rng = getGameContext().rng,
+  initialStages1: StatStages | undefined,
+  initialStages2: StatStages | undefined,
+  level1: number | undefined,
+  level2: number | undefined,
+  rng: Rng,
 ): BattleStep[] {
   const steps: BattleStep[] = [];
   const pt1 = p1.types.map((t) => t.type.name);

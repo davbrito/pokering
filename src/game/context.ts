@@ -12,9 +12,23 @@ const gameCtx = createContext<GameContext>();
 
 /** Lanza error si no hay contexto activo. */
 export const getGameContext = gameCtx.use;
-/** `undefined` si no hay contexto activo. */
+/** `null` si no hay contexto activo. */
 export const tryGetGameContext = gameCtx.tryUse;
-export const runWithGameContext = gameCtx.call;
+
+/**
+ * Ejecuta `fn` (síncrona) con `ctx` activo. A diferencia de `gameCtx.call` de unctx,
+ * admite anidamiento y restaura el contexto anterior al terminar.
+ */
+export function runWithGameContext<T>(ctx: GameContext, fn: () => T): T {
+  const previous = gameCtx.tryUse();
+  gameCtx.set(ctx, true);
+  try {
+    return fn();
+  } finally {
+    if (previous) gameCtx.set(previous, true);
+    else gameCtx.unset();
+  }
+}
 
 export function createGameContext(seed: number): GameContext {
   return { seed, rng: createRng(seed) };

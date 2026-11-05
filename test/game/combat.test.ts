@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { determineFirstAttacker, generateBattleSteps, getStageMultiplier, getStatsObject } from "#/game/combat.ts";
-import { runWithSeed } from "#/game/context.ts";
+import { createGameContext, getGameContext, runWithGameContext, runWithSeed } from "#/game/context.ts";
 import { createRng } from "#/game/rng.ts";
 import type { MoveInfo, StatStages } from "#/game/types.ts";
 
@@ -111,8 +111,20 @@ describe("generateBattleSteps status immunity", () => {
       power: 40,
     };
 
-    const steps = runWithSeed(1, () =>
-      generateBattleSteps(p1, p2, getStatsObject(p1), getStatsObject(p2), 200, 200, [burnMove], [tackle]),
+    const steps = generateBattleSteps(
+      p1,
+      p2,
+      getStatsObject(p1),
+      getStatsObject(p2),
+      200,
+      200,
+      [burnMove],
+      [tackle],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      createRng(1),
     );
 
     expect(steps.some((step) => step.type === "immune")).toBe(true);
@@ -130,8 +142,20 @@ describe("generateBattleSteps applies speed stages to turn order", () => {
     const p1Stages: StatStages = { atk: 0, def: 0, spa: 0, spd: 0, spe: 6 };
     const p2Stages: StatStages = { atk: 0, def: 0, spa: 0, spd: 0, spe: 0 };
 
-    const steps = runWithSeed(1, () =>
-      generateBattleSteps(p1, p2, getStatsObject(p1), getStatsObject(p2), 200, 200, [], [], p1Stages, p2Stages),
+    const steps = generateBattleSteps(
+      p1,
+      p2,
+      getStatsObject(p1),
+      getStatsObject(p2),
+      200,
+      200,
+      [],
+      [],
+      p1Stages,
+      p2Stages,
+      undefined,
+      undefined,
+      createRng(1),
     );
 
     expect(steps.length).toBeGreaterThan(2);
@@ -155,7 +179,21 @@ describe("determinismo con semilla", () => {
     const a = makeTestPokemon({ name: "a" });
     const b = makeTestPokemon({ name: "b" });
     return runWithSeed(seed, () =>
-      generateBattleSteps(a, b, getStatsObject(a), getStatsObject(b), 200, 200, moves, moves),
+      generateBattleSteps(
+        a,
+        b,
+        getStatsObject(a),
+        getStatsObject(b),
+        200,
+        200,
+        moves,
+        moves,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        getGameContext().rng,
+      ),
     );
   };
 
@@ -166,5 +204,18 @@ describe("determinismo con semilla", () => {
   it("semillas distintas producen logs distintos", () => {
     const logs = new Set([1, 2, 3, 4, 5].map((s) => JSON.stringify(run(s))));
     expect(logs.size).toBeGreaterThan(1);
+  });
+});
+
+describe("runWithGameContext", () => {
+  it("admite anidamiento y restaura el contexto anterior", () => {
+    const outer = createGameContext(1);
+    runWithGameContext(outer, () => {
+      runWithGameContext(createGameContext(2), () => {
+        expect(getGameContext().seed).toBe(2);
+      });
+      expect(getGameContext().seed).toBe(1);
+    });
+    expect(() => getGameContext()).toThrow();
   });
 });
