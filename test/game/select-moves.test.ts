@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { selectBattleMoves } from "#/game/combat/moves.ts";
+import { createRng } from "#/game/rng.ts";
 import type { MoveInfo, PokemonStats } from "#/game/types.ts";
 
 const physical1: MoveInfo = {
@@ -83,7 +84,7 @@ const specialBiasStats: PokemonStats = { hp: 100, atk: 50, def: 100, spa: 150, s
 
 describe("selectBattleMoves", () => {
   it("returns 4 moves with balanced stats: 1 physical, 1 special, stat/heal, ailment", () => {
-    const result = selectBattleMoves(allMoves, balancedStats);
+    const result = selectBattleMoves(allMoves, balancedStats, createRng(1));
     expect(result).toHaveLength(4);
 
     const types = result.map((m) => m.damageClass);
@@ -113,8 +114,9 @@ describe("selectBattleMoves", () => {
 
   it("returns 2 physical moves when ATK >> SpA (sesgo físico)", () => {
     // Ejecutar varias veces para confirmar el patrón (el orden interno tiene azar)
+    const rng = createRng(1);
     for (let i = 0; i < 10; i++) {
-      const result = selectBattleMoves(allMoves, physicalBiasStats);
+      const result = selectBattleMoves(allMoves, physicalBiasStats, rng);
       const physicalMoves = result.filter((m) => m.damageClass === "physical");
       expect(physicalMoves.length).toBe(2);
       expect(result.filter((m) => m.damageClass === "special").length).toBe(0);
@@ -122,8 +124,9 @@ describe("selectBattleMoves", () => {
   });
 
   it("returns 2 special moves when SpA >> ATK (sesgo especial)", () => {
+    const rng = createRng(1);
     for (let i = 0; i < 10; i++) {
-      const result = selectBattleMoves(allMoves, specialBiasStats);
+      const result = selectBattleMoves(allMoves, specialBiasStats, rng);
       const specialMoves = result.filter((m) => m.damageClass === "special");
       expect(specialMoves.length).toBe(2);
       expect(result.filter((m) => m.damageClass === "physical").length).toBe(0);
@@ -134,8 +137,9 @@ describe("selectBattleMoves", () => {
     // Con 3 físicos y 2 especiales en el pool, al menos algunas ejecuciones
     // deberían dar combinaciones distintas
     const signatures = new Set<string>();
+    const rng = createRng(1);
     for (let i = 0; i < 20; i++) {
-      const result = selectBattleMoves(allMoves, balancedStats);
+      const result = selectBattleMoves(allMoves, balancedStats, rng);
       const sig = result
         .map((m) => m.name)
         .sort()
@@ -147,10 +151,10 @@ describe("selectBattleMoves", () => {
   });
 
   it("returns empty array for empty input", () => {
-    expect(selectBattleMoves([])).toEqual([]);
+    expect(selectBattleMoves([], undefined, createRng(1))).toEqual([]);
   });
 
   it("returns empty array for empty input even with stats", () => {
-    expect(selectBattleMoves([], balancedStats)).toEqual([]);
+    expect(selectBattleMoves([], balancedStats, createRng(1))).toEqual([]);
   });
 });

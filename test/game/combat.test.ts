@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { determineFirstAttacker, generateBattleSteps, getStageMultiplier, getStatsObject } from "#/game/combat.ts";
+import { createRng } from "#/game/rng.ts";
 import type { MoveInfo, StatStages } from "#/game/types.ts";
 
 describe("getStageMultiplier", () => {
@@ -44,7 +45,7 @@ describe("determineFirstAttacker with speed stages", () => {
     const eff1 = baseSpe1 * getStageMultiplier(2); // 50 * 2 = 100
     const eff2 = baseSpe2 * getStageMultiplier(0); // 80 * 1 = 80
     // P1 effective speed (100) > P2 (80) → P1 first
-    expect(determineFirstAttacker(eff1, eff2)).toBe(true);
+    expect(determineFirstAttacker(eff1, eff2, createRng(1))).toBe(true);
   });
 
   it("P2 with -2 speed stage goes second despite higher base", () => {
@@ -53,7 +54,7 @@ describe("determineFirstAttacker with speed stages", () => {
     const eff1 = baseSpe1 * getStageMultiplier(0); // 60
     const eff2 = baseSpe2 * getStageMultiplier(-2); // 100 * 0.5 = 50
     // P1 effective speed (60) > P2 (50) → P1 first
-    expect(determineFirstAttacker(eff1, eff2)).toBe(true);
+    expect(determineFirstAttacker(eff1, eff2, createRng(1))).toBe(true);
   });
 });
 
@@ -109,7 +110,21 @@ describe("generateBattleSteps status immunity", () => {
       power: 40,
     };
 
-    const steps = generateBattleSteps(p1, p2, getStatsObject(p1), getStatsObject(p2), 200, 200, [burnMove], [tackle]);
+    const steps = generateBattleSteps(
+      p1,
+      p2,
+      getStatsObject(p1),
+      getStatsObject(p2),
+      200,
+      200,
+      [burnMove],
+      [tackle],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      createRng(1),
+    );
 
     expect(steps.some((step) => step.type === "immune")).toBe(true);
     expect(steps.some((step) => step.type === "miss")).toBe(false);
@@ -137,6 +152,9 @@ describe("generateBattleSteps applies speed stages to turn order", () => {
       [],
       p1Stages,
       p2Stages,
+      undefined,
+      undefined,
+      createRng(1),
     );
 
     expect(steps.length).toBeGreaterThan(2);
@@ -148,5 +166,40 @@ describe("generateBattleSteps applies speed stages to turn order", () => {
     for (let i = 0; i < actionSteps.length; i += 2) {
       expect(actionSteps[i].attackerIdx).toBe(0);
     }
+  });
+});
+
+describe("determinismo con semilla", () => {
+  const moves: MoveInfo[] = [
+    { name: "tackle", type: "normal", accuracy: 95, pp: 35, damageClass: "physical", power: 40 },
+    { name: "ember", type: "fire", accuracy: 90, pp: 25, damageClass: "special", power: 40 },
+  ];
+  const run = (seed: number) => {
+    const a = makeTestPokemon({ name: "a" });
+    const b = makeTestPokemon({ name: "b" });
+    return generateBattleSteps(
+      a,
+      b,
+      getStatsObject(a),
+      getStatsObject(b),
+      200,
+      200,
+      moves,
+      moves,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      createRng(seed),
+    );
+  };
+
+  it("misma seed ⇒ mismos BattleStep[]", () => {
+    expect(run(1234)).toEqual(run(1234));
+  });
+
+  it("semillas distintas producen logs distintos", () => {
+    const logs = new Set([1, 2, 3, 4, 5].map((s) => JSON.stringify(run(s))));
+    expect(logs.size).toBeGreaterThan(1);
   });
 });
