@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createActor, fromPromise } from "xstate";
-import { gameMachine, INTRO_DELAY_MS, nextSpeed, requireMatch } from "#/game/machine.ts";
+import { createActor, fromPromise, type SnapshotFrom } from "xstate";
+import { gameMachine, requireMatch } from "#/game/machine.ts";
+import { INTRO_DELAY_MS, nextSpeed, type playbackMachine } from "#/game/playback-machine.ts";
 import type { PreparedBattle } from "#/game/prepare-battle.ts";
 import type { BattleStep, MoveInfo } from "#/game/types.ts";
 
@@ -17,6 +18,13 @@ const fighters = [
   { id: 4, level: 50 },
 ] as const;
 const start = (seed = 1) => ({ type: "battle.start", fighters, seed }) as const;
+
+/** Snapshot del actor hijo de reproducción (existe solo mientras se reproduce). */
+function playbackOf(actor: ReturnType<typeof makeActor>) {
+  const child = actor.getSnapshot().children.playback;
+  if (!child) throw new Error("no hay actor de reproducción");
+  return child.getSnapshot() as SnapshotFrom<typeof playbackMachine>;
+}
 
 function makeActor(prepare: (seed: number | undefined) => Promise<PreparedBattle>) {
   const machine = gameMachine.provide({
@@ -42,7 +50,7 @@ describe("gameMachine", () => {
 
     await vi.advanceTimersByTimeAsync(0);
     expect(prepare).toHaveBeenCalledTimes(1);
-    expect(actor.getSnapshot().matches({ match: { playback: "intro" } })).toBe(true);
+    expect(actor.getSnapshot().matches({ match: "playback" })).toBe(true);
     expect(actor.getSnapshot().context.match?.seed).toBe(1);
     expect(actor.getSnapshot().can(start(3))).toBe(false);
   });
@@ -56,7 +64,7 @@ describe("gameMachine", () => {
 
     actor.send(start());
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
-    expect(actor.getSnapshot().matches({ match: { playback: "playing" } })).toBe(true);
+    expect(playbackOf(actor).matches("playing")).toBe(true);
     await vi.advanceTimersByTimeAsync(60_000);
     expect(actor.getSnapshot().hasTag("result")).toBe(true);
     expect(played).toEqual([0, 1, 2, 3]);
@@ -69,8 +77,8 @@ describe("gameMachine", () => {
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
     actor.send({ type: "playback.pause" });
     await vi.advanceTimersByTimeAsync(60_000);
-    expect(actor.getSnapshot().hasTag("paused")).toBe(true);
-    expect(actor.getSnapshot().context.stepIdx).toBe(0);
+    expect(playbackOf(actor).hasTag("paused")).toBe(true);
+    expect(playbackOf(actor).context.stepIdx).toBe(0);
     actor.send({ type: "playback.resume" });
     await vi.advanceTimersByTimeAsync(60_000);
     expect(actor.getSnapshot().hasTag("result")).toBe(true);
@@ -80,16 +88,16 @@ describe("gameMachine", () => {
     const actor = makeActor(async () => prepared);
     actor.send(start());
     await vi.advanceTimersByTimeAsync(0);
-    expect(actor.getSnapshot().matches({ match: { playback: "intro" } })).toBe(true);
+    expect(playbackOf(actor).matches("intro")).toBe(true);
     actor.send({ type: "playback.setSpeed", speed: 4 });
     actor.send({ type: "playback.setSpeed", speed: 4 });
-    expect(actor.getSnapshot().context.speed).toBe(4);
+    expect(playbackOf(actor).context.speed).toBe(4);
 
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
     actor.send({ type: "playback.pause" });
     actor.send({ type: "playback.setSpeed", speed: 2 });
-    expect(actor.getSnapshot().context.speed).toBe(2);
-    expect(actor.getSnapshot().hasTag("paused")).toBe(true);
+    expect(playbackOf(actor).context.speed).toBe(2);
+    expect(playbackOf(actor).hasTag("paused")).toBe(true);
   });
 
   it("nextSpeed cicla 1 → 2 → 4 → 1", () => {
@@ -127,7 +135,7 @@ describe("gameMachine", () => {
     actor.send({ type: "battle.retry" });
     expect(actor.getSnapshot().context.error).toBeNull();
     await vi.advanceTimersByTimeAsync(0);
-    expect(actor.getSnapshot().matches({ match: { playback: "intro" } })).toBe(true);
+    expect(actor.getSnapshot().matches({ match: "playback" })).toBe(true);
     expect(seeds).toEqual([42, 42]);
   });
 

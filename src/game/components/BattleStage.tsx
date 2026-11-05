@@ -5,8 +5,17 @@ import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
 import { playPokemonCries, playPokemonCry } from "../audio";
 import { getBst } from "../combat";
-import { GameActorContext, useBattleView, useGamePhase, useMatch, usePrepared } from "../game-actor";
-import { nextSpeed } from "../machine";
+import {
+  GameActorContext,
+  useBattleView,
+  useGamePhase,
+  useMatch,
+  usePlayback,
+  usePlaybackSpeed,
+  usePrepared,
+  useStepIdx,
+} from "../game-actor";
+import { nextSpeed } from "../playback-machine";
 import { useChosenPokemon } from "../store";
 import type { BattleDamageStep, BattleStatusStep, BattleStep } from "../types";
 import { DamagePopup, type DamagePopupData } from "./DamagePopup";
@@ -21,12 +30,12 @@ export function BattleStage() {
 
 function BattleStageContent({ phase: battlePhase }: { phase: "battle" | "result" }) {
   const actorRef = GameActorContext.useActorRef();
-  const playbackSpeed = GameActorContext.useSelector((s) => s.context.speed);
-  const isPaused = GameActorContext.useSelector((s) => s.hasTag("paused"));
+  const playbackSpeed = usePlaybackSpeed();
+  const isPaused = usePlayback((snapshot) => snapshot.hasTag("paused"), false);
   const { fighters } = useMatch();
   const { setup, steps } = usePrepared();
   const view = useBattleView();
-  const currentStep = GameActorContext.useSelector((s) => steps[s.context.stepIdx] ?? null);
+  const currentStep = steps[useStepIdx()] ?? null;
   const maxHealths = setup.maxHp;
   const currentHps = view.hp;
   const p1Level = fighters[0].level;
@@ -204,10 +213,11 @@ function BattleStageContent({ phase: battlePhase }: { phase: "battle" | "result"
     };
   }, []);
 
-  const canTogglePause = GameActorContext.useSelector(
-    (s) => s.can({ type: "playback.pause" }) || s.can({ type: "playback.resume" }),
+  const canTogglePause = usePlayback(
+    (snapshot) => snapshot.can({ type: "playback.pause" }) || snapshot.can({ type: "playback.resume" }),
+    false,
   );
-  const canToggleSpeed = GameActorContext.useSelector((s) => s.can({ type: "playback.setSpeed", speed: 1 }));
+  const canToggleSpeed = usePlayback((snapshot) => snapshot.can({ type: "playback.setSpeed", speed: 1 }), false);
   const togglePause = () => actorRef.send({ type: isPaused ? "playback.resume" : "playback.pause" });
   const toggleSpeed = () => actorRef.send({ type: "playback.setSpeed", speed: nextSpeed(playbackSpeed) });
   const skipCinematics = () => actorRef.send({ type: "playback.skip" });
