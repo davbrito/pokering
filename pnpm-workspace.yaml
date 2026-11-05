@@ -7,3 +7,10 @@ minimumReleaseAgeExclude:
   - '@cloudflare/vitest-plugin@1.6.0'
   - miniflare@5.20261104.0-beta
   - wrangler@4.158.0
+  - js-yaml@4.3.0
+  - js-yaml@4.3.1
+  - js-yaml@4.3.2
+overrides:
+  js-yaml@>=4.0.0 <4.3.0: ^4.3.0
+  js-yaml@>=4.0.0 <4.3.1: ^4.3.1
+  js-yaml@>=4.0.0 <4.3.2: ^4.3.2
