@@ -21,10 +21,10 @@ import { PokemonPreview } from "./PokemonPreview";
 import { pickerDialogHandle } from "./pickerDialogHandle";
 
 export function PokemonModal() {
-  const open = pickerDialogHandle.store.useState("open");
+  const [open, setOpen] = useState(false);
 
   return (
-    <Dialog.Root handle={pickerDialogHandle}>
+    <Dialog.Root handle={pickerDialogHandle} onOpenChange={setOpen}>
       {({ payload }) => (
         <AnimatePresence>
           {open && (

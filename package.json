@@ -20,7 +20,7 @@
     "machine-translate": "inlang machine translate --project project.inlang"
   },
   "dependencies": {
-    "@base-ui/react": "^1.5.0",
+    "@base-ui/react": "^1.9.0",
     "@cloudflare/vite-plugin": "^1.67.0",
     "@inlang/paraglide-js-react": "^1.0.4",
     "@tailwindcss/vite": "^4.3.4",
