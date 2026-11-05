@@ -1,7 +1,6 @@
-import type { QueryClient } from "@tanstack/react-query";
 import { assertEvent, assign, emit, fromPromise, setup } from "xstate";
 import { type BattleSetup, stepDuration } from "./battle-state";
-import { type Fighter, type PrepareBattleInput, type PreparedBattle, prepareBattle } from "./prepare-battle";
+import type { Fighter, PrepareBattleInput, PreparedBattle } from "./prepare-battle";
 import { randomSeed } from "./rng";
 import type { BattleStep } from "./types";
 
@@ -9,7 +8,6 @@ export const SPEEDS = [1, 2, 4] as const;
 export type Speed = (typeof SPEEDS)[number];
 
 export interface GameContext {
-  queryClient: QueryClient;
   /** Luchadores de la batalla en curso. Hasta el primer `START` son valores por defecto sin significado. */
   fighters: readonly [Fighter, Fighter];
   seed: number;
@@ -18,10 +16,6 @@ export interface GameContext {
   stepIdx: number;
   speed: Speed;
   error: unknown;
-}
-
-export interface GameInput {
-  queryClient: QueryClient;
 }
 
 export type GameEvent =
@@ -47,11 +41,13 @@ export const gameMachine = setup({
   types: {
     context: {} as GameContext,
     events: {} as GameEvent,
-    input: {} as GameInput,
     emitted: {} as GameEmitted,
   },
   actors: {
-    prepareBattle: fromPromise<PreparedBattle, PrepareBattleInput>(({ input }) => prepareBattle(input)),
+    // Implementación a proveer con `gameMachine.provide(...)` (inyecta el queryClient; ver GameProvider).
+    prepareBattle: fromPromise<PreparedBattle, PrepareBattleInput>(async () => {
+      throw new Error("prepareBattle no fue provisto");
+    }),
   },
   delays: {
     stepDelay: ({ context }) => {
@@ -86,8 +82,7 @@ export const gameMachine = setup({
   },
 }).createMachine({
   id: "game",
-  context: ({ input }) => ({
-    queryClient: input.queryClient,
+  context: () => ({
     fighters: DEFAULT_FIGHTERS,
     seed: 0,
     setup: null,
@@ -109,14 +104,18 @@ export const gameMachine = setup({
         id: "prepareBattle",
         src: "prepareBattle",
         input: ({ context }) => ({
-          queryClient: context.queryClient,
           fighters: context.fighters,
           seed: context.seed,
         }),
-        onDone: {
-          target: "battle",
-          actions: { type: "storeBattle", params: ({ event }) => event.output },
-        },
+        onDone: [
+          {
+            guard: ({ event }) => event.output.steps.length > 0,
+            target: "battle",
+            actions: { type: "storeBattle", params: ({ event }) => event.output },
+          },
+          // Una batalla sin pasos es un error de generación: no hay nada que reproducir.
+          { target: "error", actions: { type: "storeError", params: () => ({ error: new Error("empty battle") }) } },
+        ],
         onError: {
           target: "error",
           actions: { type: "storeError", params: ({ event }) => ({ error: event.error }) },
@@ -128,6 +127,7 @@ export const gameMachine = setup({
       initial: "intro",
       on: {
         SKIP: { target: "result", actions: "goToLastStep" },
+        BACK: { target: "#game.selection", actions: "resetBattle" },
       },
       states: {
         intro: {

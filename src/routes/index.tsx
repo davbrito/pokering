@@ -11,7 +11,7 @@ import { BattleResult } from "../game/components/BattleResult";
 import { BattleStage } from "../game/components/BattleStage";
 import { PokemonModal } from "../game/components/PokemonModal";
 import { PokemonSlot } from "../game/components/PokemonSlot";
-import { GameActorContext, useGamePhase } from "../game/game-actor";
+import { GameActorContext, GameProvider, useGamePhase } from "../game/game-actor";
 import type { Fighter } from "../game/prepare-battle";
 import { useSettingsStore } from "../game/settings-store";
 import { useGameStore, useSelectedFighters } from "../game/store";
@@ -23,9 +23,9 @@ export const Route = createFileRoute("/")({
 function Home() {
   const { queryClient } = Route.useRouteContext();
   return (
-    <GameActorContext.Provider options={{ input: { queryClient } }}>
+    <GameProvider queryClient={queryClient}>
       <HomeContent />
-    </GameActorContext.Provider>
+    </GameProvider>
   );
 }
 

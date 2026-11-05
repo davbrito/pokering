@@ -148,3 +148,46 @@ describe("gameMachine tags y clear", () => {
     expect(clears).toHaveBeenCalledTimes(2); // al cargar y al terminar
   });
 });
+
+describe("gameMachine BACK y batalla vacía", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("BACK durante la batalla vuelve a selección y permite un nuevo START", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send({ type: "START", fighters });
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
+    expect(actor.getSnapshot().matches({ battle: "playing" })).toBe(true);
+
+    actor.send({ type: "BACK" });
+    expect(actor.getSnapshot().value).toBe("selection");
+    expect(actor.getSnapshot().context.logs).toEqual([]);
+
+    actor.send({ type: "START", fighters });
+    expect(actor.getSnapshot().value).toBe("loading");
+  });
+
+  it("BACK también funciona en pausa y durante la intro", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send({ type: "START", fighters });
+    await vi.advanceTimersByTimeAsync(0);
+    actor.send({ type: "BACK" });
+    expect(actor.getSnapshot().value).toBe("selection");
+
+    actor.send({ type: "START", fighters });
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
+    actor.send({ type: "PAUSE" });
+    actor.send({ type: "BACK" });
+    expect(actor.getSnapshot().value).toBe("selection");
+  });
+
+  it("una batalla sin pasos lleva a error en vez de emitir un paso indefinido", async () => {
+    const actor = makeActor(async () => ({ ...prepared, steps: [] }));
+    const emitted = vi.fn();
+    actor.on("step", emitted);
+    actor.send({ type: "START", fighters });
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
+    expect(actor.getSnapshot().value).toBe("error");
+    expect(emitted).not.toHaveBeenCalled();
+  });
+});

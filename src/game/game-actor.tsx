@@ -1,9 +1,24 @@
+import type { QueryClient } from "@tanstack/react-query";
 import { createActorContext } from "@xstate/react";
-import { useMemo } from "react";
+import { type ReactNode, useMemo } from "react";
+import { fromPromise } from "xstate";
 import { deriveBattleViewState } from "./battle-state";
 import { gameMachine } from "./machine";
+import { prepareBattle } from "./prepare-battle";
 
 export const GameActorContext = createActorContext(gameMachine);
+
+/** Provee la máquina con `prepareBattle` ligado al queryClient (el contexto queda serializable). */
+export function GameProvider({ queryClient, children }: { queryClient: QueryClient; children: ReactNode }) {
+  const logic = useMemo(
+    () =>
+      gameMachine.provide({
+        actors: { prepareBattle: fromPromise(({ input }) => prepareBattle(queryClient, input)) },
+      }),
+    [queryClient],
+  );
+  return <GameActorContext.Provider logic={logic}>{children}</GameActorContext.Provider>;
+}
 
 export type GamePhase = "selection" | "loading" | "battle" | "result" | "error";
 const PHASE_TAGS: readonly GamePhase[] = ["loading", "battle", "result", "error", "selection"];

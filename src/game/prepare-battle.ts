@@ -11,8 +11,8 @@ export interface Fighter {
   level: number;
 }
 
+/** Parámetros serializables de la batalla; el `queryClient` se inyecta al proveer el actor. */
 export interface PrepareBattleInput {
-  queryClient: QueryClient;
   fighters: readonly [Fighter, Fighter];
   seed: number;
 }
@@ -23,7 +23,10 @@ export interface PreparedBattle {
 }
 
 /** Carga datos (async) y genera la batalla completa de forma determinista a partir de `seed`. */
-export async function prepareBattle({ queryClient, fighters, seed }: PrepareBattleInput): Promise<PreparedBattle> {
+export async function prepareBattle(
+  queryClient: QueryClient,
+  { fighters, seed }: PrepareBattleInput,
+): Promise<PreparedBattle> {
   const [f1, f2] = fighters;
   const [poke1, poke2] = await Promise.all([
     queryClient.ensureQueryData(pokemonRetrieveOptions({ path: { id: String(f1.id) } })),
