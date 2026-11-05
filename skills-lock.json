@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "readme": {
+      "source": "statelyai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/readme/SKILL.md",
+      "computedHash": "b2c4624a194fd8aebbc9fc3d75b7b1da8d2033e0439c3f4e2802e4b07d308a89"
+    },
+    "state-management": {
+      "source": "statelyai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/state-management/SKILL.md",
+      "computedHash": "9ffa1a782596760da82692c08eaebbb8edb5e473b627bc819bbef8ae7e56d9b9"
+    },
+    "xstate-v5": {
+      "source": "statelyai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/xstate-v5/SKILL.md",
+      "computedHash": "5395d58e38da39477cfa61d2b388777a88f021d16ec0f8d4ce6653b487d98fb3"
+    }
+  }
+}
