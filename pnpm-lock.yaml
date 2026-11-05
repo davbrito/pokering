@@ -85,11 +85,11 @@ importers:
         specifier: ^1.6.0
         version: 1.6.0(vitest@5.1.0(jsdom@29.1.1)(vite@8.3.5(esbuild@0.28.2)(jiti@2.7.0)))
       '@hey-api/openapi-ts':
-        specifier: 0.98.2
-        version: 0.98.2(typescript@6.0.3)
+        specifier: 0.99.0
+        version: 0.99.0(typescript@6.0.3)
       '@hey-api/vite-plugin':
-        specifier: 0.3.1
-        version: 0.3.1(@hey-api/openapi-ts@0.98.2(typescript@6.0.3))(vite@8.3.5(esbuild@0.28.2)(jiti@2.7.0))
+        specifier: 0.3.2
+        version: 0.3.2(@hey-api/openapi-ts@0.99.0(typescript@6.0.3))(vite@8.3.5(esbuild@0.28.2)(jiti@2.7.0))
       '@inlang/cli':
         specifier: ^3.0.0
         version: 3.1.12
@@ -710,23 +710,23 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
-  '@hey-api/codegen-core@0.9.0':
-    resolution: {integrity: sha512-OK9/R8WuujwgvnrDIPnEiIf6WnfUOi3GaEr6kIngqoI5FUQwYbeDKHE/frTVUl2A76ZQPCrMknHtPx6Gqtwf8Q==}
+  '@hey-api/codegen-core@0.9.1':
+    resolution: {integrity: sha512-s97jL1dgTMuiMHv2BZ1X4Tgd99Mf9GOvGdNqNcGwIMmnR+PgYNoraj4Zvp134MKsNCap/m7k0r0vKKnl56pj4w==}
     engines: {node: '>=22.18.0'}
 
-  '@hey-api/json-schema-ref-parser@1.4.3':
-    resolution: {integrity: sha512-UzGSDzh3QUhrnwl4atnHc2YqDO6KemYVEOwl1Ynowm/tcr0XlpdHOpyWr5UaWIJfiXTXdYRIC9k2Yxm19pcPzQ==}
+  '@hey-api/json-schema-ref-parser@1.4.4':
+    resolution: {integrity: sha512-otmd+zCxbYVBIp/mlMTnGkvlNYLkVKgs3VOIq0kSnenhB1+fRwLPQIeSwyWM6E51oXhUedkYjVsVpkVexeuJOA==}
     engines: {node: '>=22.18.0'}
 
-  '@hey-api/openapi-ts@0.98.2':
-    resolution: {integrity: sha512-2nVJXH8tpFPGTBOhxyjEd1Jw0hsRqJqeTQW3kltAjVdSU4YWxeu97x5sgNOmsbsfeg6Dqz7Wfzs26walBOuswA==}
+  '@hey-api/openapi-ts@0.99.0':
+    resolution: {integrity: sha512-SePU/5oEWWkvUBYmvzdYRctseoLuskyhs4ET0RvLIcmzc8yLQoA2R+KtBIQ8bPsoSUB0m4E5SmBnl6aGSA0szQ==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
       typescript: '>=5.5.3 || >=6.0.0 || 6.0.1-rc'
 
-  '@hey-api/shared@0.4.8':
-    resolution: {integrity: sha512-29Pg2FB0UW20pplYgcfiQn1hQYpbZ9D2gdDJc7nDK3xh3pvHOTGP0v3R2ueFpFnw9GN1SRhIdhiVuAYWMDimjA==}
+  '@hey-api/shared@0.5.0':
+    resolution: {integrity: sha512-JN/j4Ebh4cJGYIQ5cwWuqe7GeSUyQoz7oC51WqyhKOcrejK6DKZMDkshc5d1eKTRuRL+rjozuRcoUaZZn2DGPw==}
     engines: {node: '>=22.18.0'}
 
   '@hey-api/spec-types@0.2.0':
@@ -735,8 +735,8 @@ packages:
   '@hey-api/types@0.1.4':
     resolution: {integrity: sha512-thWfawrDIP7wSI9ioT13I5soaaqB5vAPIiZmgD8PbeEVKNrkonc0N/Sjj97ezl7oQgusZmaNphGdMKipPO6IBg==}
 
-  '@hey-api/vite-plugin@0.3.1':
-    resolution: {integrity: sha512-aE70iQSvg3N3zQ0ALnaYXGl7pQjuILSahawvF/ZHgQsdoh7rQTAb8o/VYnQOCOrgdhq3LADVH4KCEEAMOcH86w==}
+  '@hey-api/vite-plugin@0.3.2':
+    resolution: {integrity: sha512-r9xfyfqvWQ3LoVE0U9TYkA54J3HSXJdFbeQrnWdOcbkhI4rfUTaanj4EPpk5ygZTxoex4EJrlyzn+nPSU82cjw==}
     peerDependencies:
       '@hey-api/openapi-ts': <2
       vite: ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
@@ -2330,8 +2330,8 @@ packages:
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
-  js-yaml@4.1.1:
-    resolution: {integrity: sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==}
+  js-yaml@4.2.0:
+    resolution: {integrity: sha512-ePWsvanv0DWuDRsW8dnt+R4jQ31SCRCQ7hhNcPXZPsoBZiemuZNYGf7adZdqX2D86j6rvKp3RpCxVTSb8WQlOw==}
     hasBin: true
 
   js-yaml@4.3.2:
@@ -2640,8 +2640,8 @@ packages:
     resolution: {integrity: sha512-GYrCADwpu6yV5OAvchkQ27Z5wwMxWAEMg5NNWjyHh/5DboFFqbdbvYNIvZouQpxXyeMPoTOh0vdPYKlf0ZswdQ==}
     hasBin: true
 
-  semver@7.8.2:
-    resolution: {integrity: sha512-c8jsqUZm3omBOI66G90z1Dyw5z622G8oLG+omfsHBJf3CWQTlOcwOjvOG6wtiNfW6anKm/eA39LMwMtMez2TiQ==}
+  semver@7.8.4:
+    resolution: {integrity: sha512-rUCObTnP32Q08R2uuIrt7r9PlEonuTmtuXYcW6s5kjdlj3xbnwe+21yXptAUYcMAABLkYYTtnmzb3w3EDZfueA==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -3232,7 +3232,7 @@ snapshots:
       '@babel/helper-validator-option': 7.29.7
       browserslist: 4.28.2
       lru-cache: 5.1.1
-      semver: 6.3.1
+      semver: 6.3.2
 
   '@babel/helper-globals@7.29.7': {}
 
@@ -3650,7 +3650,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@hey-api/codegen-core@0.9.0':
+  '@hey-api/codegen-core@0.9.1':
     dependencies:
       '@hey-api/types': 0.1.4
       ansi-colors: 4.1.3
@@ -3659,17 +3659,17 @@ snapshots:
     transitivePeerDependencies:
       - magicast
 
-  '@hey-api/json-schema-ref-parser@1.4.3':
+  '@hey-api/json-schema-ref-parser@1.4.4':
     dependencies:
       '@jsdevtools/ono': 7.1.3
       '@types/json-schema': 7.0.15
-      js-yaml: 4.1.1
+      js-yaml: 4.2.0
 
-  '@hey-api/openapi-ts@0.98.2(typescript@6.0.3)':
+  '@hey-api/openapi-ts@0.99.0(typescript@6.0.3)':
     dependencies:
-      '@hey-api/codegen-core': 0.9.0
-      '@hey-api/json-schema-ref-parser': 1.4.3
-      '@hey-api/shared': 0.4.8
+      '@hey-api/codegen-core': 0.9.1
+      '@hey-api/json-schema-ref-parser': 1.4.4
+      '@hey-api/shared': 0.5.0
       '@hey-api/spec-types': 0.2.0
       '@hey-api/types': 0.1.4
       '@lukeed/ms': 2.0.2
@@ -3681,16 +3681,16 @@ snapshots:
     transitivePeerDependencies:
       - magicast
 
-  '@hey-api/shared@0.4.8':
+  '@hey-api/shared@0.5.0':
     dependencies:
-      '@hey-api/codegen-core': 0.9.0
-      '@hey-api/json-schema-ref-parser': 1.4.3
+      '@hey-api/codegen-core': 0.9.1
+      '@hey-api/json-schema-ref-parser': 1.4.4
       '@hey-api/spec-types': 0.2.0
       '@hey-api/types': 0.1.4
       ansi-colors: 4.1.3
       cross-spawn: 7.0.6
       open: 11.0.0
-      semver: 7.8.2
+      semver: 7.8.4
     transitivePeerDependencies:
       - magicast
 
@@ -3700,9 +3700,9 @@ snapshots:
 
   '@hey-api/types@0.1.4': {}
 
-  '@hey-api/vite-plugin@0.3.1(@hey-api/openapi-ts@0.98.2(typescript@6.0.3))(vite@8.3.5(esbuild@0.28.2)(jiti@2.7.0))':
+  '@hey-api/vite-plugin@0.3.2(@hey-api/openapi-ts@0.99.0(typescript@6.0.3))(vite@8.3.5(esbuild@0.28.2)(jiti@2.7.0))':
     dependencies:
-      '@hey-api/openapi-ts': 0.98.2(typescript@6.0.3)
+      '@hey-api/openapi-ts': 0.99.0(typescript@6.0.3)
       vite: 8.3.5(esbuild@0.28.2)(jiti@2.7.0)
 
   '@img/colour@1.1.0': {}
@@ -5122,7 +5122,7 @@ snapshots:
 
   js-tokens@4.0.0: {}
 
-  js-yaml@4.1.1:
+  js-yaml@4.2.0:
     dependencies:
       argparse: 2.0.1
 
@@ -5457,10 +5457,9 @@ snapshots:
 
   semver@6.3.1: {}
 
-  semver@6.3.2:
-    optional: true
+  semver@6.3.2: {}
 
-  semver@7.8.2: {}
+  semver@7.8.4: {}
 
   semver@7.8.6: {}
 

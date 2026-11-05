@@ -16,7 +16,7 @@
     "lint": "biome lint",
     "check": "biome check",
     "deploy": "pnpm run build && wrangler deploy",
-    "pokeapi:gen": "openapi-ts",
+    "pokeapi:gen": "openapi-ts --file openapi-ts.config.ts",
     "machine-translate": "inlang machine translate --project project.inlang"
   },
   "dependencies": {
@@ -47,8 +47,8 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
     "@cloudflare/vitest-plugin": "^1.6.0",
-    "@hey-api/openapi-ts": "0.98.2",
-    "@hey-api/vite-plugin": "0.3.1",
+    "@hey-api/openapi-ts": "0.99.0",
+    "@hey-api/vite-plugin": "0.3.2",
     "@inlang/cli": "^3.0.0",
     "@inlang/paraglide-js": "^2.19.0",
     "@tanstack/devtools-vite": "latest",

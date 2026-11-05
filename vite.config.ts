@@ -7,8 +7,6 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-const POKEAPI_SCHEMA_URL = "https://raw.githubusercontent.com/PokeAPI/pokeapi/refs/heads/master/openapi.yml";
-
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   plugins: [
@@ -17,13 +15,7 @@ export default defineConfig({
       outdir: "./src/i18n/paraglide",
       strategy: ["cookie", "preferredLanguage", "baseLocale"],
     }),
-    heyApiPlugin({
-      config: {
-        input: POKEAPI_SCHEMA_URL,
-        output: "src/api/pokeapi",
-        plugins: ["@tanstack/react-query"],
-      },
-    }),
+    heyApiPlugin({ config: () => import("./openapi-ts.config.ts").then((m) => m.default) }),
     devtools(),
     cloudflare({ viteEnvironment: { name: "ssr" } }),
     tailwindcss(),
