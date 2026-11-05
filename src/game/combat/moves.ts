@@ -137,9 +137,9 @@ export function selectBattleMoves(pool: MoveInfo[], stats: PokemonStats | undefi
   // y la misma seed daría resultados distintos entre navegadores.
   const byNoisyPower = (moves: MoveInfo[]) =>
     moves
-      .map((m) => ({ m, key: (m.power ?? 0) + rng.float(-5, 5) }))
-      .sort((a, b) => b.key - a.key)
-      .map(({ m }) => m);
+      .map((move) => ({ move, noisyPower: (move.power ?? 0) + rng.float(-5, 5) }))
+      .sort((a, b) => b.noisyPower - a.noisyPower)
+      .map(({ move }) => move);
 
   const physical = byNoisyPower(pool.filter((m) => m.damageClass === "physical"));
   const special = byNoisyPower(pool.filter((m) => m.damageClass === "special"));
