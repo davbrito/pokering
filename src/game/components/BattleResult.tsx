@@ -1,12 +1,13 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { sum } from "es-toolkit/math";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { getEffectiveness } from "../combat/moves";
+import { GameActorContext, useGamePhase, useMatch, usePrepared } from "../game-actor";
+import { randomSeed } from "../rng";
 import { useSettingsStore } from "../settings-store";
-import { useChosenPokemon, useGameStore } from "../store";
+import { useChosenPokemon } from "../store";
 import type { BattleStep, PokemonStats } from "../types";
 import { getPokemonName, PokemonName } from "./PokemonName";
 import { RenderStepContent } from "./renderStepContent";
@@ -76,23 +77,22 @@ const statKeys = ["hp", "atk", "def", "spa", "spd", "spe"] as const;
 const statLabels = ["HP", "ATK", "DEF", "SpA", "SpD", "VEL"];
 
 export function BattleResult() {
-  const battlePhase = useGameStore((s) => s.battle.phase);
-  const battleSteps = useGameStore((s) => s.battle.logs);
+  return useGamePhase() === "result" ? <BattleResultContent /> : null;
+}
+
+function BattleResultContent() {
+  const actorRef = GameActorContext.useActorRef();
+  const { fighters } = useMatch();
+  const { steps: battleSteps } = usePrepared();
   const { chosen } = useChosenPokemon();
-  const level1 = useGameStore((s) => s.players.player1.level);
-  const level2 = useGameStore((s) => s.players.player2.level);
+  const [{ level: level1 }, { level: level2 }] = fighters;
   const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
-  const queryClient = useQueryClient();
 
-  const handleRestart = async () => {
-    await useGameStore.getState().startBattle(queryClient);
-  };
-
-  if (battlePhase !== "result") return null;
+  const handleRestart = () => actorRef.send({ type: "battle.rematch", seed: randomSeed() });
 
   const p1 = chosen[0];
   const p2 = chosen[1];
-  if (!p1 || !p2 || battleSteps.length === 0) return null;
+  if (!p1 || !p2) return null;
 
   const w = computeWinner(p1, p2, battleSteps, level1, level2);
   const actionSteps = battleSteps.filter((s) => s.type !== "start");

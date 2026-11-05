@@ -4,9 +4,10 @@ import type { PokemonDetail } from "../../api/pokeapi";
 import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
 import { playPokemonCries, playPokemonCry } from "../audio";
-import { BattleEngine } from "../battle-engine";
 import { getBst } from "../combat";
-import { useChosenPokemon, useGameStore } from "../store";
+import { GameActorContext, useBattleView, useGamePhase, useMatch, usePrepared } from "../game-actor";
+import { nextSpeed } from "../machine";
+import { useChosenPokemon } from "../store";
 import type { BattleDamageStep, BattleStatusStep, BattleStep } from "../types";
 import { DamagePopup, type DamagePopupData } from "./DamagePopup";
 import { usePokemonName } from "./PokemonName";
@@ -14,20 +15,24 @@ import { type Projectile, ProjectileFx } from "./ProjectileFx";
 import { RenderStatusContent, RenderStepContent } from "./renderStepContent";
 
 export function BattleStage() {
-  const playbackSpeed = useGameStore((s) => s.battle.playbackSpeed);
-  const currentStep = useGameStore((s) => s.battle.logs[s.battle.currentStepIdx] ?? null);
-  const players = useGameStore((s) => s.players);
-  const maxHealths = [players.player1.maxHealth, players.player2.maxHealth] as const;
-  const currentHps = [players.player1.currentHp, players.player2.currentHp] as const;
-  const isPaused = useGameStore((s) => s.battle.isPaused);
-  const battleSteps = useGameStore((s) => s.battle.logs);
-  const battlePhase = useGameStore((s) => s.battle.phase);
-  const p1Level = useGameStore((s) => s.players.player1.level);
-  const p2Level = useGameStore((s) => s.players.player2.level);
-  const p1Moves = useGameStore((s) => s.players.player1.moves);
-  const p2Moves = useGameStore((s) => s.players.player2.moves);
-  const p1Pp = useGameStore((s) => s.players.player1.pp);
-  const p2Pp = useGameStore((s) => s.players.player2.pp);
+  const phase = useGamePhase();
+  return phase === "battle" || phase === "result" ? <BattleStageContent phase={phase} /> : null;
+}
+
+function BattleStageContent({ phase: battlePhase }: { phase: "battle" | "result" }) {
+  const actorRef = GameActorContext.useActorRef();
+  const playbackSpeed = GameActorContext.useSelector((s) => s.context.speed);
+  const isPaused = GameActorContext.useSelector((s) => s.hasTag("paused"));
+  const { fighters } = useMatch();
+  const { setup, steps } = usePrepared();
+  const view = useBattleView();
+  const currentStep = GameActorContext.useSelector((s) => steps[s.context.stepIdx] ?? null);
+  const maxHealths = setup.maxHp;
+  const currentHps = view.hp;
+  const p1Level = fighters[0].level;
+  const p2Level = fighters[1].level;
+  const [p1Moves, p2Moves] = setup.moves;
+  const [p1Pp, p2Pp] = view.pp;
   const { chosen } = useChosenPokemon();
   const [p1Data, p2Data] = chosen;
   const p1Name = usePokemonName(p1Data, "Luchador 1");
@@ -41,18 +46,20 @@ export function BattleStage() {
   const [projectiles, setProjectiles] = useState<Projectile[]>([]);
   const [playingCryIdx, setPlayingCryIdx] = useState<number | null>(null);
 
+  // Temporizadores de efectos visuales: se cancelan en `clear` para que no sobrevivan a la batalla.
+  const timersRef = useRef(new Set<ReturnType<typeof setTimeout>>());
+  const later = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      timersRef.current.delete(id);
+      fn();
+    }, ms);
+    timersRef.current.add(id);
+  }, []);
+  const speedRef = useRef(playbackSpeed);
+  speedRef.current = playbackSpeed;
   const viewportRef = useRef<HTMLDivElement>(null);
   const imgRef0 = useRef<HTMLImageElement | null>(null);
   const imgRef1 = useRef<HTMLImageElement | null>(null);
-  const engineRef = useRef<BattleEngine | null>(null);
-
-  const startedRef = useRef(false);
-
-  const finishBattle = () => {
-    useGameStore.getState().setBattlePhase("result");
-    setAnimClass0("");
-    setAnimClass1("");
-  };
 
   const applyImpact = (defIdx: number, step: BattleDamageStep) => {
     if (defIdx === 0) setAnimClass0("hit-shake");
@@ -60,57 +67,53 @@ export function BattleStage() {
 
     if (step.isCrit || step.eff > 1.5) {
       setShakeScreen(true);
-      setTimeout(() => setShakeScreen(false), 350);
+      later(() => setShakeScreen(false), 350);
     }
 
     const popId = crypto.randomUUID();
     setDamagePopups((prev) => [...prev, { id: popId, defIdx, step }]);
-    setTimeout(() => {
+    later(() => {
       setDamagePopups((prev) => prev.filter((p) => p.id !== popId));
     }, 900);
 
-    const store = useGameStore.getState();
-    const hps: [number, number] = [store.players.player1.currentHp, store.players.player2.currentHp];
-    hps[defIdx] = step.currentHp;
-    store.setCurrentHps(hps);
-
-    setTimeout(() => {
+    later(() => {
       if (defIdx === 0) setAnimClass0("");
       else setAnimClass1("");
     }, 400);
   };
 
-  const triggerProjectile = useCallback((atkIdx: number, defIdx: number, moveType: string, onComplete: () => void) => {
-    const atkImg = atkIdx === 0 ? imgRef0.current : imgRef1.current;
-    const defImg = defIdx === 0 ? imgRef0.current : imgRef1.current;
-    const viewport = viewportRef.current;
-    if (!atkImg || !defImg || !viewport) {
-      onComplete();
-      return;
-    }
+  const triggerProjectile = useCallback(
+    (atkIdx: number, defIdx: number, moveType: string, onComplete: () => void) => {
+      const atkImg = atkIdx === 0 ? imgRef0.current : imgRef1.current;
+      const defImg = defIdx === 0 ? imgRef0.current : imgRef1.current;
+      const viewport = viewportRef.current;
+      if (!atkImg || !defImg || !viewport) {
+        onComplete();
+        return;
+      }
 
-    const ra = atkImg.getBoundingClientRect();
-    const rd = defImg.getBoundingClientRect();
-    const rv = viewport.getBoundingClientRect();
+      const ra = atkImg.getBoundingClientRect();
+      const rd = defImg.getBoundingClientRect();
+      const rv = viewport.getBoundingClientRect();
 
-    const sx = ra.left + ra.width / 2 - rv.left;
-    const sy = ra.top + ra.height / 2 - rv.top;
-    const tx = rd.left + rd.width / 2 - rv.left;
-    const ty = rd.top + rd.height / 2 - rv.top;
+      const sx = ra.left + ra.width / 2 - rv.left;
+      const sy = ra.top + ra.height / 2 - rv.top;
+      const tx = rd.left + rd.width / 2 - rv.left;
+      const ty = rd.top + rd.height / 2 - rv.top;
 
-    const pid = crypto.randomUUID();
-    setProjectiles((prev) => [...prev, { id: pid, sx, sy, tx, ty, moveType }]);
-    const animTime = 380 / useGameStore.getState().battle.playbackSpeed;
-    setTimeout(() => {
-      setProjectiles((prev) => prev.filter((p) => p.id !== pid));
-      onComplete();
-    }, animTime);
-  }, []);
+      const pid = crypto.randomUUID();
+      setProjectiles((prev) => [...prev, { id: pid, sx, sy, tx, ty, moveType }]);
+      const animTime = 380 / speedRef.current;
+      later(() => {
+        setProjectiles((prev) => prev.filter((p) => p.id !== pid));
+        onComplete();
+      }, animTime);
+    },
+    [later],
+  );
 
   const executeStepVisuals = (step: BattleStep) => {
     if (step.type === "start") {
-      const p = useGameStore.getState().players;
-      useGameStore.getState().setCurrentHps([p.player1.maxHealth, p.player2.maxHealth]);
       playPokemonCries(p1Data, p2Data, 1200, {
         onP1Play: {
           onPlay: () => setPlayingCryIdx(0),
@@ -126,25 +129,13 @@ export function BattleStage() {
       const atkIdx = step.attackerIdx;
       const defIdx = atkIdx === 0 ? 1 : 0;
 
-      // Descontar PP en el store
-      if (step.move.pp > 0) {
-        const store = useGameStore.getState();
-        const playerKey = atkIdx === 0 ? "player1" : "player2";
-        const pp = [...store.players[playerKey].pp];
-        const moveIdx = store.players[playerKey].moves.findIndex((m) => m.name === step.move.name);
-        if (moveIdx !== -1 && pp[moveIdx] > 0) {
-          pp[moveIdx]--;
-          store.setPlayerPp(atkIdx, pp);
-        }
-      }
-
       if (step.move.damageClass === "physical") {
         setAnimClass0("");
         setAnimClass1("");
         if (atkIdx === 0) setAnimClass0("lunge-right");
         else setAnimClass1("lunge-left");
-        const spd = useGameStore.getState().battle.playbackSpeed;
-        setTimeout(() => {
+        const spd = speedRef.current;
+        later(() => {
           if (atkIdx === 0) setAnimClass0("");
           else setAnimClass1("");
         }, 450 / spd);
@@ -162,7 +153,7 @@ export function BattleStage() {
     if (step.type === "status") {
       const id = crypto.randomUUID();
       setStatusPopups((prev) => [...prev, { id, targetIdx: step.targetIdx, step }]);
-      setTimeout(() => {
+      later(() => {
         setStatusPopups((prev) => prev.filter((p) => p.id !== id));
       }, 1200);
     }
@@ -184,48 +175,42 @@ export function BattleStage() {
   };
 
   const onExecuteStep = useEffectEvent(executeStepVisuals);
-  const onFinish = useEffectEvent(finishBattle);
+  const onClear = useEffectEvent(() => {
+    for (const id of timersRef.current) clearTimeout(id);
+    timersRef.current.clear();
+    setShakeScreen(false);
+    setAnimClass0("");
+    setAnimClass1("");
+    setDamagePopups([]);
+    setStatusPopups([]);
+    setProjectiles([]);
+  });
 
-  // Initialize engine once
+  // Efectos visuales/sonoros: la máquina emite cada paso al entrar en escena.
   useEffect(() => {
-    const engine = new BattleEngine({ onExecuteStep, onFinish });
-    engineRef.current = engine;
-    return () => engine.stop();
+    const stepSub = actorRef.on("step.played", ({ step }) => onExecuteStep(step));
+    const clearSub = actorRef.on("battle.ended", () => onClear());
+    return () => {
+      stepSub.unsubscribe();
+      clearSub.unsubscribe();
+    };
+  }, [actorRef]);
+
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      for (const id of timers) clearTimeout(id);
+      timers.clear();
+    };
   }, []);
 
-  // Start playback when battle phase changes
-  useEffect(() => {
-    if (battlePhase === "battle" && battleSteps.length > 0 && !startedRef.current) {
-      startedRef.current = true;
-      setAnimClass0("");
-      setAnimClass1("");
-      setDamagePopups([]);
-      setStatusPopups([]);
-      setProjectiles([]);
-      const timer = setTimeout(() => engineRef.current?.start(0), 400);
-      return () => clearTimeout(timer);
-    }
-    if (battlePhase !== "battle") startedRef.current = false;
-    return undefined;
-  }, [battlePhase, battleSteps.length]);
-
-  const togglePause = () => {
-    const store = useGameStore.getState();
-    store.setIsPaused(!store.battle.isPaused);
-  };
-
-  const toggleSpeed = () => {
-    const store = useGameStore.getState();
-    const b = useGameStore.getState().battle;
-    store.setPlaybackSpeed(b.playbackSpeed === 4 ? 1 : ((b.playbackSpeed * 2) as 1 | 2 | 4));
-  };
-  const skipCinematics = () => {
-    engineRef.current?.stop();
-    useGameStore.getState().setIsPaused(false);
-    finishBattle();
-  };
-
-  if (battlePhase !== "battle" && battlePhase !== "result") return null;
+  const canTogglePause = GameActorContext.useSelector(
+    (s) => s.can({ type: "playback.pause" }) || s.can({ type: "playback.resume" }),
+  );
+  const canToggleSpeed = GameActorContext.useSelector((s) => s.can({ type: "playback.setSpeed", speed: 1 }));
+  const togglePause = () => actorRef.send({ type: isPaused ? "playback.resume" : "playback.pause" });
+  const toggleSpeed = () => actorRef.send({ type: "playback.setSpeed", speed: nextSpeed(playbackSpeed) });
+  const skipCinematics = () => actorRef.send({ type: "playback.skip" });
 
   const p1Meta = p1Data
     ? `#${String(p1Data.id).padStart(3, "0")} · Nv.${p1Level} · BST ${getBst(p1Data)}`
@@ -283,10 +268,10 @@ export function BattleStage() {
           <RenderStepContent step={currentStep} p1Name={p1Name} p2Name={p2Name} />
         </div>
         <div className="stage-controls">
-          <button type="button" className="ctrl-btn" onClick={togglePause}>
+          <button type="button" className="ctrl-btn" onClick={togglePause} disabled={!canTogglePause}>
             {isPaused ? "Reanudar" : "Pausa"}
           </button>
-          <button type="button" className="ctrl-btn" onClick={toggleSpeed}>
+          <button type="button" className="ctrl-btn" onClick={toggleSpeed} disabled={!canToggleSpeed}>
             Velocidad {playbackSpeed}x
           </button>
           <button type="button" className="ctrl-btn" onClick={skipCinematics}>
