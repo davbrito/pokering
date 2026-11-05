@@ -164,13 +164,13 @@ function Header() {
           multiple={false}
         >
           <Toggle
-            className="flex h-7 cursor-pointer select-none items-center px-2 font-semibold text-[11px] text-muted uppercase tracking-wider transition-colors hover:bg-surface data-pressed:bg-accent/20 data-pressed:text-accent"
+            className="text-muted hover:bg-surface data-pressed:bg-accent/20 data-pressed:text-accent flex h-7 cursor-pointer items-center px-2 text-[11px] font-semibold tracking-wider uppercase transition-colors select-none"
             value="es"
           >
             ES
           </Toggle>
           <Toggle
-            className="flex h-7 cursor-pointer select-none items-center px-2 font-semibold text-[11px] text-muted uppercase tracking-wider transition-colors hover:bg-surface data-pressed:bg-accent/20 data-pressed:text-accent"
+            className="text-muted hover:bg-surface data-pressed:bg-accent/20 data-pressed:text-accent flex h-7 cursor-pointer items-center px-2 text-[11px] font-semibold tracking-wider uppercase transition-colors select-none"
             value="en"
           >
             EN

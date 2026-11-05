@@ -109,16 +109,7 @@ describe("generateBattleSteps status immunity", () => {
       power: 40,
     };
 
-    const steps = generateBattleSteps(
-      p1,
-      p2,
-      getStatsObject(p1),
-      getStatsObject(p2),
-      200,
-      200,
-      [burnMove],
-      [tackle],
-    );
+    const steps = generateBattleSteps(p1, p2, getStatsObject(p1), getStatsObject(p2), 200, 200, [burnMove], [tackle]);
 
     expect(steps.some((step) => step.type === "immune")).toBe(true);
     expect(steps.some((step) => step.type === "miss")).toBe(false);

@@ -57,13 +57,13 @@ function SettingsPage() {
             multiple={false}
           >
             <Toggle
-              className="flex h-9 cursor-pointer select-none items-center gap-1.5 rounded-lg border border-border-2 bg-neutral-950 px-4 font-medium text-muted text-sm transition-colors hover:bg-surface data-pressed:border-accent data-pressed:text-accent"
+              className="border-border-2 text-muted hover:bg-surface data-pressed:border-accent data-pressed:text-accent flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border bg-neutral-950 px-4 text-sm font-medium transition-colors select-none"
               value="es"
             >
               ES
             </Toggle>
             <Toggle
-              className="flex h-9 cursor-pointer select-none items-center gap-1.5 rounded-lg border border-border-2 bg-neutral-950 px-4 font-medium text-muted text-sm transition-colors hover:bg-surface data-pressed:border-accent data-pressed:text-accent"
+              className="border-border-2 text-muted hover:bg-surface data-pressed:border-accent data-pressed:text-accent flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border bg-neutral-950 px-4 text-sm font-medium transition-colors select-none"
               value="en"
             >
               EN
@@ -76,7 +76,7 @@ function SettingsPage() {
           <p className="settings-desc">{m.settings_pokemon_language_desc()}</p>
 
           {isLoading ? (
-            <div className="flex items-center gap-2 py-8 text-neutral-500 text-sm">
+            <div className="flex items-center gap-2 py-8 text-sm text-neutral-500">
               <div className="spinner" />
               <span>{m.settings_loading()}</span>
             </div>
@@ -91,22 +91,22 @@ function SettingsPage() {
                   localizedNameCache.clear();
                 }}
               >
-                <Select.Label className="mb-1.5 block cursor-default font-semibold text-muted text-xs">
+                <Select.Label className="text-muted mb-1.5 block cursor-default text-xs font-semibold">
                   {m.settings_language_label()}
                 </Select.Label>
-                <Select.Trigger className="flex h-10 w-full select-none items-center justify-between gap-3 whitespace-nowrap rounded-lg border border-border-2 bg-neutral-950 pr-2 pl-3 font-normal text-sm text-white leading-none hover:not-data-disabled:bg-surface focus-visible:outline-2 focus-visible:outline-accent focus-visible:-outline-offset-1 active:not-data-disabled:bg-surface data-popup-open:border-accent">
+                <Select.Trigger className="border-border-2 hover:not-data-disabled:bg-surface focus-visible:outline-accent active:not-data-disabled:bg-surface data-popup-open:border-accent flex h-10 w-full items-center justify-between gap-3 rounded-lg border bg-neutral-950 pr-2 pl-3 text-sm leading-none font-normal whitespace-nowrap text-white select-none focus-visible:outline-2 focus-visible:-outline-offset-1">
                   <Select.Value
-                    className="capitalize data-placeholder:text-muted"
+                    className="data-placeholder:text-muted capitalize"
                     placeholder={m.settings_language_placeholder()}
                   />
-                  <Select.Icon className="flex shrink-0 text-muted">
+                  <Select.Icon className="text-muted flex shrink-0">
                     <ChevronsUpDown size={16} />
                   </Select.Icon>
                 </Select.Trigger>
                 <Select.Portal>
                   <Select.Positioner className="z-50 outline-hidden" sideOffset={4}>
-                    <Select.Popup className="group min-w-(--anchor-width) origin-(--transform-origin) rounded-lg border border-border-2 bg-surface py-1 text-white shadow-black/40 shadow-xl outline-hidden transition-[scale,opacity] duration-100 ease-out data-[side=none]:min-w-[calc(var(--anchor-width)+1.75rem)] data-[side=none]:translate-y-px data-[side=none]:scale-100 data-ending-style:scale-[0.95] data-starting-style:scale-[0.95] data-[side=none]:opacity-100 data-ending-style:opacity-0 data-starting-style:opacity-0 data-[side=none]:transition-none">
-                      <Select.ScrollUpArrow className="relative z-1 flex h-4 w-full items-center justify-center text-muted">
+                    <Select.Popup className="group border-border-2 bg-surface min-w-(--anchor-width) origin-(--transform-origin) rounded-lg border py-1 text-white shadow-xl shadow-black/40 outline-hidden transition-[scale,opacity] duration-100 ease-out data-ending-style:scale-[0.95] data-ending-style:opacity-0 data-starting-style:scale-[0.95] data-starting-style:opacity-0 data-[side=none]:min-w-[calc(var(--anchor-width)+1.75rem)] data-[side=none]:translate-y-px data-[side=none]:scale-100 data-[side=none]:opacity-100 data-[side=none]:transition-none">
+                      <Select.ScrollUpArrow className="text-muted relative z-1 flex h-4 w-full items-center justify-center">
                         <ChevronUp size={14} />
                       </Select.ScrollUpArrow>
                       <Select.List className="relative max-h-(--available-height) scroll-py-6 overflow-y-auto py-0.5">
@@ -116,20 +116,20 @@ function SettingsPage() {
                             <Select.Item
                               key={lang.name}
                               value={lang.name}
-                              className="mx-1 grid cursor-default select-none scroll-my-0.5 grid-cols-[1rem_1fr] items-center gap-2 rounded-md py-1.5 pr-4 pl-2.5 text-sm outline-hidden data-selected:bg-accent/15 [@media(hover:hover)]:data-highlighted:bg-surface-2"
+                              className="data-selected:bg-accent/15 [@media(hover:hover)]:data-highlighted:bg-surface-2 mx-1 grid cursor-default scroll-my-0.5 grid-cols-[1rem_1fr] items-center gap-2 rounded-md py-1.5 pr-4 pl-2.5 text-sm outline-hidden select-none"
                             >
-                              <Select.ItemIndicator className="col-start-1 flex items-center justify-center text-accent">
+                              <Select.ItemIndicator className="text-accent col-start-1 flex items-center justify-center">
                                 <Check size={14} />
                               </Select.ItemIndicator>
                               <Select.ItemText className="col-start-2 flex items-center gap-2">
-                                <span className="min-w-14 font-mono text-[10px] text-muted uppercase">{lang.name}</span>
-                                <span className="font-medium text-sm capitalize">{displayName}</span>
+                                <span className="text-muted min-w-14 font-mono text-[10px] uppercase">{lang.name}</span>
+                                <span className="text-sm font-medium capitalize">{displayName}</span>
                               </Select.ItemText>
                             </Select.Item>
                           );
                         })}
                       </Select.List>
-                      <Select.ScrollDownArrow className="relative z-1 flex h-4 w-full items-center justify-center text-muted">
+                      <Select.ScrollDownArrow className="text-muted relative z-1 flex h-4 w-full items-center justify-center">
                         <ChevronDown size={14} />
                       </Select.ScrollDownArrow>
                     </Select.Popup>
@@ -153,7 +153,7 @@ function SettingsPage() {
 
           {audioEnabled && (
             <div className="mt-4 max-w-xs">
-              <label htmlFor="audio-volume" className="mb-1.5 block font-semibold text-muted text-xs">
+              <label htmlFor="audio-volume" className="text-muted mb-1.5 block text-xs font-semibold">
                 {m.settings_audio_volume()}
               </label>
               <input
@@ -165,7 +165,7 @@ function SettingsPage() {
                 onChange={(e) => setAudioVolume(Number(e.target.value) / 100)}
                 className="audio-slider w-full"
               />
-              <span className="mt-1 block font-mono text-[11px] text-muted">{Math.round(audioVolume * 100)}%</span>
+              <span className="text-muted mt-1 block font-mono text-[11px]">{Math.round(audioVolume * 100)}%</span>
             </div>
           )}
         </section>

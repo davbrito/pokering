@@ -188,9 +188,7 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
                   ))}
                 </div>
               ) : (
-                <div className="no-results">
-                  {m.modal_no_results()}
-                </div>
+                <div className="no-results">{m.modal_no_results()}</div>
               )}
               {hasNextPage && (
                 <div className="pagination" style={{ justifyContent: "center", gap: 12 }}>
@@ -295,11 +293,11 @@ function TypesTabs({ value, onValueChange }: { value: string; onValueChange: (v:
             style={(state) =>
               state.pressed
                 ? {
-                  background: c.bg,
-                  color: c.color,
-                  borderColor: c.border,
-                  outlineColor: c.border,
-                }
+                    background: c.bg,
+                    color: c.color,
+                    borderColor: c.border,
+                    outlineColor: c.border,
+                  }
                 : undefined
             }
             value={t.name}

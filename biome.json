@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.16/schema.json",
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "vcs": {
     "enabled": false,
     "clientKind": "git",
@@ -11,6 +11,8 @@
       "src/**",
       "test/**",
       "!src/routeTree.gen.ts",
+      "!src/api/pokeapi",
+      "!src/i18n/paraglide",
       ".vscode/*",
       "index.html",
       "vite.config.ts",
@@ -26,18 +28,15 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "style": {
         "noNonNullAssertion": "off"
       },
       "suspicious": { "noExplicitAny": "off" },
       "nursery": {
-        "useSortedClasses": {
+        "useTailwindSortedClasses": {
           "level": "info",
-          "fix": "safe",
-          "options": {
-            "functions": ["clsx", "cn"]
-          }
+          "fix": "safe"
         }
       },
       "a11y": {
@@ -67,20 +66,10 @@
   "assist": {
     "actions": {
       "source": {
-        "recommended": true,
+        "preset": "recommended",
         "organizeImports": "on"
       }
     }
   },
-  "overrides": [
-    {
-      "includes": ["src/api/pokeapi/**", "src/i18n/paraglide/**"],
-      "linter": {
-        "enabled": false
-      },
-      "assist": {
-        "enabled": false
-      }
-    }
-  ]
+  "tailwind": { "mergeFunctions": ["clsx", "cn"] }
 }

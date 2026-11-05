@@ -112,7 +112,7 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
                 />
               </Progress.Track>
               <Progress.Value
-                className="font-mono text-text"
+                className="text-text font-mono"
                 style={{
                   fontSize: "9px",
                 }}
