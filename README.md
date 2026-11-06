@@ -96,6 +96,9 @@ pnpm deploy
 pnpm test
 ```
 
+Vitest corre dos proyectos: `logic` (`test/**/*.test.ts`, runtime de Workers) y `ui`
+(`test/**/*.test.tsx`, `jsdom`). Los tests se ejecutan en CI junto con el lint (`.github/workflows/ci.yml`).
+
 ## 📐 Formateo y linting
 
 ```bash

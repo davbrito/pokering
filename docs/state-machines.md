@@ -75,3 +75,11 @@ Reglas para escribir y modificar máquinas del proyecto. La referencia viva es `
 - Cada transición nueva, cada guard y cada camino de error llevan un test de la máquina
   (con `vi.useFakeTimers()` y `gameMachine.provide({ actors })`).
 - Incluir los casos negativos: eventos que no deben aceptarse en un estado (`can(...) === false`).
+- **Cobertura de transiciones** (`test/game/transitions.test.ts`): `@xstate/graph` recorre cada máquina con una lista
+  finita de eventos y el test falla si alguna transición declarada no se alcanza. Al añadir un estado o un evento,
+  añade el evento a la lista de su máquina (el mensaje indica la transición sin cubrir). El grafo es una transición
+  pura: no hay actores vivos ni padre, así que si una acción depende de ellos (`sendParent`, `self.getSnapshot().children`),
+  el test del grafo la sustituye con `machine.provide({ actions })`.
+- **UI** (`test/ui/*.test.tsx`, proyecto `ui` de Vitest con `jsdom`): se monta la máquina real con
+  `prepareBattle` sustituido y `vi.useFakeTimers()`, y se comprueba lo que pinta cada fase (`test/ui/harness.tsx`).
+  No se duplica la lógica de la máquina: se verifica botón habilitado/deshabilitado y la fase resultante.

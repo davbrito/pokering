@@ -16,7 +16,7 @@ export function ErrorScreen({ error, reset }: ErrorComponentProps) {
         {!!error && import.meta.env.DEV && (
           <details className="error-details">
             <summary className="error-details-summary">{m.error_details()}</summary>
-            <pre className="error-details-pre">{error.message}</pre>
+            <pre className="error-details-pre">{error instanceof Error ? error.message : String(error)}</pre>
           </details>
         )}
 
