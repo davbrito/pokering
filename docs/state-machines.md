@@ -34,12 +34,25 @@ Reglas para escribir y modificar máquinas del proyecto. La referencia viva es `
   (`{ type: "setMatch", params: ({ event }) => ... }`); no leen `event` directamente ni usan `assertEvent`.
 - Guards y acciones con nombre, no en línea, salvo `assign` trivial que ya vive en `setup`.
 
+## Actores hijos
+
+- Una responsabilidad con ciclo de vida propio (la reproducción, los efectos visuales) es un actor hijo
+  invocado con `input`; el padre le reenvía órdenes (`"playback.*": sendTo("playback", ...)`) y recoge su
+  `output` al terminar. El hijo informa de hechos al padre con `sendParent`, y el padre los reemite hacia la
+  vista con `emit`. Los hijos se detienen solos al salir del estado que los invoca, y con ellos sus
+  temporizadores.
+- El padre solo guarda lo que necesita fuera del hijo (p. ej. `speed` y `stepIdx` finales, recibidos como
+  `output`); mientras el hijo vive, la vista lee el hijo (`usePlayback`, `useStageFx`).
+- Los hijos con tiempo real usan un actor reloj (`fromCallback`) que envía `clock.tick { dt }`; la máquina
+  acumula `dt` y nunca lee `Date.now()`. En tests se provee otro reloj (`machine.provide({ actors: { clock } })`).
+
 ## Efectos
 
 - Los efectos asíncronos son actores: `fromPromise` para una petición, `fromCallback` para temporizadores
   o suscripciones.
 - Los efectos visuales/sonoros se disparan con `emit` y la vista los consume con `actorRef.on(...)`.
-  La vista no muta el estado del juego y cancela sus propios temporizadores en `battle.ended`.
+  La vista no muta el estado del juego ni usa `setTimeout`: los temporizadores de animación son actores
+  (`fxTimer` en `stage-fx-machine.ts`) que se detienen con la máquina que los posee.
 - Las dependencias externas (`queryClient`, etc.) se inyectan con `machine.provide()` (ver `GameProvider`),
   nunca en el contexto.
 

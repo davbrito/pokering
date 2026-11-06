@@ -6,6 +6,7 @@ import { deriveBattleViewState } from "./battle-state";
 import { type GameTag, gameMachine, type Match } from "./machine";
 import type { playbackMachine, Speed } from "./playback-machine";
 import { type PreparedBattle, prepareBattle } from "./prepare-battle";
+import { type FxContext, INITIAL_FX, type stageFxMachine } from "./stage-fx-machine";
 
 export const GameActorContext = createActorContext(gameMachine);
 
@@ -62,6 +63,12 @@ export function usePlayback<T>(select: (snapshot: PlaybackSnapshot) => T, fallba
   );
   const value = useSelector(playback, (snapshot) => (snapshot ? select(snapshot) : undefined));
   return value ?? fallback;
+}
+
+/** Efectos visuales del escenario (actor `fx`, solo vive durante la reproducción; fuera de ella, sin efectos). */
+export function useStageFx(): FxContext {
+  const fx = GameActorContext.useSelector((s) => s.children.fx as ActorRefFrom<typeof stageFxMachine> | undefined);
+  return useSelector(fx, (snapshot) => snapshot?.context) ?? INITIAL_FX;
 }
 
 export function useStepIdx(): number {

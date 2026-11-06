@@ -7,6 +7,7 @@ import {
   type StepPlayedEvent,
 } from "./playback-machine";
 import type { Fighter, PrepareBattleInput, PreparedBattle } from "./prepare-battle";
+import { stageFxMachine } from "./stage-fx-machine";
 import type { BattleStep } from "./types";
 
 export type Fighters = readonly [Fighter, Fighter];
@@ -72,6 +73,7 @@ export const gameMachine = setup({
       throw new Error("prepareBattle no fue provisto");
     }),
     playbackMachine,
+    stageFx: stageFxMachine,
   },
   guards: {
     hasSteps: (_, params: { steps: readonly BattleStep[] }) => params.steps.length > 0,
@@ -89,6 +91,11 @@ export const gameMachine = setup({
     // La reproducción es dueña de stepIdx/speed mientras dura; al terminar los devuelve como `output`.
     rememberPlayback: assign((_, params: PlaybackOutput) => ({ speed: params.speed, stepIdx: params.stepIdx })),
     forwardToPlayback: sendTo("playback", ({ event }) => event as PlaybackEvent),
+    playFx: sendTo("fx", (_, params: { step: BattleStep; speed: Speed }) => ({
+      type: "fx.play" as const,
+      step: params.step,
+      speed: params.speed,
+    })),
     emitStepPlayed: emit((_, params: { step: BattleStep; stepIdx: number }) => ({
       type: "step.played" as const,
       step: params.step,
@@ -142,22 +149,26 @@ export const gameMachine = setup({
           tags: ["battle"],
           // Cubre fin normal, `playback.skip` y `battle.exit`: la vista limpia sus efectos.
           exit: "emitBattleEnded",
-          invoke: {
-            id: "playback",
-            src: "playbackMachine",
-            input: ({ context }) => ({ steps: requirePrepared(context).steps, speed: context.speed }),
-            onDone: {
-              target: "result",
-              actions: { type: "rememberPlayback", params: ({ event }) => event.output },
+          invoke: [
+            {
+              id: "playback",
+              src: "playbackMachine",
+              input: ({ context }) => ({ steps: requirePrepared(context).steps, speed: context.speed }),
+              onDone: {
+                target: "result",
+                actions: { type: "rememberPlayback", params: ({ event }) => event.output },
+              },
             },
-          },
+            // Efectos visuales del escenario: sus temporizadores se detienen al salir de `playback`.
+            { id: "fx", src: "stageFx" },
+          ],
           on: {
             "playback.*": { actions: "forwardToPlayback" },
             "step.played": {
-              actions: {
-                type: "emitStepPlayed",
-                params: ({ event }) => ({ step: event.step, stepIdx: event.stepIdx }),
-              },
+              actions: [
+                { type: "emitStepPlayed", params: ({ event }) => ({ step: event.step, stepIdx: event.stepIdx }) },
+                { type: "playFx", params: ({ event }) => ({ step: event.step, speed: event.speed }) },
+              ],
             },
           },
         },

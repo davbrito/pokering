@@ -3,6 +3,7 @@ import { createActor, fromPromise, type SnapshotFrom } from "xstate";
 import { gameMachine, requireMatch } from "#/game/machine.ts";
 import { INTRO_DELAY_MS, nextSpeed, type playbackMachine } from "#/game/playback-machine.ts";
 import type { PreparedBattle } from "#/game/prepare-battle.ts";
+import type { stageFxMachine } from "#/game/stage-fx-machine.ts";
 import type { BattleStep, MoveInfo } from "#/game/types.ts";
 
 const tackle: MoveInfo = { name: "tackle", type: "normal", accuracy: 100, pp: 5, damageClass: "physical", power: 40 };
@@ -255,5 +256,44 @@ describe("gameMachine", () => {
 
   it("requireMatch falla de forma visible si no hay batalla", () => {
     expect(() => requireMatch({ match: null, prepared: null, stepIdx: 0, speed: 1, error: null })).toThrow(/invariant/);
+  });
+});
+
+describe("gameMachine y los efectos del escenario", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const fxOf = (actor: ReturnType<typeof makeActor>) => {
+    const child = actor.getSnapshot().children.fx;
+    return child ? (child.getSnapshot() as SnapshotFrom<typeof stageFxMachine>).context : null;
+  };
+
+  it("el actor fx existe solo durante la reproducción y recibe cada paso", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send(start());
+    expect(fxOf(actor)).toBeNull(); // loading
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
+    expect(fxOf(actor)).not.toBeNull();
+
+    // paso 1 (use-move física) ⇒ embestida; paso 2 (damage) ⇒ popup
+    // El reloj late cada 16 ms: un paso de 2200 ms termina en el tick 138 (2208 ms).
+    await vi.advanceTimersByTimeAsync(2208);
+    expect(fxOf(actor)?.anim).toEqual(["lunge-right", ""]);
+    await vi.advanceTimersByTimeAsync(1808);
+    expect(fxOf(actor)?.damagePopups).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(actor.getSnapshot().hasTag("result")).toBe(true);
+    expect(fxOf(actor)).toBeNull(); // al salir de playback no queda nada
+  });
+
+  it("battle.exit durante la reproducción no deja temporizadores pendientes", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send(start());
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS + 2208 + 1808); // hay un popup de daño en curso
+    expect(fxOf(actor)?.damagePopups).toHaveLength(1);
+    actor.send({ type: "battle.exit" });
+    expect(actor.getSnapshot().hasTag("selection")).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
