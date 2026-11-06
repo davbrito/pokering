@@ -5,13 +5,13 @@ import type { PrepareBattleInput } from "#/game/prepare-battle.ts";
 import { m } from "#/i18n/paraglide/messages.js";
 import { advance, chooseFighters, deferred, prepared, renderGame, resetSelection } from "./harness.tsx";
 
-// El audio usa elementos <audio>, que jsdom no implementa.
 // Semillas conocidas y distintas: lo que distingue a Revancha (semilla nueva) de Reintentar (la misma).
 vi.mock("#/game/rng.ts", async (original) => {
   let n = 100;
   return { ...(await original<typeof import("#/game/rng.ts")>()), randomSeed: () => ++n };
 });
 
+// El audio usa elementos <audio>, que jsdom no implementa.
 vi.mock("#/game/audio.ts", () => ({ playPokemonCries: vi.fn(), playPokemonCry: vi.fn() }));
 
 const phase = () => screen.getByTestId("phase").textContent;
