@@ -1,5 +1,5 @@
 import { clamp } from "es-toolkit/math";
-import { type RefObject, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PokemonDetail } from "../../api/pokeapi";
 import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
@@ -57,6 +57,7 @@ function BattleStageContent({ phase: battlePhase }: { phase: "battle" | "result"
   const viewportRef = useRef<HTMLDivElement>(null);
   const imgRef0 = useRef<HTMLImageElement | null>(null);
   const imgRef1 = useRef<HTMLImageElement | null>(null);
+  const imgRefs = useMemo(() => [imgRef0, imgRef1] as const, []);
 
   // Animaciones, popups y proyectiles viven en el actor `fx` (con sus propios temporizadores);
   // aquí solo queda el audio, que necesita los datos de los Pokémon.
@@ -151,7 +152,7 @@ function BattleStageContent({ phase: battlePhase }: { phase: "battle" | "result"
             proj={proj}
             playbackSpeed={playbackSpeed}
             viewportRef={viewportRef}
-            imgRefs={[imgRef0, imgRef1]}
+            imgRefs={imgRefs}
           />
         ))}
       </div>

@@ -101,10 +101,14 @@ export const gameMachine = setup({
       return event;
     }),
     // Los efectos visuales se pausan y cambian de velocidad con la reproducción (`skip` los detiene al salir).
-    forwardToFx: enqueueActions(({ event, enqueue }) => {
-      if (event.type === "playback.pause" || event.type === "playback.resume" || event.type === "playback.setSpeed") {
-        enqueue.sendTo("fx", event);
+    // Solo se reenvía lo que el hijo de reproducción acepta (p. ej. `pause` durante `intro` no llega a `fx`),
+    // para que los efectos nunca se desincronicen de la reproducción.
+    forwardToFx: enqueueActions(({ event, enqueue, self }) => {
+      if (event.type !== "playback.pause" && event.type !== "playback.resume" && event.type !== "playback.setSpeed") {
+        return;
       }
+      const playback = self.getSnapshot().children.playback?.getSnapshot();
+      if (playback && "can" in playback && playback.can(event)) enqueue.sendTo("fx", event);
     }),
     playFx: sendTo("fx", (_, params: { step: BattleStep; speed: Speed }) => ({
       type: "fx.play" as const,

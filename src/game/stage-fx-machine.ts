@@ -62,6 +62,15 @@ export type FxEvent =
   | { type: "playback.resume" }
   | { type: "playback.setSpeed"; speed: Speed };
 
+/** Lo que la vista pinta: sin el estado interno de tiempo (`pending`), que cambia en cada tick. */
+export type FxView = Pick<FxContext, "anim" | "shake" | "damagePopups" | "statusPopups" | "projectiles">;
+
+/** Proyección estable: si no vence nada, conserva las mismas referencias (comparable con `shallowEqual`). */
+export function fxView(context: FxContext): FxView {
+  const { anim, shake, damagePopups, statusPopups, projectiles } = context;
+  return { anim, shake, damagePopups, statusPopups, projectiles };
+}
+
 export const INITIAL_FX: FxContext = {
   anim: ["", ""],
   shake: false,

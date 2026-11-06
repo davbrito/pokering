@@ -1,12 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { createActorContext, useSelector } from "@xstate/react";
+import { createActorContext, shallowEqual, useSelector } from "@xstate/react";
 import { type ReactNode, useMemo } from "react";
 import { type ActorRefFrom, fromPromise, type SnapshotFrom } from "xstate";
 import { deriveBattleViewState } from "./battle-state";
 import { type GameCommand, type GameTag, gameMachine, type Match } from "./machine";
 import type { playbackMachine, Speed } from "./playback-machine";
 import { type PreparedBattle, prepareBattle } from "./prepare-battle";
-import { type FxContext, INITIAL_FX, type stageFxMachine } from "./stage-fx-machine";
+import { type FxView, fxView, INITIAL_FX, type stageFxMachine } from "./stage-fx-machine";
 
 export const GameActorContext = createActorContext(gameMachine);
 
@@ -66,9 +66,12 @@ export function usePlayback<T>(select: (snapshot: PlaybackSnapshot) => T, fallba
 }
 
 /** Efectos visuales del escenario (actor `fx`, solo vive durante la reproducción; fuera de ella, sin efectos). */
-export function useStageFx(): FxContext {
+export function useStageFx(): FxView {
   const fx = GameActorContext.useSelector((s) => s.children.fx as ActorRefFrom<typeof stageFxMachine> | undefined);
-  return useSelector(fx, (snapshot) => snapshot?.context) ?? INITIAL_FX;
+  // Solo los campos visibles, con comparación superficial: el reloj no provoca renders si nada cambia.
+  return (
+    useSelector(fx, (snapshot) => (snapshot ? fxView(snapshot.context) : undefined), shallowEqual) ?? fxView(INITIAL_FX)
+  );
 }
 
 /**

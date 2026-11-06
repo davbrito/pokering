@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createActor, fromCallback } from "xstate";
 import type { ClockTickEvent } from "#/game/clock.ts";
-import { advanceEffects, INITIAL_FX, playStep, stageFxMachine } from "#/game/stage-fx-machine.ts";
+import { advanceEffects, fxView, INITIAL_FX, playStep, stageFxMachine } from "#/game/stage-fx-machine.ts";
 import type { BattleStep, MoveInfo } from "#/game/types.ts";
 
 const tackle: MoveInfo = { name: "tackle", type: "normal", accuracy: 100, pp: 5, damageClass: "physical", power: 40 };
@@ -177,5 +177,16 @@ describe("funciones puras", () => {
     const advanced = advanceEffects(played, 10_000);
     expect(played.pending.length).toBeGreaterThan(0);
     expect(advanced.pending).toEqual([]);
+  });
+
+  it("fxView conserva las referencias visibles mientras solo avanza el tiempo (sin renders de más)", () => {
+    const played = playStep(INITIAL_FX, damage(), 1);
+    const before = fxView(played);
+    const after = fxView(advanceEffects(played, 16)); // nada vence aún: solo cambia `pending`
+    expect(after.anim).toBe(before.anim);
+    expect(after.damagePopups).toBe(before.damagePopups);
+    expect(after.projectiles).toBe(before.projectiles);
+    expect(after.statusPopups).toBe(before.statusPopups);
+    expect(after.shake).toBe(before.shake);
   });
 });

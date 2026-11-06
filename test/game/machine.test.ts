@@ -340,3 +340,28 @@ describe("gameMachine: contrato con la UI", () => {
     expect(actor.getSnapshot().context.preferredSpeed).toBe(1);
   });
 });
+
+describe("gameMachine: fx sigue a la reproducción", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("playback.pause durante intro (rechazado por el hijo) no pausa los efectos", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send(start());
+    await vi.advanceTimersByTimeAsync(0);
+    expect(playbackOf(actor).matches("intro")).toBe(true);
+    actor.send({ type: "playback.pause" });
+    const fx = actor.getSnapshot().children.fx?.getSnapshot() as SnapshotFrom<typeof stageFxMachine>;
+    expect(playbackOf(actor).matches("intro")).toBe(true);
+    expect(fx.matches("running")).toBe(true);
+  });
+
+  it("playback.resume sin pausa previa tampoco llega a fx", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send(start());
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
+    actor.send({ type: "playback.resume" });
+    const fx = actor.getSnapshot().children.fx?.getSnapshot() as SnapshotFrom<typeof stageFxMachine>;
+    expect(fx.matches("running")).toBe(true);
+  });
+});
