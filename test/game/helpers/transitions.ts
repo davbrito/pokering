@@ -31,8 +31,7 @@ export function declaredTransitions(machine: AnyStateMachine): DeclaredTransitio
 const matchesEventType = (pattern: string, type: string) =>
   pattern === type || (pattern.endsWith(".*") && type.startsWith(pattern.slice(0, -1)));
 
-const inState = (machine: AnyStateMachine, snapshot: AnyMachineSnapshot, id: string) =>
-  [...snapshot._nodes].some((n) => n.id === id) || machine.idMap.get(id) === undefined;
+const inState = (snapshot: AnyMachineSnapshot, id: string) => [...snapshot._nodes].some((n) => n.id === id);
 
 /**
  * Explora el espacio de estados con `@xstate/graph` y devuelve las transiciones declaradas que ningún camino
@@ -55,15 +54,19 @@ export function uncoveredTransitions(
     serializeState: (snapshot) => JSON.stringify(options.key?.(snapshot) ?? snapshot.value) as never,
   });
   const edges = Object.values(adjacency).flatMap((from) =>
-    Object.values(from.transitions).map((t) => ({ from: from.state, event: t.event, to: t.state })),
+    (Object.values(from.transitions) as { event: AnyEventObject; state: AnyMachineSnapshot }[]).map((t) => ({
+      from: from.state,
+      event: t.event,
+      to: t.state,
+    })),
   );
   return declaredTransitions(machine).filter(
     (declared) =>
       !edges.some(
         ({ from, event, to }) =>
           matchesEventType(declared.eventType, event.type) &&
-          inState(machine, from, declared.source) &&
-          (declared.target === null ? from.can(event) : inState(machine, to, declared.target)),
+          inState(from, declared.source) &&
+          (declared.target === null ? from.can(event) : inState(to, declared.target)),
       ),
   );
 }
