@@ -31,7 +31,8 @@ describe("cobertura de transiciones", () => {
   it("gameMachine", () => {
     expectFullCoverage(
       uncoveredTransitions(
-        gameMachine,
+        // `forwardToFx` lee los actores vivos; en una transición pura no los hay, así que se neutraliza.
+        gameMachine.provide({ actions: { forwardToFx: () => {} } }),
         () =>
           [
             { type: "battle.start", fighters, seed: 1 },

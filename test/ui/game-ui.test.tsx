@@ -6,6 +6,12 @@ import { m } from "#/i18n/paraglide/messages.js";
 import { advance, chooseFighters, deferred, prepared, renderGame, resetSelection } from "./harness.tsx";
 
 // El audio usa elementos <audio>, que jsdom no implementa.
+// Semillas conocidas y distintas: lo que distingue a Revancha (semilla nueva) de Reintentar (la misma).
+vi.mock("#/game/rng.ts", async (original) => {
+  let n = 100;
+  return { ...(await original<typeof import("#/game/rng.ts")>()), randomSeed: () => ++n };
+});
+
 vi.mock("#/game/audio.ts", () => ({ playPokemonCries: vi.fn(), playPokemonCry: vi.fn() }));
 
 const phase = () => screen.getByTestId("phase").textContent;
@@ -63,7 +69,7 @@ describe("UI según el estado de la máquina", () => {
   });
 
   describe("error", () => {
-    it("«Reintentar» repite la carga con la misma semilla y «Volver» regresa a la selección", async () => {
+    it("«Reintentar» repite la carga con la misma semilla", async () => {
       const prepare = vi.fn().mockRejectedValueOnce(new Error("boom")).mockResolvedValue(prepared);
       renderGame(prepare);
       chooseFighters();
@@ -136,7 +142,7 @@ describe("UI según el estado de la máquina", () => {
   });
 
   describe("result", () => {
-    it("muestra el ganador y «Revancha» vuelve a cargar con otra semilla", async () => {
+    it("muestra el ganador y «Revancha» vuelve a cargar con otra semilla y los mismos luchadores", async () => {
       const prepare = await startPlaying();
       click("Saltar");
       await advance();
@@ -150,6 +156,7 @@ describe("UI según el estado de la máquina", () => {
       await advance();
       expect(prepare).toHaveBeenCalledTimes(2);
       expect(prepare.mock.calls[1][0].fighters).toEqual(prepare.mock.calls[0][0].fighters);
+      expect(prepare.mock.calls[1][0].seed).not.toBe(prepare.mock.calls[0][0].seed);
       expect(phase()).toBe("battle");
     });
   });

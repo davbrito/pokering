@@ -107,8 +107,7 @@ export const gameMachine = setup({
       if (event.type !== "playback.pause" && event.type !== "playback.resume" && event.type !== "playback.setSpeed") {
         return;
       }
-      // `?.`: en una transición pura (`machine.transition`, p. ej. @xstate/graph) no hay actores vivos.
-      const playback = self.getSnapshot()?.children?.playback?.getSnapshot();
+      const playback = self.getSnapshot().children.playback?.getSnapshot();
       if (playback && "can" in playback && playback.can(event)) enqueue.sendTo("fx", event);
     }),
     playFx: sendTo("fx", (_, params: { step: BattleStep; speed: Speed }) => ({

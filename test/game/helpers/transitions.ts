@@ -37,6 +37,10 @@ const inState = (snapshot: AnyMachineSnapshot, id: string) => [...snapshot._node
  * Explora el espacio de estados con `@xstate/graph` y devuelve las transiciones declaradas que ningún camino
  * recorre. Una transición con destino cuenta cuando se pasa de un estado que contiene `source` a uno que
  * contiene `target`; una sin destino, cuando el evento se acepta (`can`) estando en `source`.
+ *
+ * Limitación: `can` también es true si el evento lo acepta *otra* transición del estado (una del padre o una rama
+ * con otro guard), así que una transición sin destino puede darse por cubierta sin que se recorra esa rama.
+ * Más precisión exigiría comparar `context` o los `actions` del microstep.
  */
 export function uncoveredTransitions(
   machine: AnyStateMachine,
