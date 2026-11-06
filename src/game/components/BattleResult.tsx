@@ -4,7 +4,7 @@ import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { getStatsObject } from "../combat";
 import { getEffectiveness } from "../combat/moves";
-import { GameActorContext, useGamePhase, useMatch, usePrepared } from "../game-actor";
+import { useGamePhase, useGameSend, useMatch, usePrepared } from "../game-actor";
 import { randomSeed } from "../rng";
 import { useSettingsStore } from "../settings-store";
 import { useChosenPokemon } from "../store";
@@ -81,14 +81,14 @@ export function BattleResult() {
 }
 
 function BattleResultContent() {
-  const actorRef = GameActorContext.useActorRef();
+  const send = useGameSend();
   const { fighters } = useMatch();
   const { steps: battleSteps } = usePrepared();
   const { chosen } = useChosenPokemon();
   const [{ level: level1 }, { level: level2 }] = fighters;
   const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
 
-  const handleRestart = () => actorRef.send({ type: "battle.rematch", seed: randomSeed() });
+  const handleRestart = () => send({ type: "battle.rematch", seed: randomSeed() });
 
   const p1 = chosen[0];
   const p2 = chosen[1];

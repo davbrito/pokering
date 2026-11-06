@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createActor, fromPromise } from "xstate";
-import { gameMachine, INTRO_DELAY_MS, nextSpeed, requireMatch } from "#/game/machine.ts";
+import { createActor, fromPromise, type SnapshotFrom } from "xstate";
+import { type GameCommand, gameMachine, requireMatch } from "#/game/machine.ts";
+import { INTRO_DELAY_MS, nextSpeed, type playbackMachine } from "#/game/playback-machine.ts";
 import type { PreparedBattle } from "#/game/prepare-battle.ts";
+import type { stageFxMachine } from "#/game/stage-fx-machine.ts";
 import type { BattleStep, MoveInfo } from "#/game/types.ts";
 
 const tackle: MoveInfo = { name: "tackle", type: "normal", accuracy: 100, pp: 5, damageClass: "physical", power: 40 };
@@ -17,6 +19,13 @@ const fighters = [
   { id: 4, level: 50 },
 ] as const;
 const start = (seed = 1) => ({ type: "battle.start", fighters, seed }) as const;
+
+/** Snapshot del actor hijo de reproducción (existe solo mientras se reproduce). */
+function playbackOf(actor: ReturnType<typeof makeActor>) {
+  const child = actor.getSnapshot().children.playback;
+  if (!child) throw new Error("no hay actor de reproducción");
+  return child.getSnapshot() as SnapshotFrom<typeof playbackMachine>;
+}
 
 function makeActor(prepare: (seed: number | undefined) => Promise<PreparedBattle>) {
   const machine = gameMachine.provide({
@@ -42,7 +51,7 @@ describe("gameMachine", () => {
 
     await vi.advanceTimersByTimeAsync(0);
     expect(prepare).toHaveBeenCalledTimes(1);
-    expect(actor.getSnapshot().matches({ match: { playback: "intro" } })).toBe(true);
+    expect(actor.getSnapshot().matches({ match: "playback" })).toBe(true);
     expect(actor.getSnapshot().context.match?.seed).toBe(1);
     expect(actor.getSnapshot().can(start(3))).toBe(false);
   });
@@ -56,7 +65,7 @@ describe("gameMachine", () => {
 
     actor.send(start());
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
-    expect(actor.getSnapshot().matches({ match: { playback: "playing" } })).toBe(true);
+    expect(playbackOf(actor).matches("playing")).toBe(true);
     await vi.advanceTimersByTimeAsync(60_000);
     expect(actor.getSnapshot().hasTag("result")).toBe(true);
     expect(played).toEqual([0, 1, 2, 3]);
@@ -69,8 +78,8 @@ describe("gameMachine", () => {
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
     actor.send({ type: "playback.pause" });
     await vi.advanceTimersByTimeAsync(60_000);
-    expect(actor.getSnapshot().hasTag("paused")).toBe(true);
-    expect(actor.getSnapshot().context.stepIdx).toBe(0);
+    expect(playbackOf(actor).hasTag("paused")).toBe(true);
+    expect(playbackOf(actor).context.stepIdx).toBe(0);
     actor.send({ type: "playback.resume" });
     await vi.advanceTimersByTimeAsync(60_000);
     expect(actor.getSnapshot().hasTag("result")).toBe(true);
@@ -80,16 +89,16 @@ describe("gameMachine", () => {
     const actor = makeActor(async () => prepared);
     actor.send(start());
     await vi.advanceTimersByTimeAsync(0);
-    expect(actor.getSnapshot().matches({ match: { playback: "intro" } })).toBe(true);
+    expect(playbackOf(actor).matches("intro")).toBe(true);
     actor.send({ type: "playback.setSpeed", speed: 4 });
     actor.send({ type: "playback.setSpeed", speed: 4 });
-    expect(actor.getSnapshot().context.speed).toBe(4);
+    expect(playbackOf(actor).context.speed).toBe(4);
 
     await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
     actor.send({ type: "playback.pause" });
     actor.send({ type: "playback.setSpeed", speed: 2 });
-    expect(actor.getSnapshot().context.speed).toBe(2);
-    expect(actor.getSnapshot().hasTag("paused")).toBe(true);
+    expect(playbackOf(actor).context.speed).toBe(2);
+    expect(playbackOf(actor).hasTag("paused")).toBe(true);
   });
 
   it("nextSpeed cicla 1 → 2 → 4 → 1", () => {
@@ -104,7 +113,7 @@ describe("gameMachine", () => {
     await vi.advanceTimersByTimeAsync(0);
     actor.send({ type: "playback.skip" });
     expect(actor.getSnapshot().hasTag("result")).toBe(true);
-    expect(actor.getSnapshot().context.stepIdx).toBe(steps.length - 1);
+    expect(actor.getSnapshot().context.lastPlayback).toEqual({ speed: 1, stepIdx: steps.length - 1 });
     expect(ended).toHaveBeenCalledTimes(1);
   });
 
@@ -127,7 +136,7 @@ describe("gameMachine", () => {
     actor.send({ type: "battle.retry" });
     expect(actor.getSnapshot().context.error).toBeNull();
     await vi.advanceTimersByTimeAsync(0);
-    expect(actor.getSnapshot().matches({ match: { playback: "intro" } })).toBe(true);
+    expect(actor.getSnapshot().matches({ match: "playback" })).toBe(true);
     expect(seeds).toEqual([42, 42]);
   });
 
@@ -143,7 +152,7 @@ describe("gameMachine", () => {
     expect(snap.hasTag("loading")).toBe(true);
     expect(snap.context.match).toEqual({ fighters, seed: 8 });
     expect(snap.context.prepared).toBeNull();
-    expect(snap.context.stepIdx).toBe(0);
+    expect(snap.context.lastPlayback).toBeNull();
   });
 
   it("battle.start se acepta desde result y error, no desde loading ni playback", async () => {
@@ -246,6 +255,113 @@ describe("gameMachine", () => {
   });
 
   it("requireMatch falla de forma visible si no hay batalla", () => {
-    expect(() => requireMatch({ match: null, prepared: null, stepIdx: 0, speed: 1, error: null })).toThrow(/invariant/);
+    expect(() =>
+      requireMatch({ match: null, prepared: null, preferredSpeed: 1, lastPlayback: null, error: null }),
+    ).toThrow(/invariant/);
+  });
+});
+
+describe("gameMachine y los efectos del escenario", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const fxOf = (actor: ReturnType<typeof makeActor>) => {
+    const child = actor.getSnapshot().children.fx;
+    return child ? (child.getSnapshot() as SnapshotFrom<typeof stageFxMachine>).context : null;
+  };
+
+  it("el actor fx existe solo durante la reproducción y recibe cada paso", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send(start());
+    expect(fxOf(actor)).toBeNull(); // loading
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
+    expect(fxOf(actor)).not.toBeNull();
+
+    // paso 1 (use-move física) ⇒ embestida; paso 2 (damage) ⇒ popup
+    // El reloj late cada 16 ms: un paso de 2200 ms termina en el tick 138 (2208 ms).
+    await vi.advanceTimersByTimeAsync(2208);
+    expect(fxOf(actor)?.anim).toEqual(["lunge-right", ""]);
+    await vi.advanceTimersByTimeAsync(1808);
+    expect(fxOf(actor)?.damagePopups).toHaveLength(1);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(actor.getSnapshot().hasTag("result")).toBe(true);
+    expect(fxOf(actor)).toBeNull(); // al salir de playback no queda nada
+  });
+
+  it("battle.exit durante la reproducción no deja temporizadores pendientes", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send(start());
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS + 2208 + 1808); // hay un popup de daño en curso
+    expect(fxOf(actor)?.damagePopups).toHaveLength(1);
+    actor.send({ type: "battle.exit" });
+    expect(actor.getSnapshot().hasTag("selection")).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe("gameMachine: contrato con la UI", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("la UI solo puede enviar GameCommand: los hechos de los hijos no se pueden inyectar (tipado)", () => {
+    const actor = makeActor(async () => prepared);
+    const send: (command: GameCommand) => void = actor.send;
+    // @ts-expect-error `step.played` es un hecho interno de los hijos, no una orden
+    send({ type: "step.played", step: steps[0], stepIdx: 0, speed: 1 });
+  });
+
+  it("playback.pause/resume/setSpeed llegan también al actor fx; skip no lo rompe", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send(start());
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
+    const fx = () => actor.getSnapshot().children.fx?.getSnapshot() as SnapshotFrom<typeof stageFxMachine>;
+    expect(fx().matches("running")).toBe(true);
+    actor.send({ type: "playback.pause" });
+    expect(fx().matches("paused")).toBe(true);
+    actor.send({ type: "playback.setSpeed", speed: 4 });
+    expect(fx().context.speed).toBe(4);
+    actor.send({ type: "playback.resume" });
+    expect(fx().matches("running")).toBe(true);
+    actor.send({ type: "playback.skip" });
+    expect(actor.getSnapshot().hasTag("result")).toBe(true);
+  });
+
+  it("la velocidad elegida se conserva entre revanchas y se resetea al salir", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send(start());
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
+    actor.send({ type: "playback.setSpeed", speed: 4 });
+    actor.send({ type: "playback.skip" });
+    actor.send({ type: "battle.rematch", seed: 2 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(playbackOf(actor).context.speed).toBe(4);
+    actor.send({ type: "battle.exit" });
+    expect(actor.getSnapshot().context.preferredSpeed).toBe(1);
+  });
+});
+
+describe("gameMachine: fx sigue a la reproducción", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("playback.pause durante intro (rechazado por el hijo) no pausa los efectos", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send(start());
+    await vi.advanceTimersByTimeAsync(0);
+    expect(playbackOf(actor).matches("intro")).toBe(true);
+    actor.send({ type: "playback.pause" });
+    const fx = actor.getSnapshot().children.fx?.getSnapshot() as SnapshotFrom<typeof stageFxMachine>;
+    expect(playbackOf(actor).matches("intro")).toBe(true);
+    expect(fx.matches("running")).toBe(true);
+  });
+
+  it("playback.resume sin pausa previa tampoco llega a fx", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send(start());
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
+    actor.send({ type: "playback.resume" });
+    const fx = actor.getSnapshot().children.fx?.getSnapshot() as SnapshotFrom<typeof stageFxMachine>;
+    expect(fx.matches("running")).toBe(true);
   });
 });
