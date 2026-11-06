@@ -1,5 +1,6 @@
-import { assign, enqueueActions, fromCallback, setup } from "xstate";
+import { assign, enqueueActions, setup } from "xstate";
 import { stepDuration } from "./battle-state";
+import { type ClockTickEvent, clock } from "./clock";
 import type { BattleStep } from "./types";
 
 export const SPEEDS = [1, 2, 4] as const;
@@ -38,26 +39,6 @@ export type PlaybackEvent =
   | { type: "playback.setSpeed"; speed: Speed }
   | { type: "playback.skip" };
 
-/** Hecho del reloj: pasaron `dt` ms reales desde el tick anterior. */
-export type ClockTickEvent = { type: "clock.tick"; dt: number };
-
-export const CLOCK_INTERVAL_MS = 16;
-
-/**
- * Reloj de la reproducción: envía `clock.tick { dt }` mientras el actor esté vivo (solo existe en `running`).
- * Es el único sitio con tiempo real; la máquina solo suma `dt`, así que es determinista y testeable
- * proveyendo otro reloj (`playbackMachine.provide({ actors: { clock } })`).
- */
-const clock = fromCallback<ClockTickEvent>(({ sendBack }) => {
-  let last = Date.now();
-  const id = setInterval(() => {
-    const now = Date.now();
-    sendBack({ type: "clock.tick", dt: now - last });
-    last = now;
-  }, CLOCK_INTERVAL_MS);
-  return () => clearInterval(id);
-});
-
 /** Hecho que el hijo envía al padre cuando un paso entra en escena. */
 export type StepPlayedEvent = { type: "step.played"; step: BattleStep; stepIdx: number; speed: Speed };
 
@@ -90,7 +71,12 @@ export const playbackMachine = setup({
     addElapsed: assign({
       elapsed: ({ context }, params: { dt: number }) => context.elapsed + params.dt * context.speed,
     }),
-    nextStep: assign({ stepIdx: ({ context }) => context.stepIdx + 1, elapsed: 0 }),
+    // El tiempo sobrante del tick pasa al paso siguiente: la reproducción no acumula retraso.
+    nextStep: assign(({ context }, params: { dt: number }) => {
+      const step = context.steps[context.stepIdx];
+      const overshoot = step ? context.elapsed + params.dt * context.speed - stepDuration(step) : 0;
+      return { stepIdx: context.stepIdx + 1, elapsed: Math.max(0, overshoot) };
+    }),
     goToLastStep: assign({ stepIdx: ({ context }) => Math.max(0, context.steps.length - 1) }),
     sendStepPlayed: enqueueActions(({ context, enqueue }) => {
       const step = context.steps[context.stepIdx];
@@ -128,7 +114,7 @@ export const playbackMachine = setup({
               },
               {
                 guard: { type: "stepEnds", params: ({ event }) => ({ dt: event.dt }) },
-                actions: ["nextStep", "sendStepPlayed"],
+                actions: [{ type: "nextStep", params: ({ event }) => ({ dt: event.dt }) }, "sendStepPlayed"],
               },
               { actions: { type: "addElapsed", params: ({ event }) => ({ dt: event.dt }) } },
             ],

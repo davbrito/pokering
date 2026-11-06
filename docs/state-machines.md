@@ -41,18 +41,27 @@ Reglas para escribir y modificar máquinas del proyecto. La referencia viva es `
   `output` al terminar. El hijo informa de hechos al padre con `sendParent`, y el padre los reemite hacia la
   vista con `emit`. Los hijos se detienen solos al salir del estado que los invoca, y con ellos sus
   temporizadores.
-- El padre solo guarda lo que necesita fuera del hijo (p. ej. `speed` y `stepIdx` finales, recibidos como
-  `output`); mientras el hijo vive, la vista lee el hijo (`usePlayback`, `useStageFx`).
-- Los hijos con tiempo real usan un actor reloj (`fromCallback`) que envía `clock.tick { dt }`; la máquina
-  acumula `dt` y nunca lee `Date.now()`. En tests se provee otro reloj (`machine.provide({ actors: { clock } })`).
+- El padre solo guarda lo que necesita fuera del hijo, con nombres que dicen que no son datos vivos
+  (`preferredSpeed`, `lastPlayback`, recibidos como `output`); mientras el hijo vive, la vista lee el hijo
+  (`usePlayback`, `useStepIdx`, `usePlaybackSpeed`, `useStageFx`) y esos hooks son la única forma de leerlos.
+- Todo lo que dependa del tiempo (reproducción, efectos visuales) corre con el mismo reloj (`src/game/clock.ts`):
+  pausar lo detiene y la velocidad escala `dt`, así que animaciones y pasos no se desincronizan. Un efecto de
+  duración fija sin reloj (o un `setTimeout` en la vista) se salta la pausa y la velocidad.
+- Los eventos que envía la UI se tipan como `GameCommand` (`useGameSend`); los hechos de los hijos hacia el
+  padre (`step.played`) son internos y no se pueden enviar desde un componente.
+- El reloj (`fromCallback`) envía `clock.tick { dt }` con `performance.now()` (monotónico, `dt ≥ 0`); la
+  máquina acumula `dt`, pasa el sobrante al paso siguiente y nunca lee la hora. En tests se provee otro reloj (`machine.provide({ actors: { clock } })`).
 
 ## Efectos
 
 - Los efectos asíncronos son actores: `fromPromise` para una petición, `fromCallback` para temporizadores
   o suscripciones.
 - Los efectos visuales/sonoros se disparan con `emit` y la vista los consume con `actorRef.on(...)`.
-  La vista no muta el estado del juego ni usa `setTimeout`: los temporizadores de animación son actores
-  (`fxTimer` en `stage-fx-machine.ts`) que se detienen con la máquina que los posee.
+  La vista no muta el estado del juego ni usa `setTimeout`: el tiempo de las animaciones lo lleva
+  `stageFxMachine` con el reloj compartido, y se detiene con la máquina que lo posee.
+- Si un efecto limpia algo que puso otro paso, comprueba que sigue siendo suyo (p. ej. `anim` guarda la clase
+  esperada) para no pisar animaciones posteriores.
+- La vista no lee el DOM durante el render: las mediciones van en un efecto de layout.
 - Las dependencias externas (`queryClient`, etc.) se inyectan con `machine.provide()` (ver `GameProvider`),
   nunca en el contexto.
 

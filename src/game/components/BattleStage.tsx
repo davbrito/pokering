@@ -1,5 +1,5 @@
 import { clamp } from "es-toolkit/math";
-import { type RefObject, useEffect, useEffectEvent, useRef, useState } from "react";
+import { type RefObject, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import type { PokemonDetail } from "../../api/pokeapi";
 import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
@@ -9,6 +9,7 @@ import {
   GameActorContext,
   useBattleView,
   useGamePhase,
+  useGameSend,
   useMatch,
   usePlayback,
   usePlaybackSpeed,
@@ -32,6 +33,7 @@ export function BattleStage() {
 
 function BattleStageContent({ phase: battlePhase }: { phase: "battle" | "result" }) {
   const actorRef = GameActorContext.useActorRef();
+  const send = useGameSend();
   const playbackSpeed = usePlaybackSpeed();
   const isPaused = usePlayback((snapshot) => snapshot.hasTag("paused"), false);
   const { fighters } = useMatch();
@@ -93,9 +95,9 @@ function BattleStageContent({ phase: battlePhase }: { phase: "battle" | "result"
     false,
   );
   const canToggleSpeed = usePlayback((snapshot) => snapshot.can({ type: "playback.setSpeed", speed: 1 }), false);
-  const togglePause = () => actorRef.send({ type: isPaused ? "playback.resume" : "playback.pause" });
-  const toggleSpeed = () => actorRef.send({ type: "playback.setSpeed", speed: nextSpeed(playbackSpeed) });
-  const skipCinematics = () => actorRef.send({ type: "playback.skip" });
+  const togglePause = () => send({ type: isPaused ? "playback.resume" : "playback.pause" });
+  const toggleSpeed = () => send({ type: "playback.setSpeed", speed: nextSpeed(playbackSpeed) });
+  const skipCinematics = () => send({ type: "playback.skip" });
 
   const p1Meta = p1Data
     ? `#${String(p1Data.id).padStart(3, "0")} · Nv.${p1Level} · BST ${getBst(p1Data)}`
@@ -292,7 +294,7 @@ function Figter({
 }
 
 /**
- * La geometría (posiciones DOM) es asunto de la vista: se mide una vez al montar el proyectil,
+ * La geometría (posiciones DOM) es asunto de la vista: se mide al montar el proyectil,
  * que el actor `fx` monta y desmonta con su temporizador.
  */
 function MeasuredProjectile({
@@ -306,21 +308,26 @@ function MeasuredProjectile({
   viewportRef: RefObject<HTMLDivElement | null>;
   imgRefs: readonly [RefObject<HTMLImageElement | null>, RefObject<HTMLImageElement | null>];
 }) {
-  const [geometry] = useState(() => {
+  const [geometry, setGeometry] = useState<{ sx: number; sy: number; tx: number; ty: number } | null>(null);
+  // Se mide en un efecto de layout (nunca durante el render), antes de pintar.
+  useLayoutEffect(() => {
     const atkImg = imgRefs[proj.atkIdx]?.current;
     const defImg = imgRefs[proj.defIdx]?.current;
     const viewport = viewportRef.current;
-    if (!atkImg || !defImg || !viewport) return null;
+    if (!atkImg || !defImg || !viewport) return;
     const ra = atkImg.getBoundingClientRect();
     const rd = defImg.getBoundingClientRect();
     const rv = viewport.getBoundingClientRect();
-    return {
-      sx: ra.left + ra.width / 2 - rv.left,
-      sy: ra.top + ra.height / 2 - rv.top,
-      tx: rd.left + rd.width / 2 - rv.left,
-      ty: rd.top + rd.height / 2 - rv.top,
-    };
-  });
+    setGeometry(
+      (prev) =>
+        prev ?? {
+          sx: ra.left + ra.width / 2 - rv.left,
+          sy: ra.top + ra.height / 2 - rv.top,
+          tx: rd.left + rd.width / 2 - rv.left,
+          ty: rd.top + rd.height / 2 - rv.top,
+        },
+    );
+  }, [proj.atkIdx, proj.defIdx, imgRefs, viewportRef]);
   if (!geometry) return null;
   return <ProjectileFx proj={{ id: proj.id, moveType: proj.moveType, ...geometry }} playbackSpeed={playbackSpeed} />;
 }

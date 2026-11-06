@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { assign, createActor, fromCallback, type SnapshotFrom, sendTo, setup } from "xstate";
 import { stepDuration } from "#/game/battle-state.ts";
+import type { ClockTickEvent } from "#/game/clock.ts";
 import {
-  type ClockTickEvent,
   INTRO_DELAY_MS,
   type PlaybackEvent,
   type PlaybackOutput,
@@ -174,5 +174,20 @@ describe("playbackMachine", () => {
     tick(10_000); // el cleanup del reloj reemplazó `tick` por un no-op
     await vi.advanceTimersByTimeAsync(10_000);
     expect(h.played()).toEqual([0]);
+  });
+
+  it("el tiempo sobrante de un tick pasa al paso siguiente (sin acumular retraso)", async () => {
+    const h = await intoStep0();
+    tick(D[0] + 100); // 100 ms de más
+    expect(h.child().context.stepIdx).toBe(1);
+    expect(h.child().context.elapsed).toBe(100);
+    tick(D[1] - 100); // justo lo que falta del paso 1
+    expect(h.child().context.stepIdx).toBe(2);
+  });
+
+  it("el sobrante respeta la velocidad (a 4x un tick de 16 ms aporta 64 ms de paso)", async () => {
+    const h = await intoStep0(4);
+    tick(D[0] / 4 + 10); // 10 ms reales de más ⇒ 40 ms de paso
+    expect(h.child().context.elapsed).toBe(40);
   });
 });

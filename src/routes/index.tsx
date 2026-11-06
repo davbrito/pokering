@@ -11,7 +11,7 @@ import { BattleResult } from "../game/components/BattleResult";
 import { BattleStage } from "../game/components/BattleStage";
 import { PokemonModal } from "../game/components/PokemonModal";
 import { PokemonSlot } from "../game/components/PokemonSlot";
-import { GameActorContext, GameProvider, useGamePhase } from "../game/game-actor";
+import { GameActorContext, GameProvider, useGamePhase, useGameSend } from "../game/game-actor";
 import type { Fighter } from "../game/prepare-battle";
 import { randomSeed } from "../game/rng";
 import { useSettingsStore } from "../game/settings-store";
@@ -31,7 +31,7 @@ function Home() {
 }
 
 function HomeContent() {
-  const actorRef = GameActorContext.useActorRef();
+  const send = useGameSend();
   const phase = useGamePhase();
   const isLoadingMoves = phase === "loading";
   const selected = useSelectedFighters();
@@ -49,7 +49,7 @@ function HomeContent() {
   const startWith = (fighters: readonly [Fighter, Fighter]) => {
     // battle.start no se acepta en `loading`/`battle`: un doble clic no puede lanzar dos batallas.
     // La semilla la genera quien envía el evento; la máquina no tiene azar propio.
-    actorRef.send({ type: "battle.start", fighters, seed: randomSeed() });
+    send({ type: "battle.start", fighters, seed: randomSeed() });
   };
 
   const handleStartBattle = () => {
@@ -71,15 +71,15 @@ function HomeContent() {
     store.selectPokemon(1, id2);
 
     // Sin setTimeout: los luchadores viajan en el evento, la máquina hace el fetch.
-    if (phase === "battle") actorRef.send({ type: "battle.exit" });
+    if (phase === "battle") send({ type: "battle.exit" });
     startWith([
       { id: id1, level: level1 },
       { id: id2, level: level2 },
     ]);
   };
 
-  const goBackToSelection = () => actorRef.send({ type: "battle.exit" });
-  const retry = () => actorRef.send({ type: "battle.retry" });
+  const goBackToSelection = () => send({ type: "battle.exit" });
+  const retry = () => send({ type: "battle.retry" });
 
   return (
     <>

@@ -3,7 +3,7 @@ import { createActorContext, useSelector } from "@xstate/react";
 import { type ReactNode, useMemo } from "react";
 import { type ActorRefFrom, fromPromise, type SnapshotFrom } from "xstate";
 import { deriveBattleViewState } from "./battle-state";
-import { type GameTag, gameMachine, type Match } from "./machine";
+import { type GameCommand, type GameTag, gameMachine, type Match } from "./machine";
 import type { playbackMachine, Speed } from "./playback-machine";
 import { type PreparedBattle, prepareBattle } from "./prepare-battle";
 import { type FxContext, INITIAL_FX, type stageFxMachine } from "./stage-fx-machine";
@@ -71,14 +71,25 @@ export function useStageFx(): FxContext {
   return useSelector(fx, (snapshot) => snapshot?.context) ?? INITIAL_FX;
 }
 
+/**
+ * Única forma de leer el paso actual: mientras dura `playback` lo tiene el actor hijo; después, el padre
+ * guarda el del final (`lastPlayback`). Leer `context` del padre directamente daría un paso equivocado.
+ */
 export function useStepIdx(): number {
-  const last = GameActorContext.useSelector((s) => s.context.stepIdx);
+  const last = GameActorContext.useSelector((s) => s.context.lastPlayback?.stepIdx ?? 0);
   return usePlayback((snapshot) => snapshot.context.stepIdx, last);
 }
 
+/** Única forma de leer la velocidad (hijo mientras dura `playback`; después, la elegida en el padre). */
 export function usePlaybackSpeed(): Speed {
-  const last = GameActorContext.useSelector((s) => s.context.speed);
-  return usePlayback((snapshot) => snapshot.context.speed, last);
+  const preferred = GameActorContext.useSelector((s) => s.context.preferredSpeed);
+  return usePlayback((snapshot) => snapshot.context.speed, preferred);
+}
+
+/** Envía órdenes a la máquina. Solo acepta `GameCommand`: los hechos de los hijos no se pueden inyectar. */
+export function useGameSend(): (command: GameCommand) => void {
+  const actorRef = GameActorContext.useActorRef();
+  return actorRef.send;
 }
 
 /** HP/PP derivados (reducer puro sobre los pasos ya reproducidos); la vista no muta nada. */

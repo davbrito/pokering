@@ -1,11 +1,5 @@
-import { assign, emit, enqueueActions, fromPromise, sendTo, setup } from "xstate";
-import {
-  type PlaybackEvent,
-  type PlaybackOutput,
-  playbackMachine,
-  type Speed,
-  type StepPlayedEvent,
-} from "./playback-machine";
+import { assertEvent, assign, emit, enqueueActions, fromPromise, sendTo, setup } from "xstate";
+import { type PlaybackOutput, playbackMachine, type Speed, type StepPlayedEvent } from "./playback-machine";
 import type { Fighter, PrepareBattleInput, PreparedBattle } from "./prepare-battle";
 import { stageFxMachine } from "./stage-fx-machine";
 import type { BattleStep } from "./types";
@@ -18,14 +12,19 @@ export type Match = PrepareBattleInput;
 export interface GameContext {
   match: Match | null;
   prepared: PreparedBattle | null;
-  stepIdx: number;
-  speed: Speed;
+  /**
+   * Velocidad elegida: se pasa como `input` a cada reproducción y se actualiza con su `output`.
+   * Mientras dura `playback` la velocidad viva está en el hijo (usar `usePlaybackSpeed`).
+   */
+  preferredSpeed: Speed;
+  /** Resultado de la última reproducción terminada (`null` mientras carga o juega). Usar `useStepIdx`. */
+  lastPlayback: PlaybackOutput | null;
   /** Serializable para `getPersistedSnapshot()`. */
   error: { message: string } | null;
 }
 
-/** Órdenes que envía la UI (imperativo, `dominio.verbo`). */
-export type GameEvent =
+/** Órdenes que envía la UI (imperativo, `dominio.verbo`). Es lo único que la UI puede enviar. */
+export type GameCommand =
   | { type: "battle.start"; fighters: Fighters; seed: number }
   /** Mismos luchadores, semilla nueva (solo desde `result`). */
   | { type: "battle.rematch"; seed: number }
@@ -35,11 +34,18 @@ export type GameEvent =
   | { type: "playback.pause" }
   | { type: "playback.resume" }
   | { type: "playback.setSpeed"; speed: Speed }
-  | { type: "playback.skip" }
-  /** Hecho que llega del actor de reproducción (hijo); el padre lo reemite hacia la vista. */
-  | StepPlayedEvent;
+  | { type: "playback.skip" };
 
-/** Hechos que emite la máquina (pasado) para efectos visuales/sonoros. */
+/** Hechos que llegan de los actores hijos; internos de la máquina, no forman parte de lo que envía la UI. */
+type GameChildEvent = StepPlayedEvent;
+
+type GameEvent = GameCommand | GameChildEvent;
+
+/**
+ * Hechos que emite la máquina (pasado). `step.played` lo consume la vista (audio); `battle.ended` es un hecho
+ * público (fin normal, `playback.skip` o `battle.exit`) sin consumidor en la UI hoy: lo usan los tests y
+ * quedará disponible para replays o analítica.
+ */
 export type GameEmitted = { type: "step.played"; step: BattleStep; stepIdx: number } | { type: "battle.ended" };
 
 export type GameTag = "selection" | "loading" | "battle" | "result" | "error";
@@ -84,13 +90,22 @@ export const gameMachine = setup({
     setSeed: assign(({ context }, params: { seed: number }) => ({
       match: context.match && { ...context.match, seed: params.seed },
     })),
-    resetRun: assign({ prepared: null, stepIdx: 0, error: null }),
-    clearMatch: assign({ match: null, prepared: null, stepIdx: 0, speed: 1, error: null }),
-    setPrepared: assign((_, params: PreparedBattle) => ({ prepared: params, stepIdx: 0 })),
+    resetRun: assign({ prepared: null, lastPlayback: null, error: null }),
+    clearMatch: assign({ match: null, prepared: null, lastPlayback: null, preferredSpeed: 1, error: null }),
+    setPrepared: assign((_, params: PreparedBattle) => ({ prepared: params })),
     setError: assign((_, params: { message: string }) => ({ error: { message: params.message } })),
     // La reproducción es dueña de stepIdx/speed mientras dura; al terminar los devuelve como `output`.
-    rememberPlayback: assign((_, params: PlaybackOutput) => ({ speed: params.speed, stepIdx: params.stepIdx })),
-    forwardToPlayback: sendTo("playback", ({ event }) => event as PlaybackEvent),
+    rememberPlayback: assign((_, params: PlaybackOutput) => ({ lastPlayback: params, preferredSpeed: params.speed })),
+    forwardToPlayback: sendTo("playback", ({ event }) => {
+      assertEvent(event, ["playback.pause", "playback.resume", "playback.setSpeed", "playback.skip"]);
+      return event;
+    }),
+    // Los efectos visuales se pausan y cambian de velocidad con la reproducción (`skip` los detiene al salir).
+    forwardToFx: enqueueActions(({ event, enqueue }) => {
+      if (event.type === "playback.pause" || event.type === "playback.resume" || event.type === "playback.setSpeed") {
+        enqueue.sendTo("fx", event);
+      }
+    }),
     playFx: sendTo("fx", (_, params: { step: BattleStep; speed: Speed }) => ({
       type: "fx.play" as const,
       step: params.step,
@@ -106,7 +121,7 @@ export const gameMachine = setup({
 }).createMachine({
   id: "game",
   initial: "selection",
-  context: { match: null, prepared: null, stepIdx: 0, speed: 1, error: null },
+  context: { match: null, prepared: null, preferredSpeed: 1, lastPlayback: null, error: null },
   states: {
     selection: {
       tags: ["selection"],
@@ -147,13 +162,13 @@ export const gameMachine = setup({
         },
         playback: {
           tags: ["battle"],
-          // Cubre fin normal, `playback.skip` y `battle.exit`: la vista limpia sus efectos.
+          // Hecho público: cubre fin normal, `playback.skip` y `battle.exit`.
           exit: "emitBattleEnded",
           invoke: [
             {
               id: "playback",
               src: "playbackMachine",
-              input: ({ context }) => ({ steps: requirePrepared(context).steps, speed: context.speed }),
+              input: ({ context }) => ({ steps: requirePrepared(context).steps, speed: context.preferredSpeed }),
               onDone: {
                 target: "result",
                 actions: { type: "rememberPlayback", params: ({ event }) => event.output },
@@ -163,7 +178,7 @@ export const gameMachine = setup({
             { id: "fx", src: "stageFx" },
           ],
           on: {
-            "playback.*": { actions: "forwardToPlayback" },
+            "playback.*": { actions: ["forwardToPlayback", "forwardToFx"] },
             "step.played": {
               actions: [
                 { type: "emitStepPlayed", params: ({ event }) => ({ step: event.step, stepIdx: event.stepIdx }) },

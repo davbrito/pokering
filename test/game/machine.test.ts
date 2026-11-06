@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createActor, fromPromise, type SnapshotFrom } from "xstate";
-import { gameMachine, requireMatch } from "#/game/machine.ts";
+import { type GameCommand, gameMachine, requireMatch } from "#/game/machine.ts";
 import { INTRO_DELAY_MS, nextSpeed, type playbackMachine } from "#/game/playback-machine.ts";
 import type { PreparedBattle } from "#/game/prepare-battle.ts";
 import type { stageFxMachine } from "#/game/stage-fx-machine.ts";
@@ -113,7 +113,7 @@ describe("gameMachine", () => {
     await vi.advanceTimersByTimeAsync(0);
     actor.send({ type: "playback.skip" });
     expect(actor.getSnapshot().hasTag("result")).toBe(true);
-    expect(actor.getSnapshot().context.stepIdx).toBe(steps.length - 1);
+    expect(actor.getSnapshot().context.lastPlayback).toEqual({ speed: 1, stepIdx: steps.length - 1 });
     expect(ended).toHaveBeenCalledTimes(1);
   });
 
@@ -152,7 +152,7 @@ describe("gameMachine", () => {
     expect(snap.hasTag("loading")).toBe(true);
     expect(snap.context.match).toEqual({ fighters, seed: 8 });
     expect(snap.context.prepared).toBeNull();
-    expect(snap.context.stepIdx).toBe(0);
+    expect(snap.context.lastPlayback).toBeNull();
   });
 
   it("battle.start se acepta desde result y error, no desde loading ni playback", async () => {
@@ -255,7 +255,9 @@ describe("gameMachine", () => {
   });
 
   it("requireMatch falla de forma visible si no hay batalla", () => {
-    expect(() => requireMatch({ match: null, prepared: null, stepIdx: 0, speed: 1, error: null })).toThrow(/invariant/);
+    expect(() =>
+      requireMatch({ match: null, prepared: null, preferredSpeed: 1, lastPlayback: null, error: null }),
+    ).toThrow(/invariant/);
   });
 });
 
@@ -295,5 +297,46 @@ describe("gameMachine y los efectos del escenario", () => {
     actor.send({ type: "battle.exit" });
     expect(actor.getSnapshot().hasTag("selection")).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe("gameMachine: contrato con la UI", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it("la UI solo puede enviar GameCommand: los hechos de los hijos no se pueden inyectar (tipado)", () => {
+    const actor = makeActor(async () => prepared);
+    const send: (command: GameCommand) => void = actor.send;
+    // @ts-expect-error `step.played` es un hecho interno de los hijos, no una orden
+    send({ type: "step.played", step: steps[0], stepIdx: 0, speed: 1 });
+  });
+
+  it("playback.pause/resume/setSpeed llegan también al actor fx; skip no lo rompe", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send(start());
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
+    const fx = () => actor.getSnapshot().children.fx?.getSnapshot() as SnapshotFrom<typeof stageFxMachine>;
+    expect(fx().matches("running")).toBe(true);
+    actor.send({ type: "playback.pause" });
+    expect(fx().matches("paused")).toBe(true);
+    actor.send({ type: "playback.setSpeed", speed: 4 });
+    expect(fx().context.speed).toBe(4);
+    actor.send({ type: "playback.resume" });
+    expect(fx().matches("running")).toBe(true);
+    actor.send({ type: "playback.skip" });
+    expect(actor.getSnapshot().hasTag("result")).toBe(true);
+  });
+
+  it("la velocidad elegida se conserva entre revanchas y se resetea al salir", async () => {
+    const actor = makeActor(async () => prepared);
+    actor.send(start());
+    await vi.advanceTimersByTimeAsync(INTRO_DELAY_MS);
+    actor.send({ type: "playback.setSpeed", speed: 4 });
+    actor.send({ type: "playback.skip" });
+    actor.send({ type: "battle.rematch", seed: 2 });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(playbackOf(actor).context.speed).toBe(4);
+    actor.send({ type: "battle.exit" });
+    expect(actor.getSnapshot().context.preferredSpeed).toBe(1);
   });
 });
