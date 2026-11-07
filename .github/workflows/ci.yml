@@ -41,8 +41,5 @@ jobs:
       - name: Tests
         run: pnpm test
 
-      # `tsc` aún falla en src/server.ts (el contexto de la petición no llega al tipo de `handler.fetch`),
-      # ajeno a este milestone. Se ejecuta y se informa, pero no bloquea hasta corregirlo.
       - name: Tipos (tsc)
         run: pnpm exec tsc --noEmit
-        continue-on-error: true

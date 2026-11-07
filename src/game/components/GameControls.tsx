@@ -59,7 +59,7 @@ export function GameControls() {
       className="battle-btn random aspect-square size-12 shrink-0 justify-center self-center"
       type="button"
       onClick={randomBattle}
-      title="Random battle"
+      title={m.home_random_battle_title()}
     >
       <Shuffle size={20} />
     </button>

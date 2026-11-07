@@ -14,8 +14,8 @@ export function GameLoading() {
   return (
     <div className="route-loading h-full">
       <div className="pokeball-shake">
-        <svg viewBox="0 0 100 100" className="pokeball-svg" role="img" aria-label="Pokéball cargando">
-          <title>Pokéball</title>
+        <svg viewBox="0 0 100 100" className="pokeball-svg" role="img" aria-label={m.loading_pokeball()}>
+          <title>{m.loading_pokeball()}</title>
           {/* Mitad superior (roja) */}
           <path d="M 10 50 A 40 40 0 0 1 90 50" fill="#ef4444" />
           {/* Mitad inferior (blanca) */}

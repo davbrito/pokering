@@ -23,7 +23,7 @@ interface ServerRequestContext {
   executionContext: ExecutionContext;
 }
 
-declare module "@tanstack/react-router" {
+declare module "@tanstack/react-start" {
   interface Register {
     server: {
       requestContext: ServerRequestContext;

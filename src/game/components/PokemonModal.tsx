@@ -250,7 +250,7 @@ function PokeThumb({
         <button
           type="button"
           className="pt-eye-btn"
-          title="Vista previa"
+          title={m.pokemon_preview()}
           onClick={(e) => {
             e.stopPropagation();
             onHover();

@@ -5,6 +5,7 @@ import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
 import { playPokemonCries, playPokemonCry } from "../audio";
 import { getBst } from "../combat";
+import { m } from "#/i18n/paraglide/messages.js";
 import {
   GameActorContext,
   useBattleView,
@@ -163,13 +164,13 @@ function BattleStageContent({ phase: battlePhase }: { phase: "battle" | "result"
         </div>
         <div className="stage-controls">
           <button type="button" className="ctrl-btn" onClick={togglePause} disabled={!canTogglePause}>
-            {isPaused ? "Reanudar" : "Pausa"}
+            {isPaused ? m.battle_resume() : m.battle_pause()}
           </button>
           <button type="button" className="ctrl-btn" onClick={toggleSpeed} disabled={!canToggleSpeed}>
-            Velocidad {playbackSpeed}x
+            {m.battle_speed({ speed: playbackSpeed })}
           </button>
           <button type="button" className="ctrl-btn" onClick={skipCinematics}>
-            Saltar
+            {m.battle_skip()}
           </button>
         </div>
       </div>

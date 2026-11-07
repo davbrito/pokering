@@ -118,5 +118,13 @@
   "error_not_found_desc": "La página que buscas no existe o ha sido movida.",
   "error_go_home": "Volver al inicio",
   "error_retry": "Reintentar",
-  "error_details": "Detalles del error"
+  "error_details": "Detalles del error",
+  "battle_pause": "Pausa",
+  "battle_resume": "Reanudar",
+  "battle_skip": "Saltar",
+  "battle_speed": "Velocidad {speed}x",
+  "home_random_battle_title": "Batalla aleatoria",
+  "pokemon_preview": "Vista previa",
+  "pokemon_play_cry": "Reproducir grito",
+  "loading_pokeball": "Pokéball cargando"
 }
