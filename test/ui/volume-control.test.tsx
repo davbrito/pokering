@@ -5,6 +5,7 @@ import { useSettingsStore } from "#/game/settings-store.ts";
 import { m } from "#/i18n/paraglide/messages.js";
 
 const audio = () => useSettingsStore.getState().audio;
+const openPopover = () => fireEvent.click(screen.getByRole("button", { name: m.settings_audio_title() }));
 const slider = () => screen.getByLabelText(m.settings_audio_volume()) as HTMLInputElement;
 
 describe("VolumeControl", () => {
@@ -12,14 +13,23 @@ describe("VolumeControl", () => {
     useSettingsStore.setState({ audio: { enabled: true, volume: 0.5 } });
   });
 
+  it("el slider no se muestra hasta abrir el popover", () => {
+    render(<VolumeControl />);
+    expect(screen.queryByLabelText(m.settings_audio_volume())).toBeNull();
+    openPopover();
+    expect(slider()).toBeTruthy();
+  });
+
   it("el slider cambia el volumen", () => {
     render(<VolumeControl />);
+    openPopover();
     fireEvent.change(slider(), { target: { value: "30" } });
     expect(audio()).toEqual({ enabled: true, volume: 0.3 });
   });
 
   it("el botón silencia y reactiva conservando el volumen", () => {
     render(<VolumeControl />);
+    openPopover();
     fireEvent.click(screen.getByRole("button", { name: m.audio_mute() }));
     expect(audio()).toEqual({ enabled: false, volume: 0.5 });
     expect(slider().value).toBe("0");
@@ -30,6 +40,7 @@ describe("VolumeControl", () => {
   it("mover el slider estando silenciado reactiva el audio", () => {
     useSettingsStore.setState({ audio: { enabled: false, volume: 0.5 } });
     render(<VolumeControl />);
+    openPopover();
     fireEvent.change(slider(), { target: { value: "70" } });
     expect(audio()).toEqual({ enabled: true, volume: 0.7 });
   });
@@ -37,6 +48,7 @@ describe("VolumeControl", () => {
   it("volumen 0 cuenta como silencio y al reactivar restaura uno audible", () => {
     useSettingsStore.setState({ audio: { enabled: true, volume: 0 } });
     render(<VolumeControl />);
+    openPopover();
     fireEvent.click(screen.getByRole("button", { name: m.audio_unmute() }));
     expect(audio()).toEqual({ enabled: true, volume: 0.5 });
   });
