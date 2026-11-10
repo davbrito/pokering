@@ -6,7 +6,7 @@ import { useSettingsStore } from "../settings-store";
 const DEFAULT_VOLUME = 0.5;
 
 /**
- * Icono de audio que abre (con hover o click) un popover con mute/unmute y el slider de volumen.
+ * Icono de audio que abre (con click) un popover con mute/unmute y el slider de volumen.
  * Un volumen de 0 equivale a silenciar.
  */
 export function VolumeControl() {
@@ -39,9 +39,6 @@ export function VolumeControl() {
   return (
     <Popover.Root>
       <Popover.Trigger
-        openOnHover
-        delay={100}
-        closeDelay={250}
         className="settings-gear cursor-pointer"
         aria-label={m.settings_audio_title()}
         title={m.settings_audio_title()}
@@ -50,20 +47,21 @@ export function VolumeControl() {
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner sideOffset={8} align="end">
-          <Popover.Popup className="bg-surface border-border2 flex items-center gap-3 rounded-lg border p-3 shadow-lg">
-            <button type="button" className="settings-gear cursor-pointer" aria-label={label} title={label} onClick={toggleMute}>
-              <Icon size={18} />
-            </button>
+          <Popover.Popup className="bg-surface border-border2 flex flex-col items-center gap-3 rounded-lg border p-3 shadow-lg">
+            <span className="text-muted font-mono text-[11px]">{percent}%</span>
             <input
               type="range"
               min={0}
               max={100}
               value={percent}
               aria-label={m.settings_audio_volume()}
+              aria-orientation="vertical"
               onChange={(e) => changeVolume(Number(e.target.value) / 100)}
-              className="audio-slider w-28"
+              className="audio-slider audio-slider-vertical"
             />
-            <span className="text-muted w-9 text-right font-mono text-[11px]">{percent}%</span>
+            <button type="button" className="settings-gear cursor-pointer" aria-label={label} title={label} onClick={toggleMute}>
+              <Icon size={18} />
+            </button>
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>
