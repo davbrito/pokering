@@ -48,7 +48,7 @@ export function VolumeControl() {
       <Popover.Portal>
         <Popover.Positioner sideOffset={8} align="end">
           <Popover.Popup className="bg-surface border-border2 flex flex-col items-center gap-3 rounded-lg border p-3 shadow-lg">
-            <span className="text-muted font-mono text-[11px]">{percent}%</span>
+            <span className="text-muted w-[4ch] text-center font-mono text-[11px] tabular-nums">{percent}%</span>
             <input
               type="range"
               min={0}
