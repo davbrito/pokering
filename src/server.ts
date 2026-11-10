@@ -23,7 +23,9 @@ interface ServerRequestContext {
   executionContext: ExecutionContext;
 }
 
-declare module "@tanstack/react-router" {
+// `handler.fetch` (@tanstack/react-start/server-entry) lee `Register` re-exportado desde
+// `@tanstack/react-start`; aumentar `@tanstack/react-router` no llegaba a ese tipo.
+declare module "@tanstack/react-start" {
   interface Register {
     server: {
       requestContext: ServerRequestContext;
