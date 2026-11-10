@@ -1,4 +1,5 @@
 import { Popover } from "@base-ui/react/popover";
+import { Slider } from "@base-ui/react/slider";
 import { Volume1, Volume2, VolumeX } from "lucide-react";
 import { m } from "#/i18n/paraglide/messages.js";
 import { useSettingsStore } from "../settings-store";
@@ -49,16 +50,23 @@ export function VolumeControl() {
         <Popover.Positioner sideOffset={8} align="center">
           <Popover.Popup className="bg-surface border-border2 flex flex-col items-center gap-3 rounded-lg border p-3 shadow-lg">
             <span className="text-muted w-[4ch] text-center font-mono text-[11px] tabular-nums">{percent}%</span>
-            <input
-              type="range"
+            <Slider.Root
+              orientation="vertical"
               min={0}
               max={100}
               value={percent}
-              aria-label={m.settings_audio_volume()}
-              aria-orientation="vertical"
-              onChange={(e) => changeVolume(Number(e.target.value) / 100)}
-              className="audio-slider audio-slider-vertical"
-            />
+              onValueChange={(v) => changeVolume((Array.isArray(v) ? (v[0] ?? 0) : v) / 100)}
+            >
+              <Slider.Control className="flex h-28 w-5 touch-none items-center justify-center select-none">
+                <Slider.Track className="bg-border2 h-full w-1 rounded-full select-none">
+                  <Slider.Indicator className="bg-accent w-full rounded-full select-none" />
+                  <Slider.Thumb
+                    getAriaLabel={() => m.settings_audio_volume()}
+                    className="bg-accent focus-visible:outline-accent size-3.5 rounded-full select-none focus-visible:outline-2 focus-visible:outline-offset-2"
+                  />
+                </Slider.Track>
+              </Slider.Control>
+            </Slider.Root>
             <button type="button" className="settings-gear cursor-pointer" aria-label={label} title={label} onClick={toggleMute}>
               <Icon size={18} />
             </button>

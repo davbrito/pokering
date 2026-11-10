@@ -2036,15 +2036,6 @@ footer {
   cursor: pointer;
 }
 
-/* Slider vertical: el máximo queda arriba. */
-.audio-slider-vertical {
-  flex: none;
-  writing-mode: vertical-lr;
-  direction: rtl;
-  width: 4px;
-  height: 7rem;
-}
-
 .t-fire {
   background: rgba(214, 90, 48, 0.2);
   color: #ff8c5a;
