@@ -110,32 +110,32 @@ describe("UI según el estado de la máquina", () => {
       await advance();
 
       expect(phase()).toBe("battle");
-      expect(button("Pausa").disabled).toBe(true);
-      expect(button("Velocidad 1x").disabled).toBe(false);
+      expect(button(m.battle_pause()).disabled).toBe(true);
+      expect(button(m.battle_speed({ speed: 1 })).disabled).toBe(false);
 
       await advance(INTRO_DELAY_MS);
-      expect(button("Pausa").disabled).toBe(false);
+      expect(button(m.battle_pause()).disabled).toBe(false);
     });
 
     it("refleja la pausa y la velocidad del actor de reproducción", async () => {
       await startPlaying();
 
-      click("Pausa");
+      click(m.battle_pause());
       await advance();
-      expect(button("Reanudar")).toBeTruthy();
+      expect(button(m.battle_resume())).toBeTruthy();
 
-      click("Velocidad 1x");
+      click(m.battle_speed({ speed: 1 }));
       await advance();
-      expect(button("Velocidad 2x")).toBeTruthy();
+      expect(button(m.battle_speed({ speed: 2 }))).toBeTruthy();
 
-      click("Reanudar");
+      click(m.battle_resume());
       await advance();
-      expect(button("Pausa")).toBeTruthy();
+      expect(button(m.battle_pause())).toBeTruthy();
     });
 
     it("«Saltar» lleva al resultado", async () => {
       await startPlaying();
-      click("Saltar");
+      click(m.battle_skip());
       await advance();
       expect(phase()).toBe("result");
     });
@@ -144,7 +144,7 @@ describe("UI según el estado de la máquina", () => {
   describe("result", () => {
     it("muestra el ganador y «Revancha» vuelve a cargar con otra semilla y los mismos luchadores", async () => {
       const prepare = await startPlaying();
-      click("Saltar");
+      click(m.battle_skip());
       await advance();
 
       expect(phase()).toBe("result");
