@@ -46,7 +46,7 @@ export function VolumeControl() {
         <Icon size={18} />
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Positioner sideOffset={8} align="end">
+        <Popover.Positioner sideOffset={8} align="center">
           <Popover.Popup className="bg-surface border-border2 flex flex-col items-center gap-3 rounded-lg border p-3 shadow-lg">
             <span className="text-muted w-[4ch] text-center font-mono text-[11px] tabular-nums">{percent}%</span>
             <input
