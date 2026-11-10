@@ -1,6 +1,7 @@
 import { clamp } from "es-toolkit/math";
 import { type RefObject, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PokemonDetail } from "../../api/pokeapi";
+import { m } from "#/i18n/paraglide/messages.js";
 import { cn } from "../../lib/utils";
 import { getArtworkUrl } from "../api";
 import { playPokemonCries, playPokemonCry } from "../audio";
@@ -163,13 +164,13 @@ function BattleStageContent({ phase: battlePhase }: { phase: "battle" | "result"
         </div>
         <div className="stage-controls">
           <button type="button" className="ctrl-btn" onClick={togglePause} disabled={!canTogglePause}>
-            {isPaused ? "Reanudar" : "Pausa"}
+            {isPaused ? m.battle_resume() : m.battle_pause()}
           </button>
           <button type="button" className="ctrl-btn" onClick={toggleSpeed} disabled={!canToggleSpeed}>
-            Velocidad {playbackSpeed}x
+            {m.battle_speed({ speed: playbackSpeed })}
           </button>
           <button type="button" className="ctrl-btn" onClick={skipCinematics}>
-            Saltar
+            {m.battle_skip()}
           </button>
         </div>
       </div>

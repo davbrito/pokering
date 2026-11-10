@@ -118,5 +118,12 @@
   "error_not_found_desc": "The page you're looking for doesn't exist or has been moved.",
   "error_go_home": "Go home",
   "error_retry": "Retry",
-  "error_details": "Error details"
+  "error_details": "Error details",
+  "battle_pause": "Pause",
+  "battle_resume": "Resume",
+  "battle_skip": "Skip",
+  "battle_speed": "Speed {speed}x",
+  "battle_random_title": "Random battle",
+  "pokemon_preview_title": "Preview",
+  "pokemon_play_cry": "Play cry"
 }
