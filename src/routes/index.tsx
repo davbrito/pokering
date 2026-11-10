@@ -2,7 +2,7 @@ import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { ParaglideMessage } from "@inlang/paraglide-js-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Settings, Volume2, VolumeX } from "lucide-react";
+import { Settings } from "lucide-react";
 import { useEffect } from "react";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
@@ -11,8 +11,8 @@ import { BattleStage } from "../game/components/BattleStage";
 import { GameControls } from "../game/components/GameControls";
 import { PokemonModal } from "../game/components/PokemonModal";
 import { PokemonSlot } from "../game/components/PokemonSlot";
+import { VolumeControl } from "../game/components/VolumeControl";
 import { GameProvider, useGamePhase } from "../game/game-actor";
-import { useSettingsStore } from "../game/settings-store";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -78,8 +78,6 @@ function HomeContent() {
 
 function Header() {
   const locale = getLocale();
-  const audioEnabled = useSettingsStore((s) => s.audio.enabled);
-  const setAudioEnabled = useSettingsStore((s) => s.setAudioEnabled);
 
   return (
     <header>
@@ -108,15 +106,7 @@ function Header() {
             EN
           </Toggle>
         </ToggleGroup>
-        <button
-          type="button"
-          className="settings-gear"
-          aria-label={audioEnabled ? "Mute audio" : "Unmute audio"}
-          onClick={() => setAudioEnabled(!audioEnabled)}
-          title={audioEnabled ? "Mute audio" : "Unmute audio"}
-        >
-          {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-        </button>
+        <VolumeControl />
         <Link to="/settings" className="settings-gear" aria-label={m.settings_title()}>
           <Settings size={20} />
         </Link>

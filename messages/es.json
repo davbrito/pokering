@@ -125,5 +125,7 @@
   "battle_speed": "Velocidad {speed}x",
   "battle_random_title": "Batalla aleatoria",
   "pokemon_preview_title": "Vista previa",
-  "pokemon_play_cry": "Reproducir grito"
+  "pokemon_play_cry": "Reproducir grito",
+  "audio_mute": "Silenciar audio",
+  "audio_unmute": "Activar audio"
 }

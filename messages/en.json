@@ -125,5 +125,7 @@
   "battle_speed": "Speed {speed}x",
   "battle_random_title": "Random battle",
   "pokemon_preview_title": "Preview",
-  "pokemon_play_cry": "Play cry"
+  "pokemon_play_cry": "Play cry",
+  "audio_mute": "Mute audio",
+  "audio_unmute": "Unmute audio"
 }
