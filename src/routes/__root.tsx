@@ -19,6 +19,13 @@ export const Route = createRootRouteWithContext<RootRouteContext>()({
       { charSet: "UTF-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1.0" },
       { title: m.app_title() },
+      { name: "description", content: m.app_tagline() },
+      { property: "og:type", content: "website" },
+      { property: "og:title", content: m.app_title() },
+      { property: "og:description", content: m.app_tagline() },
+      { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: m.app_title() },
+      { name: "twitter:description", content: m.app_tagline() },
     ],
     links: [
       {
