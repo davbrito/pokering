@@ -1,18 +1,17 @@
 import { Dialog } from "@base-ui/react";
-import { clamp, sumBy } from "es-toolkit/math";
+import { sumBy } from "es-toolkit/math";
 import { CheckIcon, TargetIcon, Volume2 } from "lucide-react";
-import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { audioManager, playPokemonCry } from "../audio";
 import { scaleStatsArrayByLevel } from "../combat";
-import { STAT_ABBR } from "../data";
 import { useSettingsStore } from "../settings-store";
 import { useChosenPokemon, useGameStore } from "../store";
 import { getPokemonName, PokemonName } from "./PokemonName";
 import { pickerDialogHandle } from "./pickerDialogHandle";
+import { StatBars } from "./StatBars";
 
 function PokemonCard({ pokemon, slotIndex }: { pokemon: PokemonDetail; slotIndex: number }) {
   const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
@@ -64,24 +63,13 @@ function PokemonCard({ pokemon, slotIndex }: { pokemon: PokemonDetail; slotIndex
           </span>
         ))}
       </div>
-      <div className="stats">
-        {effectiveStats.map((s, i) => {
-          const effectiveValue = s.base_stat;
-          const rawValue = pokemon.stats[i].base_stat;
-          const abbr = STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
-          const pct = Math.round(clamp((rawValue / 180) * 100, 0, 100));
-          const col = pct >= 55 ? "#4ade80" : pct >= 38 ? "#60d8a0" : pct >= 25 ? "#f5c842" : "#e63e3e";
-          return (
-            <div key={s.stat.name} className="srow">
-              <span className="sname">{abbr}</span>
-              <div className="strack">
-                <motion.div className="sfill" animate={{ width: `${pct}%`, background: col }} />
-              </div>
-              <span className="sval">{effectiveValue}</span>
-            </div>
-          );
-        })}
-      </div>
+      <StatBars
+        stats={effectiveStats.map((s, i) => ({
+          name: s.stat.name,
+          base: pokemon.stats[i].base_stat,
+          display: s.base_stat,
+        }))}
+      />
     </div>
   );
 }

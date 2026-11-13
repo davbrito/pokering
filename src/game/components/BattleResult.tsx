@@ -168,8 +168,8 @@ function BattleResultContent() {
                 const v1 = w.winnerIdx === 0 ? w.ws[key] : w.ls[key];
                 const v2 = w.winnerIdx === 0 ? w.ls[key] : w.ws[key];
                 const mx = Math.max(v1, v2, 1);
-                const c1 = v1 >= v2 ? "#4ade80" : "#e63e3e";
-                const c2 = v2 >= v1 ? "#4ade80" : "#e63e3e";
+                const c1 = v1 >= v2 ? "var(--green)" : "var(--accent)";
+                const c2 = v2 >= v1 ? "var(--green)" : "var(--accent)";
                 const p1pct = Math.round((v1 / mx) * 100);
                 const p2pct = Math.round((v2 / mx) * 100);
                 return (
