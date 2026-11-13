@@ -44,7 +44,7 @@ export function VolumeControl() {
         aria-label={m.settings_audio_title()}
         title={m.settings_audio_title()}
       >
-        <Icon size={18} />
+        <Icon size={24} />
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner sideOffset={8} align="center">
@@ -68,7 +68,7 @@ export function VolumeControl() {
               </Slider.Control>
             </Slider.Root>
             <button type="button" className="settings-gear cursor-pointer" aria-label={label} title={label} onClick={toggleMute}>
-              <Icon size={18} />
+              <Icon size={24} />
             </button>
           </Popover.Popup>
         </Popover.Positioner>
