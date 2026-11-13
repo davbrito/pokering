@@ -44,6 +44,7 @@ export function mapMoveToMoveInfo(raw: MoveDetail): MoveInfo {
 
 /** Convierte los metadatos de un movimiento de status en un StatusEffect tipado. */
 function parseStatusEffect(meta: MoveDetail["meta"], statChanges: MoveDetail["stat_changes"]): StatusEffect {
+  if (!meta) return { kind: "stat-change", changes: [] };
   const cat = meta.category.name;
 
   if (cat === "net-good-stats" && statChanges.length > 0) {
