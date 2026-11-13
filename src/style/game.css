@@ -863,6 +863,7 @@ h1 em {
   line-height: 1.5;
   flex: 1;
   min-height: 36px;
+  overflow-wrap: break-word;
 }
 .stage-dialog span {
   color: var(--accent);
@@ -2004,7 +2005,7 @@ footer {
 }
 .settings-gear:hover {
   color: var(--text);
-  transform: rotate(60deg);
+  transform: rotate(360deg);
 }
 
 /* Audio toggle button */
