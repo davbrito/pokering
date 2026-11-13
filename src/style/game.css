@@ -2005,6 +2005,13 @@ footer {
 .settings-gear:hover {
   color: var(--text);
 }
+.settings-gear:not(.settings-gear--spin) svg {
+  transform-origin: 50% 50%;
+  transition: transform 0.3s;
+}
+.settings-gear:not(.settings-gear--spin):hover svg {
+  transform: rotate(60deg);
+}
 .settings-gear--spin svg {
   transform-origin: 50% 50%;
   transition: transform 0.8s ease-in-out;
