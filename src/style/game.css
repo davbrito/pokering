@@ -1997,13 +1997,19 @@ footer {
   font-size: 20px;
   text-decoration: none;
   color: var(--muted);
-  transition:
-    color 0.15s,
-    transform 0.3s;
-  display: inline-block;
+  transition: color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .settings-gear:hover {
   color: var(--text);
+}
+.settings-gear--spin svg {
+  transform-origin: 50% 50%;
+  transition: transform 0.8s ease-in-out;
+}
+.settings-gear--spin:hover svg {
   transform: rotate(360deg);
 }
 
