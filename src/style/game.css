@@ -2004,7 +2004,7 @@ footer {
 }
 .settings-gear:hover {
   color: var(--text);
-  transform: rotate(60deg);
+  transform: rotate(360deg);
 }
 
 /* Audio toggle button */
