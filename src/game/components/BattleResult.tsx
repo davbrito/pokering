@@ -184,28 +184,14 @@ function BattleResultContent() {
                       >
                         {v1}
                       </span>
-                      <div
-                        className="strack"
-                        style={{
-                          width: `${p1pct}%`,
-                          maxWidth: "110px",
-                          minWidth: "4px",
-                        }}
-                      >
-                        <div className="sfill" style={{ width: "100%", background: c1 }} />
+                      <div className="strack cmp-track" style={{ justifyContent: "flex-end" }}>
+                        <div className="sfill" style={{ width: `${p1pct}%`, minWidth: "4px", background: c1 }} />
                       </div>
                     </div>
                     <div className="cmp-lbl">{statLabels[i]}</div>
                     <div className="cmp-right">
-                      <div
-                        className="strack"
-                        style={{
-                          width: `${p2pct}%`,
-                          maxWidth: "110px",
-                          minWidth: "4px",
-                        }}
-                      >
-                        <div className="sfill" style={{ width: "100%", background: c2 }} />
+                      <div className="strack cmp-track">
+                        <div className="sfill" style={{ width: `${p2pct}%`, minWidth: "4px", background: c2 }} />
                       </div>
                       <span
                         style={{

@@ -1141,6 +1141,11 @@ h1 em {
   align-items: center;
   gap: 6px;
 }
+.cmp-track {
+  display: flex;
+  flex: 1;
+  max-width: 110px;
+}
 .cmp-lbl {
   text-align: center;
   font-family: var(--font-m);
