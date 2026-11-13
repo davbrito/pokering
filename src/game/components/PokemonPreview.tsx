@@ -11,7 +11,12 @@ import { PokemonName } from "./PokemonName";
 import { StatBars } from "./StatBars";
 
 export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | null; onSelect: (id: number) => void }) {
-  const { data: pokemon, isLoading: loading } = useQuery({
+  const {
+    data: pokemon,
+    isLoading: loading,
+    isError,
+    refetch,
+  } = useQuery({
     ...pokemonRetrieveOptions({ path: { id: String(pokemonId) } }),
     enabled: pokemonId !== null,
   });
@@ -26,7 +31,19 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
   if (loading || !pokemon) {
     return (
       <div className="preview-panel" id="preview-panel">
-        {loading ? (
+        {isError ? (
+          <div className="preview-empty" role="alert">
+            <div>{m.preview_load_error()}</div>
+            <button
+              type="button"
+              className="page-btn"
+              style={{ width: "auto", padding: "6px 16px" }}
+              onClick={() => refetch()}
+            >
+              {m.error_retry()}
+            </button>
+          </div>
+        ) : loading ? (
           <div className="loading-bar">
             <div className="spinner" />
           </div>

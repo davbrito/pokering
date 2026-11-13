@@ -106,6 +106,8 @@
   "game_loading_7": "Fine-tuning Pokéballs… 🗻",
   "preview_hover_hint": "Hover over a Pokémon to preview",
   "preview_loading": "Loading…",
+  "modal_load_error": "Could not load the Pokémon list",
+  "preview_load_error": "Could not load this Pokémon",
   "modal_tab_all": "All",
   "modal_tab_type": "Type",
   "modal_no_results": "No Pokémon found",
