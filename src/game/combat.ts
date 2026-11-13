@@ -28,7 +28,7 @@ export function mapMoveToMoveInfo(raw: MoveDetail): MoveInfo {
       pp: raw.pp ?? 10,
       damageClass: "status",
       power: null,
-      effect: parseStatusEffect(raw.meta, raw.stat_changes),
+      effect: parseStatusEffect(raw),
     };
   }
 
@@ -43,7 +43,7 @@ export function mapMoveToMoveInfo(raw: MoveDetail): MoveInfo {
 }
 
 /** Convierte los metadatos de un movimiento de status en un StatusEffect tipado. */
-function parseStatusEffect(meta: MoveDetail["meta"], statChanges: MoveDetail["stat_changes"]): StatusEffect {
+function parseStatusEffect({ meta, stat_changes: statChanges }: MoveDetail): StatusEffect {
   if (!meta) return { kind: "stat-change", changes: [] };
   const cat = meta.category.name;
 
