@@ -107,8 +107,8 @@ function Header() {
           </Toggle>
         </ToggleGroup>
         <VolumeControl />
-        <Link to="/settings" className="settings-gear" aria-label={m.settings_title()}>
-          <Settings size={20} />
+        <Link to="/settings" className="settings-gear settings-gear--spin" aria-label={m.settings_title()}>
+          <Settings size={24} />
         </Link>
       </div>
       <p className="eyebrow">{m.app_eyebrow()}</p>
