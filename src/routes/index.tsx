@@ -2,125 +2,57 @@ import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { ParaglideMessage } from "@inlang/paraglide-js-react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { clamp, randomInt } from "es-toolkit/math";
-import { Settings, Shuffle, Volume2, VolumeX } from "lucide-react";
+import { Settings } from "lucide-react";
+import { useEffect } from "react";
 import { m } from "#/i18n/paraglide/messages.js";
 import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
 import { BattleResult } from "../game/components/BattleResult";
 import { BattleStage } from "../game/components/BattleStage";
+import { GameControls } from "../game/components/GameControls";
 import { PokemonModal } from "../game/components/PokemonModal";
 import { PokemonSlot } from "../game/components/PokemonSlot";
-import { useSettingsStore } from "../game/settings-store";
-import { useBothReady, useChosenPokemon, useGameStore } from "../game/store";
+import { VolumeControl } from "../game/components/VolumeControl";
+import { GameProvider, useGamePhase } from "../game/game-actor";
 
 export const Route = createFileRoute("/")({
   component: Home,
 });
 
 function Home() {
-  const battlePhase = useGameStore((s) => s.battle.phase);
-  const isLoadingMoves = useGameStore((s) => s.battle.isLoadingMoves);
-  const bothReady = useBothReady();
-  const { chosen } = useChosenPokemon();
-
   const { queryClient } = Route.useRouteContext();
+  return (
+    <GameProvider queryClient={queryClient}>
+      <HomeContent />
+    </GameProvider>
+  );
+}
 
-  const handleStartBattle = async () => {
-    const poke1 = chosen[0];
-    const poke2 = chosen[1];
-    if (!poke1 || !poke2) return;
-    await useGameStore.getState().startBattle(queryClient);
-    setTimeout(() => {
-      const stage = document.getElementById("stageContainer");
-      stage?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 100);
-  };
+function HomeContent() {
+  const phase = useGamePhase();
 
-  const randomBattle = () => {
-    const store = useGameStore.getState();
-    // Pick random levels
-    const baseLevel = randomInt(20, 80);
-    const level1 = baseLevel + randomInt(-10, 10);
-    const level2 = baseLevel + randomInt(-10, 10);
-    store.setLevel(0, clamp(level1, 1, 100));
-    store.setLevel(1, clamp(level2, 1, 100));
-
-    // Pick random Pokémon if not both selected
-    const id1 = randomInt(1, 151);
-    let id2 = randomInt(1, 151);
-    // Avoid same Pokémon
-    while (id2 === id1) id2 = randomInt(1, 151);
-    store.selectPokemon(0, id1);
-    store.selectPokemon(1, id2);
-
-    // Small delay to let React Query fetch the Pokémon, then start
-    setTimeout(() => handleStartBattle(), 100);
-  };
-
-  const goBackToSelection = () => {
-    useGameStore.getState().setBattlePhase("selection");
-  };
+  useEffect(() => {
+    if (phase === "battle") {
+      document.getElementById("stageContainer")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [phase]);
 
   return (
     <>
       <div className="wrap isolate">
         <Header />
 
-        {battlePhase === "selection" ? (
-          <>
-            <div className="arena-grid" id="arenaGrid">
-              <PokemonSlot index={0} label={m.home_fighter_1()} />
-              <div className="vs-col">
-                <div className="vs-line" />
-                <div className="vs-txt">VS</div>
-                <div className="vs-line" />
-              </div>
-              <PokemonSlot index={1} label={m.home_fighter_2()} />
+        {phase === "selection" || phase === "loading" ? (
+          <div className="arena-grid" id="arenaGrid">
+            <PokemonSlot index={0} label={m.home_fighter_1()} />
+            <div className="vs-col">
+              <div className="vs-line" />
+              <div className="vs-txt">VS</div>
+              <div className="vs-line" />
             </div>
-            <div className="battle-section" id="battleSection">
-              {isLoadingMoves ? (
-                <div className="battle-loading">
-                  <div className="spinner" />
-                  <span className="battle-loading-msg">{m.home_analyzing_moves()}</span>
-                </div>
-              ) : (
-                <div className="battle-btns">
-                  <button
-                    className="battle-btn"
-                    id="battleBtn"
-                    disabled={!bothReady}
-                    type="button"
-                    onClick={handleStartBattle}
-                  >
-                    {m.home_start_battle()}
-                  </button>
-                  <button
-                    className="battle-btn random aspect-square size-12 shrink-0 justify-center self-center"
-                    type="button"
-                    onClick={randomBattle}
-                    title="Random battle"
-                  >
-                    <Shuffle size={20} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="battle-section flex items-center justify-center gap-3">
-            <button className="battle-btn" type="button" onClick={goBackToSelection}>
-              {m.home_new_battle()}
-            </button>
-            <button
-              className="battle-btn random aspect-square size-12 shrink-0 justify-center self-center"
-              type="button"
-              onClick={randomBattle}
-              title="Random battle"
-            >
-              <Shuffle size={20} />
-            </button>
+            <PokemonSlot index={1} label={m.home_fighter_2()} />
           </div>
-        )}
+        ) : null}
+        <GameControls />
 
         <BattleStage />
         <BattleResult />
@@ -146,8 +78,6 @@ function Home() {
 
 function Header() {
   const locale = getLocale();
-  const audioEnabled = useSettingsStore((s) => s.audio.enabled);
-  const setAudioEnabled = useSettingsStore((s) => s.setAudioEnabled);
 
   return (
     <header>
@@ -176,15 +106,7 @@ function Header() {
             EN
           </Toggle>
         </ToggleGroup>
-        <button
-          type="button"
-          className="settings-gear"
-          aria-label={audioEnabled ? "Mute audio" : "Unmute audio"}
-          onClick={() => setAudioEnabled(!audioEnabled)}
-          title={audioEnabled ? "Mute audio" : "Unmute audio"}
-        >
-          {audioEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
-        </button>
+        <VolumeControl />
         <Link to="/settings" className="settings-gear" aria-label={m.settings_title()}>
           <Settings size={20} />
         </Link>

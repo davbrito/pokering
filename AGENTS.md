@@ -15,3 +15,8 @@ When running Biome for linting/checking, use `lint` to avoid formatting errors w
 ```bash
 pnpm biome lint .
 ```
+
+## State machines
+
+Antes de crear o modificar una máquina XState, lee `docs/state-machines.md` (nombres de eventos, determinismo,
+contexto serializable, `params`, efectos y tests) y usa el skill `xstate-v5`.

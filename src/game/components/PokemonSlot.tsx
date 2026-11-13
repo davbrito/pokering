@@ -38,7 +38,7 @@ function PokemonCard({ pokemon, slotIndex }: { pokemon: PokemonDetail; slotIndex
         <button
           type="button"
           className="poke-cry-btn"
-          title="Reproducir grito"
+          title={m.pokemon_play_cry()}
           onClick={(e) => {
             e.stopPropagation();
             playPokemonCry(pokemon, {

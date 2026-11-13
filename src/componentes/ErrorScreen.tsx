@@ -1,13 +1,8 @@
-import { useRouter } from "@tanstack/react-router";
+import { type ErrorComponentProps, useRouter } from "@tanstack/react-router";
 import { AlertTriangle, Home, RefreshCw } from "lucide-react";
 import { m } from "#/i18n/paraglide/messages.js";
 
-interface ErrorScreenProps {
-  error?: Error;
-  reset?: () => void;
-}
-
-export function ErrorScreen({ error, reset }: ErrorScreenProps) {
+export function ErrorScreen({ error, reset }: ErrorComponentProps) {
   const router = useRouter();
 
   return (
@@ -18,10 +13,10 @@ export function ErrorScreen({ error, reset }: ErrorScreenProps) {
         <h2 className="error-title">{m.error_default_title()}</h2>
         <p className="error-desc">{m.error_default_desc()}</p>
 
-        {error && import.meta.env.DEV && (
+        {!!error && import.meta.env.DEV && (
           <details className="error-details">
             <summary className="error-details-summary">{m.error_details()}</summary>
-            <pre className="error-details-pre">{error.message}</pre>
+            <pre className="error-details-pre">{error instanceof Error ? error.message : String(error)}</pre>
           </details>
         )}
 

@@ -62,7 +62,7 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
           <button
             type="button"
             className="prev-cry-btn"
-            title="Reproducir grito"
+            title={m.pokemon_play_cry()}
             onClick={(e) => {
               e.stopPropagation();
               playPokemonCry(pokemon, {
