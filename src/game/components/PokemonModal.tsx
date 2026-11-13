@@ -128,7 +128,9 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
 
   // ── Resolve current list ──
   const currentList = activeTab !== "all" ? filteredTypeItems : filteredAllItems;
-  const isInitialLoading = activeTab === "all" ? listInfinite.isLoading : typeQuery.isLoading;
+  const activeQuery = activeTab === "all" ? listInfinite : typeQuery;
+  const isInitialLoading = activeQuery.isLoading;
+  const loadFailed = activeQuery.isError && !currentList;
   const isFetching = activeTab === "all" ? listInfinite.isFetching : typeQuery.isFetching;
   const isFetchingNextPage = listInfinite.isFetchingNextPage;
   const hasNextPage = activeTab === "all" ? listInfinite.hasNextPage : false;
@@ -167,6 +169,18 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
               <div className="spinner" />
               <span>{m.preview_loading()}</span>
             </div>
+          ) : loadFailed ? (
+            <div className="poke-grid-loading" role="alert">
+              <span>{m.modal_load_error()}</span>
+              <button
+                type="button"
+                className="page-btn"
+                style={{ width: "auto", padding: "6px 16px" }}
+                onClick={() => activeQuery.refetch()}
+              >
+                {m.error_retry()}
+              </button>
+            </div>
           ) : (
             <div className="poke-grid-container">
               {isFetching && !isFetchingNextPage && (
@@ -193,6 +207,7 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
               {hasNextPage && (
                 <div className="pagination" style={{ justifyContent: "center", gap: 12 }}>
                   <span className="page-info">
+                    {listInfinite.isFetchNextPageError ? `${m.modal_load_error()} · ` : null}
                     {m.modal_loaded_count({
                       count: String(allAccumulatedItems?.length ?? 0),
                       total: String(listInfinite.data?.pages[0]?.count ?? "?"),

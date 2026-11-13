@@ -106,6 +106,8 @@
   "game_loading_7": "Afinando Pokéballs… 🗻",
   "preview_hover_hint": "Pasa el cursor sobre un Pokémon para verlo",
   "preview_loading": "Cargando…",
+  "modal_load_error": "No se pudo cargar la lista de Pokémon",
+  "preview_load_error": "No se pudo cargar este Pokémon",
   "modal_tab_all": "Todos",
   "modal_tab_type": "Tipo",
   "modal_no_results": "No se encontraron Pokémon",

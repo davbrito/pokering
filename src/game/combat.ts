@@ -84,21 +84,25 @@ function mapApiStatName(raw: string): "atk" | "def" | "spa" | "spd" | "spe" {
   return map[raw] || "atk";
 }
 
-/** Obtiene el pool completo de movimientos válidos (async, sin azar). */
+/**
+ * Obtiene el pool completo de movimientos válidos (async, sin azar).
+ *
+ * Un movimiento individual que falla se omite del pool, pero si fallan *todas* las
+ * peticiones (p. ej. sin conexión) se propaga el error para que la UI pueda mostrarlo
+ * y ofrecer un reintento, en lugar de construir una batalla con un pool vacío.
+ */
 export async function fetchPokemonMovePool(queryClient: QueryClient, pokemon: PokemonDetail): Promise<MoveInfo[]> {
   const movesNames = uniq(pokemon.moves.map((m) => m.move.name));
-  const results = await Promise.all(movesNames.map((name) => fetchSingleMove(queryClient, name)));
-  return compact(results);
+  const settled = await Promise.allSettled(movesNames.map((name) => fetchSingleMove(queryClient, name)));
+  const rejected = settled.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+  if (movesNames.length > 0 && rejected.length === movesNames.length) throw rejected[0].reason;
+  return compact(settled.map((r) => (r.status === "fulfilled" ? r.value : null)));
 }
 
 async function fetchSingleMove(queryClient: QueryClient, name: string): Promise<MoveInfo | null> {
-  try {
-    const data = await queryClient.ensureQueryData(moveRetrieveOptions({ path: { id: name } }));
-    if (!data) return null;
-    return mapMoveToMoveInfo(data);
-  } catch {
-    return null;
-  }
+  const data = await queryClient.ensureQueryData(moveRetrieveOptions({ path: { id: name } }));
+  if (!data) return null;
+  return mapMoveToMoveInfo(data);
 }
 
 // Extrae las 6 estadísticas base (HP, Atk, Def, SpA, SpD, Spe) de la API.
