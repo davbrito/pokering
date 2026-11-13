@@ -7,6 +7,17 @@ export const STAT_ABBR: Record<string, string> = {
   speed: "SPD",
 };
 
+/** Valor base máximo usado como 100% en las barras de stats. */
+export const STAT_BAR_MAX = 180;
+
+/** Color de una barra de stat según su valor base (>=100 / >=70 / >=45). */
+export function getStatColor(baseStat: number): string {
+  if (baseStat >= 100) return "#4ade80";
+  if (baseStat >= 70) return "#60d8a0";
+  if (baseStat >= 45) return "#f5c842";
+  return "#e63e3e";
+}
+
 export const TYPES = [
   "all",
   "normal",

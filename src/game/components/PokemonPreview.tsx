@@ -1,6 +1,5 @@
-import { Progress } from "@base-ui/react";
 import { useQuery } from "@tanstack/react-query";
-import { clamp, sumBy } from "es-toolkit/math";
+import { sumBy } from "es-toolkit/math";
 import { Volume2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
@@ -8,8 +7,8 @@ import { m } from "#/i18n/paraglide/messages.js";
 import { pokemonRetrieveOptions } from "../../api/pokeapi/@tanstack/react-query.gen";
 import { getArtworkUrl } from "../api";
 import { audioManager, playPokemonCry } from "../audio";
-import { STAT_ABBR } from "../data";
 import { PokemonName } from "./PokemonName";
+import { StatBars } from "./StatBars";
 
 export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | null; onSelect: (id: number) => void }) {
   const { data: pokemon, isLoading: loading } = useQuery({
@@ -96,33 +95,7 @@ export function PokemonPreview({ pokemonId, onSelect }: { pokemonId: number | nu
           </span>
         ))}
       </div>
-      <div className="prev-stats">
-        {pokemon.stats.map((s) => {
-          const abbr = STAT_ABBR[s.stat.name] || s.stat.name.slice(0, 3).toUpperCase();
-          const pct = Math.round(clamp((s.base_stat / 180) * 100, 0, 100));
-          const col =
-            s.base_stat >= 100 ? "#4ade80" : s.base_stat >= 70 ? "#60d8a0" : s.base_stat >= 45 ? "#f5c842" : "#e63e3e";
-          return (
-            <Progress.Root key={s.stat.name} className="prev-srow" value={s.base_stat} max={180}>
-              <span className="prev-sname">{abbr}</span>
-              <Progress.Track className="strack">
-                <Progress.Indicator
-                  className="sfill"
-                  render={<motion.div animate={{ width: `${pct}%`, background: col }} />}
-                />
-              </Progress.Track>
-              <Progress.Value
-                className="text-text font-mono"
-                style={{
-                  fontSize: "9px",
-                }}
-              >
-                {(_fmt, value) => value}
-              </Progress.Value>
-            </Progress.Root>
-          );
-        })}
-      </div>
+      <StatBars variant="preview" stats={pokemon.stats.map((s) => ({ name: s.stat.name, base: s.base_stat }))} />
       <button type="button" className="prev-select-btn" onClick={() => onSelect(pokemon.id)}>
         Elegir este ▶
       </button>
