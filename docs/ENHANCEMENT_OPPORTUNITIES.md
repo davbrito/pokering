@@ -1,7 +1,13 @@
 # PokéRing — Enhancement Opportunities
 
 > Comprehensive analysis of the PokéRing Pokémon battle simulator codebase.
-> Generated: June 12, 2026
+> Last updated: November 13, 2026
+
+---
+
+## 📝 Notes
+
+- **React Compiler:** it is enabled through `@vitejs/plugin-react`'s native Oxc integration in `vite.config.ts` (`react({ compiler: { logDiagnostics: true } })`). The Oxc integration is experimental, so keep an eye on compiler diagnostics and verify behavior in production builds.
 
 ---
 
@@ -12,83 +18,50 @@
 The app silently swallows API errors in multiple places:
 
 - **`src/game/combat.ts`** — `fetchSingleMove()` catches errors and returns `null` with zero user feedback
-- **`src/game/components/PokemonModal.tsx`** — prefetch errors are caught with `/* ignore prefetch errors */`
-- Missing a top-level `<ErrorBoundary>` wrapping the app
+- **`src/game/components/PokemonModal.tsx`** — prefetch errors are reportedly ignored (verify; the `/* ignore prefetch errors */` comment was not found)
+- Missing a top-level `<ErrorBoundary>` / route `errorComponent` wrapping the app
 - No retry UI or "something went wrong" state for users
 
 **Suggested fix:** Add React error boundaries, surface fetch errors via a toast/notification mechanism, and show inline error states in `PokemonModal` and the battle loading screen.
 
 ---
 
-### 2. Missing Type Badge CSS for Several Pokémon Types
-
-The CSS in `src/style/game.css` defines `.t-` classes for some types but is missing classes for:
-
-| Missing Type | `TYPE_TAB_COLORS` reference in `data.ts` |
-|-------------|------------------------------------------|
-| `bug`       | ✅ Defined                                |
-| `rock`      | ✅ Defined                                |
-| `ghost`     | ✅ Defined                                |
-| `dragon`    | ✅ Defined                                |
-| `dark`      | ✅ Defined                                |
-| `steel`     | ✅ Defined                                |
-| `fairy`     | ✅ Defined                                |
-
-The `TYPE_TAB_COLORS` object in `data.ts` defines colors for all 18 types (+ "all"), but the CSS badge classes are incomplete. Badges for these types will render without proper styling.
-
-**Suggested fix:** Add the missing `.t-bug`, `.t-rock`, `.t-ghost`, `.t-dragon`, `.t-dark`, `.t-steel`, `.t-fairy` classes to `src/style/game.css`, following the existing pattern and deriving values from `TYPE_TAB_COLORS`.
-
----
-
-### 3. React Compiler Uses Experimental Oxc Support
-
-The React Compiler is enabled through `@vitejs/plugin-react`'s native Oxc integration in `vite.config.ts`. This removes the Babel transform previously used for compilation. The Oxc integration is experimental, so keep an eye on compiler diagnostics and verify behavior in production builds.
-
----
-
-### 4. Type Safety: `any` Casting in API Layer
-
-- **`src/game/api.ts`** — `(d.sprites.other as any)?.["official-artwork"]?.front_default` bypasses type checking
-- The generated PokeAPI client types (`src/api/pokeapi/types.gen.ts`) may have incomplete or overly permissive types for nested sprite URLs
-
-**Suggested fix:** Extend the generated types with proper interfaces for `official-artwork` and other sprite variants, replacing the `any` cast with a typed accessor.
-
----
-
 ## 🟡 Medium Priority
 
-### 5. Unbounded Memory Cache (`localizedNameCache`)
+### 2. Unbounded Memory Cache (`localizedNameCache`)
 
-The module-level `Map<number, Map<string, string>>` in `src/game/api.ts` is used as a localized name cache, populated by the `PokemonModal` preview panel on every hover.
+The module-level `Map<number, Map<string, string>>` in `src/game/api.ts` is used as a localized name cache, populated by the `PokemonModal` preview panel on every hover. It is read by `PokemonName.tsx` and cleared in `settings.tsx` when the language changes.
 
 **Issues:**
 - Grows unboundedly — every hovered Pokémon adds entries that are never cleaned up
 - With 1010+ Pokémon and multiple languages, this could consume significant memory over long sessions
 - No eviction policy
 
-**Suggested fix:** Add a maximum size limit (e.g., LRU cache using `Map` delete-reinsert pattern, or a dedicated LRU library), or clear entries when the modal closes.
+**Suggested fix:** Add a maximum size limit (e.g., LRU cache using `Map` delete-reinsert pattern, or a dedicated LRU library). Keep `PokemonName.tsx` working, since it reads the cache directly.
 
 ---
 
-### 6. Duplicated Stat Bar Rendering Logic
+### 3. Duplicated Stat Bar Rendering Logic
 
 Both components have nearly identical stat bar rendering:
 
 | Component | File |
 |-----------|------|
 | `PokemonCard` | `src/game/components/PokemonSlot.tsx` |
-| `PokemonPreview` | `src/game/components/PokemonModal.tsx` |
+| `PokemonPreview` | `src/game/components/PokemonPreview.tsx` |
 
 Both duplicate:
-- Same color thresholds (`>= 100 → #4ade80`, `>= 70 → #60d8a0`, `>= 45 → #f5c842`, else `#e63e3e`)
+- The same four-step color scale (`#4ade80` / `#60d8a0` / `#f5c842` / `#e63e3e`), but with **different thresholds**: `PokemonPreview` uses raw base stat (`>= 100 / 70 / 45`), `PokemonSlot` uses percentages (`>= 55 / 38 / 25`)
 - Same bar layout (label + track + value)
 - Same stat abbreviation mapping via `STAT_ABBR`
 
-**Suggested fix:** Extract a shared `<StatBars stats={...} />` component used by both `PokemonCard` and `PokemonPreview`.
+`BattleResult.tsx` also hardcodes `#4ade80` / `#e63e3e`; `--green` already exists in `src/styles.css`.
+
+**Suggested fix:** Extract a shared `<StatBars stats={...} />` component after deciding on one scale (or parameterizing the thresholds), and use CSS variables for the colors.
 
 ---
 
-### 7. Hardcoded Spanish Locale in Settings
+### 4. Hardcoded Spanish Locale in Settings
 
 `src/routes/settings.tsx` uses:
 
@@ -96,41 +69,36 @@ Both duplicate:
 const displayNames = new Intl.DisplayNames(["es"], { type: "language" });
 ```
 
-This is hardcoded to Spanish. If the user's browser/OS language differs, language names in the selector won't match their expectations.
+This is hardcoded to Spanish, so language names in the selector don't follow the UI language.
 
-**Suggested fix:** Use `navigator.language` (with a fallback to `"es"`) for the `DisplayNames` constructor, so the UI adapts to the user's locale.
-
----
-
-### 8. No Test Coverage
-
-`vitest` and `@testing-library/react` are installed as dev dependencies and `pnpm test` is defined, but no test files exist in the repository.
-
-The combat engine (`src/game/combat.ts`) has complex logic that would benefit significantly from unit tests:
-
-| Function | Description |
-|----------|-------------|
-| `calculateAttackDamage()` | Damage formula with crits, STAB, type effectiveness, randomness |
-| `getEffectiveness()` | Type chart lookup with accumulated multipliers |
-| `getStabMultiplier()` | Same-type attack bonus calculation |
-| `selectBestMove()` | AI move selection with randomness factor |
-| `determineFirstAttacker()` | Speed-based turn order with tie-breaking |
-| `generateBattleSteps()` | Full battle sequence generation |
-| `fetchPokemonMoves()` | API data transformation and filtering |
-
-**Suggested fix:** Add Vitest unit tests for the pure functions in `combat.ts` and `data.ts`.
+**Suggested fix:** Use the app's active locale (Paraglide) for the `DisplayNames` constructor, with `"es"` as the fallback.
 
 ---
 
-### 9. Battle Dialog Text Overflow on Mobile
+### 5. Test Coverage Gaps
 
-The `stage-dialog` battle narration can be lengthy (move names + crit messages + effectiveness text). On mobile (640px breakpoint), the text is set to `font-size: 11px`. Long names (e.g., "Hydro Pump", "Thunderbolt") combined with modifiers could overflow.
+`vitest` and `@testing-library/react` are set up, and 14 test files exist under `test/` (combat, machines, status effects, move AI, stats scaling, UI). Remaining gaps in `src/game/combat.ts` and `src/game/combat/moves.ts`:
 
-**Suggested fix:** Add `overflow-wrap: break-word` or `word-break: break-word` to `.stage-dialog`, and consider truncation for very long strings with a `title` tooltip.
+| Function | Status |
+|----------|--------|
+| `calculateAttackDamage()` | No direct test references |
+| `getEffectiveness()` / `getStabMultiplier()` | No direct test references |
+| `fetchPokemonMovePool()` | No direct test references |
+| `determineFirstAttacker()`, `generateBattleSteps()` | Covered in `test/game/combat.test.ts` |
+
+**Suggested fix:** Add focused unit tests for the uncovered pure functions (damage formula with crits/STAB/effectiveness, type chart lookup).
 
 ---
 
-### 10. Hardcoded English Fallback in Localization
+### 6. Battle Dialog Text Overflow on Mobile
+
+The `stage-dialog` battle narration can be lengthy (move names + crit messages + effectiveness text). On mobile (640px breakpoint), the text is set to `font-size: 11px`, and `.stage-dialog` has no `overflow-wrap`.
+
+**Suggested fix:** Add `overflow-wrap: break-word` to `.stage-dialog`.
+
+---
+
+### 7. Hardcoded English Fallback in Localization
 
 `getLocalizedName()` in `src/game/api.ts` falls back to English (`"en"`) when the requested language is missing translations:
 
@@ -139,7 +107,7 @@ const en = names.find((n) => n.language.name === "en");
 if (en) return en.name;
 ```
 
-For a Spanish-first app (`lang="es"` on `<html>`), this means some Pokémon will show English names when Spanish translations are unavailable. Mixed-language display could be confusing.
+For a Spanish-first app (`lang="es"` on `<html>`), some Pokémon will show English names when Spanish translations are unavailable.
 
 **Suggested fix:** Consider showing the species API name key (e.g., `bulbasaur`) as a neutral fallback, or add a subtle visual indicator when falling back to a different language.
 
@@ -147,73 +115,52 @@ For a Spanish-first app (`lang="es"` on `<html>`), this means some Pokémon will
 
 ## 🟢 Low Priority / Nice-to-Have
 
-### 11. Combat Depth Limitations
+### 8. Combat Depth Limitations
 
-The engine has several simplifying design decisions that limit realism compared to the actual Pokémon games:
+The engine already supports status moves (stat changes, healing), burn and paralysis (`SUPPORTED_AILMENTS`), and level-based stat scaling. Remaining gaps compared to the actual games:
 
 | Limitation | Impact |
 |------------|--------|
-| **No status moves** | Growl, Thunder Wave, Swords Dance, etc. are filtered out entirely |
-| **No status conditions** | No burn (ATK halved), paralysis (speed halved), freeze, sleep, or poison |
+| **Limited ailments** | Only burn and paralysis; no freeze, sleep or poison |
 | **No held items** | No berries, Choice items, or type-boosting items |
 | **No abilities** | No Intimidate, Levitate, Sturdy, etc. |
 | **No weather/terrain** | No rain, sun, sand, or electric terrain effects |
-| **Fixed level 50** | No level-based variance between Pokémon |
-| **15-turn cap** | Prevents stall strategies and long matches |
-
-These are valid design choices for a lightweight simulator but represent the largest surface for feature enhancement.
 
 ---
 
-### 12. No Keyboard Navigation for Pokémon Grid
+### 9. No Keyboard Navigation for Pokémon Grid
 
-The `.poke-thumb` buttons are focusable and have hover states, but the grid doesn't support arrow-key navigation. Users relying on keyboard navigation must tab through potentially hundreds of thumbnails.
+The `.poke-thumb` buttons are focusable, but the grid doesn't support arrow-key navigation. Users relying on keyboard navigation must tab through potentially hundreds of thumbnails.
 
 **Suggested fix:** Add `role="grid"` with arrow-key event handlers to navigate between thumbnails, and ensure focus management when filtering/searching.
 
 ---
 
-### 13. Missing SEO / Social Meta Tags
+### 10. Missing SEO / Social Meta Tags
 
-The app has no Open Graph or Twitter Card meta tags. When shared on social media, there's no preview image, title, or description.
+The root route `head()` only defines charset, viewport and title. There are no Open Graph or Twitter Card tags.
 
-**Suggested fix:** Add `<meta property="og:title" />`, `<meta property="og:description" />`, `<meta property="og:image" />` and Twitter Card equivalents in the route head configuration in `src/routes/__root.tsx`.
-
----
-
-### 14. PWA / Offline Support Gap
-
-A `public/manifest.json` exists but no service worker is registered. Combined with the existing TanStack Query localStorage persistence (`@tanstack/query-async-storage-persister`), a basic service worker could turn this into a functional offline PWA.
-
-**Suggested fix:** Add a service worker (via `vite-plugin-pwa` or Workbox) and register it in the root route. The persisted query cache already handles data offline; a service worker would provide asset caching and full offline capability.
+**Suggested fix:** Add `og:title`, `og:description`, `og:image` and Twitter Card equivalents in the `head()` config in `src/routes/__root.tsx`.
 
 ---
 
-### 15. Settings Gear Animation
+### 11. PWA / Offline Support Gap
 
-The `.settings-gear` hover in `src/style/game.css` uses:
+A `public/manifest.json` exists but no service worker is registered. Combined with the existing TanStack Query persistence (`@tanstack/query-async-storage-persister`), a basic service worker could turn this into a functional offline PWA.
 
-```css
-.settings-gear:hover {
-  transform: rotate(60deg);
-}
-```
-
-The rotation amount (60°) is small for a gear icon — a full 360° spin would feel more satisfying and natural.
-
-**Suggested fix:** Change to `transform: rotate(360deg)` for a full spin effect.
+**Suggested fix:** Add a service worker (via `vite-plugin-pwa` or Workbox) and register it in the root route.
 
 ---
 
-### 16. TypeScript `strict` Mode Gaps
+### 12. Settings Gear Animation
 
-The `tsconfig.json` has `"strict": true` and `"noUncheckedSideEffectImports": true`, but several files use loose patterns:
+`.settings-gear:hover` in `src/style/game.css` rotates only `60deg`. A full `360deg` spin might feel more natural (a matter of taste).
 
-- `(d.sprites.other as any)` type escapes in `src/game/api.ts`
-- `window.crypto.getRandomValues(array)` in `src/game/combat.ts` (should use `crypto.getRandomValues`)
-- The generated PokeAPI client is excluded from linting (`!src/api/pokeapi/**` in `biome.json`)
+---
 
-**Suggested fix:** Audit and fix strict TS errors across `src/game/` and `src/routes/` to fully leverage strict mode benefits, and ensure the generated types are compatible.
+### 13. Linting Excludes the Generated API Client
+
+`biome.json` excludes `src/api/pokeapi/**` from linting, and `src/routeTree.gen.ts` contains `as any` casts (generated code). Make sure the generated types remain compatible with strict TypeScript.
 
 ---
 
@@ -221,20 +168,18 @@ The `tsconfig.json` has `"strict": true` and `"noUncheckedSideEffectImports": tr
 
 | # | Opportunity | File(s) | Est. Effort |
 |---|-------------|---------|-------------|
-| 6 | Extract shared `<StatBars>` component | `PokemonSlot.tsx`, `PokemonModal.tsx` | ~30 min |
-| 4 | Fix `any` cast for artwork URL | `game/api.ts` | ~15 min |
-| 15 | Full 360° gear spin | `style/game.css` | ~2 min |
-| 10 | Better localization fallback strategy | `game/api.ts` | ~20 min |
-| 5 | Add LRU limit to `localizedNameCache` | `game/api.ts` | ~30 min |
-| 8 | Add unit tests for combat engine | `game/combat.ts` | ~2–3 hours |
-| 7 | Respect browser locale in settings | `routes/settings.tsx` | ~10 min |
-| 2 | Add missing type badge CSS classes | `style/game.css` | ~10 min |
-| 9 | Mobile dialog overflow protection | `style/game.css` | ~5 min |
-| 13 | Add SEO / social meta tags | `routes/__root.tsx` | ~20 min |
-| 12 | Arrow-key navigation for Pokémon grid | `PokemonModal.tsx` | ~45 min |
+| 3 | Extract shared `<StatBars>` component | `PokemonSlot.tsx`, `PokemonPreview.tsx` | ~30 min |
+| 12 | Full 360° gear spin | `style/game.css` | ~2 min |
+| 7 | Better localization fallback strategy | `game/api.ts` | ~20 min |
+| 2 | Add LRU limit to `localizedNameCache` | `game/api.ts` | ~30 min |
+| 5 | Add unit tests for uncovered combat functions | `game/combat.ts` | ~1–2 hours |
+| 4 | Use app locale in settings | `routes/settings.tsx` | ~10 min |
+| 6 | Mobile dialog overflow protection | `style/game.css` | ~5 min |
+| 10 | Add SEO / social meta tags | `routes/__root.tsx` | ~20 min |
+| 9 | Arrow-key navigation for Pokémon grid | `PokemonModal.tsx` | ~45 min |
 | 1 | Add error boundaries | New file + root route | ~1 hour |
-| 14 | Add service worker for PWA | New file + config | ~1–2 hours |
-| 11 | Combat depth enhancements | `game/combat.ts`, `game/data.ts` | Ongoing |
+| 11 | Add service worker for PWA | New file + config | ~1–2 hours |
+| 8 | Combat depth enhancements | `game/combat.ts`, `game/data.ts` | Ongoing |
 
 ---
 
