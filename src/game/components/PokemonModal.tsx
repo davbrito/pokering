@@ -14,9 +14,7 @@ import { m } from "#/i18n/paraglide/messages.js";
 import { cn } from "#/lib/utils.ts";
 import { getSpriteUrl } from "../api";
 import { getTypeSpriteUrl, TYPE_TAB_COLORS } from "../data";
-import { useSettingsStore } from "../settings-store";
 import { useGameStore } from "../store";
-import { getPokemonNameById } from "./PokemonName";
 import { PokemonPreview } from "./PokemonPreview";
 import { pickerDialogHandle } from "./pickerDialogHandle";
 
@@ -69,7 +67,6 @@ function getIdFromUrl(url: string): number {
 function DialogContent({ slot = 0 }: { slot: number | undefined }) {
   const searchQuery = useGameStore((s) => s.searchQuery);
   const activeTab = useGameStore((s) => s.activeTab);
-  const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const deferredHoveredId = useDeferredValue(hoveredId);
   const PAGE_SIZE = 500;
@@ -102,7 +99,7 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
     if (!isSearching) return allAccumulatedItems;
     const q = debouncedSearch.toLowerCase().trim();
     return allAccumulatedItems.filter((p) => {
-      const name = getPokemonNameById(p.id, p.name, pokemonLanguage).toLowerCase();
+      const name = p.name.toLowerCase();
       return name.includes(q) || String(p.id).padStart(3, "0").includes(q);
     });
   })();
@@ -121,7 +118,7 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
     if (!isSearching) return typeItemsRaw;
     const q = debouncedSearch.toLowerCase().trim();
     return typeItemsRaw.filter((p) => {
-      const name = getPokemonNameById(p.id, p.name, pokemonLanguage).toLowerCase();
+      const name = p.name.toLowerCase();
       return name.includes(q) || String(p.id).padStart(3, "0").includes(q);
     });
   })();
@@ -197,7 +194,7 @@ function DialogContent({ slot = 0 }: { slot: number | undefined }) {
                       name={p.name}
                       onHover={() => handleHover(p.id)}
                       onClick={() => handleSelect(p.id)}
-                      translatedName={getPokemonNameById(p.id, p.name, pokemonLanguage)}
+                      translatedName={p.name}
                     />
                   ))}
                 </div>

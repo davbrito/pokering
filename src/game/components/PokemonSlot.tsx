@@ -7,19 +7,16 @@ import { m } from "#/i18n/paraglide/messages.js";
 import { getArtworkUrl } from "../api";
 import { audioManager, playPokemonCry } from "../audio";
 import { scaleStatsArrayByLevel } from "../combat";
-import { useSettingsStore } from "../settings-store";
 import { useChosenPokemon, useGameStore } from "../store";
-import { getPokemonName, PokemonName } from "./PokemonName";
+import { PokemonName } from "./PokemonName";
 import { pickerDialogHandle } from "./pickerDialogHandle";
 import { StatBars } from "./StatBars";
 
 function PokemonCard({ pokemon, slotIndex }: { pokemon: PokemonDetail; slotIndex: number }) {
-  const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
   const level = useGameStore((s) => (slotIndex === 0 ? s.players.player1.level : s.players.player2.level));
   const art = getArtworkUrl(pokemon);
   const types = pokemon.types.map((t) => t.type.name);
   const total = sumBy(pokemon.stats, (s) => s.base_stat);
-  const localizedName = getPokemonName(pokemon, pokemonLanguage);
   const [isPlaying, setIsPlaying] = useState(false);
 
   // Escalar stats base por nivel y aplicar multiplicadores de stages
@@ -33,7 +30,7 @@ function PokemonCard({ pokemon, slotIndex }: { pokemon: PokemonDetail; slotIndex
   return (
     <div className="poke-card show">
       <div className="poke-art-wrap relative">
-        <img className={`poke-art ${isPlaying ? "cry-shake" : ""}`} src={art} alt={localizedName} />
+        <img className={`poke-art ${isPlaying ? "cry-shake" : ""}`} src={art} alt={pokemon.name} />
         <button
           type="button"
           className="poke-cry-btn"

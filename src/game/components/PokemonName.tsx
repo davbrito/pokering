@@ -1,24 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { PokemonDetail } from "#/api/pokeapi/index.ts";
 import { pokemonSpeciesRetrieveOptions } from "../../api/pokeapi/@tanstack/react-query.gen";
-import { localizedNameCache } from "../api";
 import { useSettingsStore } from "../settings-store";
-
-/**
- * Resuelve el nombre localizado de un Pokémon desde el caché usando su ID.
- * Si no está en caché, cae de vuelta al fallback.
- */
-export function getPokemonNameById(id: number, fallback: string, language: string): string {
-  return localizedNameCache.get(id)?.get(language) || fallback;
-}
-
-/**
- * Resuelve el nombre localizado de un Pokémon desde el caché.
- * Si no está en caché, cae de vuelta al nombre de la API (inglés).
- */
-export function getPokemonName(pokemon: PokemonDetail, language: string): string {
-  return getPokemonNameById(pokemon.id, pokemon.name, language);
-}
 
 /**
  * Componente que renderiza el nombre localizado de un Pokémon.

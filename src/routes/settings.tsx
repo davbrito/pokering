@@ -7,7 +7,6 @@ import { ArrowLeft, Check, ChevronDown, ChevronsUpDown, ChevronUp, Volume2, Volu
 import { m } from "#/i18n/paraglide/messages.js";
 import { getLocale, setLocale } from "#/i18n/paraglide/runtime.js";
 import { languageListOptions } from "../api/pokeapi/@tanstack/react-query.gen";
-import { localizedNameCache } from "../game/api";
 import { useSettingsStore } from "../game/settings-store";
 
 export const Route = createFileRoute("/settings")({
@@ -88,7 +87,6 @@ function SettingsPage() {
                 onValueChange={(value) => {
                   const lang = value as string;
                   setPokemonLanguage(lang);
-                  localizedNameCache.clear();
                 }}
               >
                 <Select.Label className="text-muted mb-1.5 block cursor-default text-xs font-semibold">
