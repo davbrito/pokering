@@ -29,7 +29,7 @@ function SettingsPage() {
   const setAudioEnabled = useSettingsStore((s) => s.setAudioEnabled);
   const setAudioVolume = useSettingsStore((s) => s.setAudioVolume);
 
-  const displayNames = new Intl.DisplayNames(["es"], { type: "language" });
+  const displayNames = new Intl.DisplayNames([getLocale()], { type: "language" });
 
   return (
     <div className="settings-page">
