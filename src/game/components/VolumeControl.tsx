@@ -67,7 +67,13 @@ export function VolumeControl() {
                 </Slider.Track>
               </Slider.Control>
             </Slider.Root>
-            <button type="button" className="settings-gear cursor-pointer" aria-label={label} title={label} onClick={toggleMute}>
+            <button
+              type="button"
+              className="settings-gear cursor-pointer"
+              aria-label={label}
+              title={label}
+              onClick={toggleMute}
+            >
               <Icon size={24} />
             </button>
           </Popover.Popup>

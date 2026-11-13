@@ -6,10 +6,9 @@ import { getStatsObject } from "../combat";
 import { getEffectiveness } from "../combat/moves";
 import { useGamePhase, useGameSend, useMatch, usePrepared } from "../game-actor";
 import { randomSeed } from "../rng";
-import { useSettingsStore } from "../settings-store";
 import { useChosenPokemon } from "../store";
 import type { BattleStep, PokemonStats } from "../types";
-import { getPokemonName, PokemonName } from "./PokemonName";
+import { PokemonName } from "./PokemonName";
 import { RenderStepContent } from "./renderStepContent";
 
 interface WinnerInfo {
@@ -86,7 +85,6 @@ function BattleResultContent() {
   const { steps: battleSteps } = usePrepared();
   const { chosen } = useChosenPokemon();
   const [{ level: level1 }, { level: level2 }] = fighters;
-  const pokemonLanguage = useSettingsStore((s) => s.pokemonLanguage);
 
   const handleRestart = () => send({ type: "battle.rematch", seed: randomSeed() });
 
@@ -105,7 +103,7 @@ function BattleResultContent() {
       <div id="result-inner">
         <div className="result-card">
           <div className="result-top">
-            <img className="win-art" src={wart} alt={getPokemonName(w.wp, pokemonLanguage)} />
+            <img className="win-art" src={wart} alt={w.wp.name} />
             <div>
               <div className="win-eyebrow">{m.battle_winner_trophy()}</div>
               <div className="win-name">
